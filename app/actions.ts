@@ -6,7 +6,7 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { getAuth } from '@/lib/auth/server';
 import { getCoupleContext, getViewer, hasCoupleHistory } from '@/lib/data';
-import { sql } from '@/lib/db';
+import { db, sql } from '@/lib/db';
 import { getRequestGeo } from '@/lib/geo';
 import { currentDeviceId, recordLogin } from '@/lib/devices';
 import { DESIRES } from '@/lib/content';
@@ -27,6 +27,22 @@ function accessCodeMatches(input: string) {
 }
 
 const userIdOf = (data: unknown) => (data as { user?: { id?: string } } | null)?.user?.id ?? null;
+
+const isUniqueViolation = (e: unknown, constraintHint?: string) =>
+  (e as { code?: string })?.code === '23505' &&
+  (!constraintHint || String((e as { constraint?: string; message?: string }).constraint ?? (e as Error).message).includes(constraintHint));
+
+/** Runs fn with a fresh invite code, retrying on the (astronomically rare) collision. */
+async function withInviteCode<T>(fn: (code: string) => Promise<T>): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fn(newInviteCode());
+    } catch (e) {
+      if (attempt < 3 && isUniqueViolation(e, 'invite_code')) continue;
+      throw e;
+    }
+  }
+}
 
 const fail = (error: string): ActionResult => ({ ok: false, error });
 const OK: ActionResult = { ok: true };
@@ -66,10 +82,12 @@ export async function signUpAction(_: unknown, form: FormData): Promise<AuthResu
 
   const userId = (data as { user?: { id: string } } | null)?.user?.id;
   if (userId) {
-    await sql`
-      insert into profiles (user_id, name, invite_code, adult_consent_at)
-      values (${userId}, ${name}, ${newInviteCode()}, now())
-      on conflict (user_id) do update set adult_consent_at = coalesce(profiles.adult_consent_at, now())`;
+    await withInviteCode(
+      (code) => sql`
+        insert into profiles (user_id, name, invite_code, adult_consent_at)
+        values (${userId}, ${name}, ${code}, now())
+        on conflict (user_id) do update set adult_consent_at = coalesce(profiles.adult_consent_at, now())`,
+    );
   }
   // With email verification on, Neon creates the account but no session and emails a code.
   if (!(data as { token?: string | null } | null)?.token) return { ok: false, verify: email };
@@ -198,8 +216,13 @@ export async function pairWithCode(_: unknown, form: FormData): Promise<ActionRe
     where user_id in (${maleId}, ${femaleId}) and couple_id is null
     returning user_id`;
   if (updated.length !== 2) {
-    await sql`update profiles set couple_id = null where user_id in (${maleId}, ${femaleId}) and user_id = any(${updated.map((r) => r.user_id)})`;
-    return fail('Someone else just paired with them. Try again.');
+    // Entering each other's codes at the same moment: the other request already paired us. That's a success.
+    const now = await sql`select couple_id from profiles where user_id in (${maleId}, ${femaleId})`;
+    const paired = now.length === 2 && now[0].couple_id && now[0].couple_id === now[1].couple_id;
+    if (!paired) {
+      await sql`update profiles set couple_id = null where user_id = any(${updated.map((r) => r.user_id)})`;
+      return fail('Someone else just paired with them. Try again.');
+    }
   }
   revalidatePath('/', 'layout');
   redirect('/home');
@@ -209,7 +232,7 @@ export async function regenerateInviteCode(): Promise<ActionResult> {
   const viewer = await getViewer();
   if (!viewer?.profile) return fail('Not signed in.');
   if (viewer.profile.coupleId) return fail('Already paired.');
-  await sql`update profiles set invite_code = ${newInviteCode()} where user_id = ${viewer.user.id}`;
+  await withInviteCode((code) => sql`update profiles set invite_code = ${code} where user_id = ${viewer.user.id}`);
   return done();
 }
 
@@ -257,20 +280,25 @@ export async function startSession(input: z.input<typeof startSchema>): Promise<
       insert into sessions (couple_id, created_by, status, started_at, ip, city, region, country, latitude, longitude, geo_source, place)
       values (${ctx.couple.id}, ${ctx.me.userId}, 'active', now(), ${loc.ip}, ${loc.city}, ${loc.region}, ${loc.country},
               ${loc.latitude}, ${loc.longitude}, ${loc.source}, ${p.data.place || null})`;
-  } catch {
-    // Unique index: the partner already started one. Joining it is fine.
+  } catch (e) {
+    // One active session per couple (unique index): if the partner beat us to it, we simply join theirs.
+    if (!isUniqueViolation(e)) throw e;
   }
   return done();
 }
 
-export async function togglePause(id: string): Promise<ActionResult> {
+/** Idempotent pause/resume: two taps at once (or a stale screen) can't flip it back. */
+export async function setPaused(id: string, paused: boolean): Promise<ActionResult> {
   const ctx = await couple();
-  await sql`
-    update sessions set
-      paused_sec = case when paused_at is null then paused_sec
-                        else paused_sec + extract(epoch from now() - paused_at)::int end,
-      paused_at  = case when paused_at is null then now() else null end
-    where id = ${id} and couple_id = ${ctx.couple.id} and status = 'active'`;
+  if (paused) {
+    await sql`
+      update sessions set paused_at = now(), updated_at = now()
+      where id = ${id} and couple_id = ${ctx.couple.id} and status = 'active' and paused_at is null`;
+  } else {
+    await sql`
+      update sessions set paused_sec = paused_sec + extract(epoch from now() - paused_at)::int, paused_at = null, updated_at = now()
+      where id = ${id} and couple_id = ${ctx.couple.id} and status = 'active' and paused_at is not null`;
+  }
   return done();
 }
 
@@ -298,10 +326,26 @@ export async function finishSession(id: string, input: z.input<typeof detailsSch
       place = coalesce(${d.place || null}, place),
       rating = ${d.rating ?? null}, protection = ${d.protection ?? null},
       his_orgasms = ${d.hisOrgasms ?? null}, her_orgasms = ${d.herOrgasms ?? null},
-      tags = ${d.tags ?? []}, notes = ${d.notes || null}
+      tags = ${d.tags ?? []}, notes = ${d.notes || null}, updated_at = now()
     where id = ${id} and couple_id = ${ctx.couple.id} and status = 'active'
     returning id`;
-  if (!rows.length) return fail('This session was already finished.');
+  if (!rows.length) {
+    // Both pressed "done" at once: the partner saved first. Merge our details into theirs instead of dropping them.
+    const merged = await sql`
+      update sessions set
+        place = coalesce(place, ${d.place || null}),
+        rating = coalesce(rating, ${d.rating ?? null}), protection = coalesce(protection, ${d.protection ?? null}),
+        his_orgasms = coalesce(his_orgasms, ${d.hisOrgasms ?? null}), her_orgasms = coalesce(her_orgasms, ${d.herOrgasms ?? null}),
+        tags = array(select distinct unnest(tags || ${d.tags ?? []}::text[])),
+        notes = case when ${d.notes || null}::text is null then notes
+                     when notes is null then ${d.notes || null}
+                     when position(${d.notes || ''} in notes) > 0 then notes
+                     else notes || E'\n' || ${d.notes || null} end,
+        updated_at = now()
+      where id = ${id} and couple_id = ${ctx.couple.id} and status = 'done'
+      returning id`;
+    if (!merged.length) return fail('This session was discarded.');
+  }
   return done();
 }
 
@@ -339,6 +383,7 @@ export async function logPastSession(input: z.input<typeof pastSchema>): Promise
 const editSchema = detailsSchema.extend({
   startedAt: z.string().datetime({ offset: true }),
   durationMin: z.number().min(0).max(24 * 60),
+  version: z.string().datetime({ offset: true }),
 });
 
 export async function updateSession(id: string, input: z.input<typeof editSchema>): Promise<ActionResult> {
@@ -347,14 +392,18 @@ export async function updateSession(id: string, input: z.input<typeof editSchema
   if (!p.success) return fail('Invalid input');
   const d = p.data;
   const dur = Math.round(d.durationMin * 60);
-  await sql`
+  const rows = await sql`
     update sessions set
       started_at = ${d.startedAt}, duration_sec = ${dur},
       ended_at = ${d.startedAt}::timestamptz + make_interval(secs => ${dur}),
       place = ${d.place || null}, rating = ${d.rating ?? null}, protection = ${d.protection ?? null},
       his_orgasms = ${d.hisOrgasms ?? null}, her_orgasms = ${d.herOrgasms ?? null},
-      tags = ${d.tags ?? []}, notes = ${d.notes || null}
-    where id = ${id} and couple_id = ${ctx.couple.id} and status = 'done'`;
+      tags = ${d.tags ?? []}, notes = ${d.notes || null}, updated_at = now()
+    where id = ${id} and couple_id = ${ctx.couple.id} and status = 'done'
+      and date_trunc('milliseconds', updated_at) = date_trunc('milliseconds', ${d.version}::timestamptz)
+    returning id`;
+  // Optimistic concurrency: someone saved this session after we opened it.
+  if (!rows.length) return fail('Your partner just changed this session — close it and reopen to see their changes.');
   return done();
 }
 
@@ -375,13 +424,20 @@ async function herOnly() {
 export async function startPeriod(date: string): Promise<ActionResult> {
   const ctx = await herOnly();
   if (!isoDate.safeParse(date).success) return fail('Bad date');
-  const inside = await sql`
-    select id from periods where user_id = ${ctx.me.userId}
-      and start_date <= ${date}::date and coalesce(end_date, start_date + 9) >= ${date}::date`;
-  if (inside.length) return fail('That day is already part of a period.');
-  await sql`
-    insert into periods (couple_id, user_id, start_date) values (${ctx.couple.id}, ${ctx.me.userId}, ${date})
-    on conflict (user_id, start_date) do nothing`;
+  // Lock per user + conditional insert in one transaction, so two devices can't add overlapping periods.
+  const uid = ctx.me.userId;
+  const [, inserted] = await db().transaction((tx) => [
+    tx`select pg_advisory_xact_lock(hashtext(${uid}))`,
+    tx`
+      insert into periods (couple_id, user_id, start_date)
+      select ${ctx.couple.id}, ${uid}, ${date}::date
+      where not exists (
+        select 1 from periods where user_id = ${uid}
+          and start_date <= ${date}::date and coalesce(end_date, start_date + 9) >= ${date}::date)
+      on conflict (user_id, start_date) do nothing
+      returning id`,
+  ]);
+  if (!(inserted as unknown[]).length) return fail('That day is already part of a period.');
   return done();
 }
 

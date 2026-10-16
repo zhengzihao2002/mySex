@@ -103,6 +103,7 @@ export function SessionCard({
             onSubmit={async (v) => {
               const ok = await run(() =>
                 updateSession(s.id, {
+                  version: s.updatedAt,
                   startedAt: v.startedAt,
                   durationMin: v.durationMin,
                   place: v.place || null,

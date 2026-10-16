@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, EyeOff, History, MapPin, Navigation, Pause, Play, Sun, Trash2 } from 'lucide-react';
-import { discardActiveSession, finishSession, logPastSession, startSession, togglePause } from '@/app/actions';
+import { discardActiveSession, finishSession, logPastSession, setPaused, startSession } from '@/app/actions';
 import { FormError } from '@/components/FormError';
 import { ScoreReveal } from '@/components/ScoreBadge';
 import { getGps, SessionForm, Toggle, type SessionFormValues } from '@/components/SessionForm';
@@ -134,6 +134,7 @@ function IdleTimer({
       herOrgasms: null,
       tags: [],
       notes: null,
+      updatedAt: new Date().toISOString(),
     });
     const ok = await start.run(() => startSession({ place: place || null, useLocation, gps }));
     if (!ok) onStartFailed();
@@ -322,7 +323,8 @@ function LiveTimer({
     if (navigator.vibrate) navigator.vibrate([20, 40, 20]);
     frozenAt.current = secs;
     // Freeze the clock first so filling in the details doesn't add minutes.
-    if (!paused) await act.run(() => togglePause(session.id));
+    // Always an explicit pause (never a toggle), so a stale screen can't resume a partner-paused clock.
+    await act.run(() => setPaused(session.id, true));
     setFinishOpen(true);
   };
 
@@ -486,7 +488,7 @@ function LiveTimer({
             We’re done 💦
           </button>
           <button
-            onClick={() => act.run(() => togglePause(session.id))}
+            onClick={() => act.run(() => setPaused(session.id, !paused))}
             disabled={pendingStart || act.pending}
             className="flex h-14 w-14 items-center justify-center rounded-full bg-surface-2/80 text-ink backdrop-blur disabled:opacity-40"
             aria-label={paused ? 'Resume' : 'Pause'}

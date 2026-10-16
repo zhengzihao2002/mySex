@@ -47,6 +47,7 @@ export function toSession(r: Row): SexSession {
     herOrgasms: r.her_orgasms,
     tags: r.tags ?? [],
     notes: r.notes,
+    updatedAt: iso(r.updated_at) ?? iso(r.created_at)!,
   };
 }
 
@@ -192,8 +193,8 @@ export async function getPastPartners(userId: string): Promise<PastPartner[]> {
       (select max(started_at) from sessions s where s.couple_id = c.id) as last_session
     from couples c
     join profiles p on p.user_id = case when c.male_id = ${userId} then c.female_id else c.male_id end
-    where c.male_id = ${userId} or c.female_id = ${userId}
-    order by c.unpaired_at desc nulls last`;
+    where (c.male_id = ${userId} or c.female_id = ${userId}) and c.unpaired_at is not null
+    order by c.unpaired_at desc`;
   return rows.map((r) => ({
     coupleId: r.id,
     name: r.name,

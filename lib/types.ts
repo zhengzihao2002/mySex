@@ -51,6 +51,7 @@ export type SexSession = {
   herOrgasms: number | null;
   tags: string[];
   notes: string | null;
+  updatedAt: string;
 };
 
 export type Period = { id: string; start: string; end: string | null };

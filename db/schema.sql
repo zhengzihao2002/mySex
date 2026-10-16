@@ -57,6 +57,8 @@ create table if not exists sessions (
   notes        text,
   created_at   timestamptz not null default now()
 );
+-- Version stamp for optimistic concurrency when both partners edit the same session.
+alter table sessions add column if not exists updated_at timestamptz not null default now();
 create unique index if not exists sessions_one_active_per_couple on sessions (couple_id) where status = 'active';
 create index if not exists sessions_couple_started on sessions (couple_id, started_at desc);
 
