@@ -9,7 +9,7 @@ import { getCoupleContext, getViewer } from '@/lib/data';
 import { sql } from '@/lib/db';
 import { getRequestGeo } from '@/lib/geo';
 import { DESIRES } from '@/lib/content';
-import type { ActionResult } from '@/lib/types';
+import type { ActionResult, AuthResult } from '@/lib/types';
 
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 function newInviteCode() {
@@ -43,7 +43,7 @@ const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
 // ───────────────────────────── auth ─────────────────────────────
 
-export async function signUpAction(_: unknown, form: FormData): Promise<ActionResult> {
+export async function signUpAction(_: unknown, form: FormData): Promise<AuthResult> {
   const parsed = z
     .object({
       accessCode: z.string().min(1, 'Enter the invite-only access code.'),
@@ -68,16 +68,56 @@ export async function signUpAction(_: unknown, form: FormData): Promise<ActionRe
       values (${userId}, ${name}, ${newInviteCode()}, now())
       on conflict (user_id) do update set adult_consent_at = coalesce(profiles.adult_consent_at, now())`;
   }
+  // With email verification on, Neon creates the account but no session and emails a code.
+  if (!(data as { token?: string | null } | null)?.token) return { ok: false, verify: email };
   redirect('/onboarding');
 }
 
-export async function signInAction(_: unknown, form: FormData): Promise<ActionResult> {
+function isUnverified(error: { message?: string; status?: number; code?: string }) {
+  return error.code === 'EMAIL_NOT_VERIFIED' || error.status === 403 || /verif/i.test(error.message ?? '');
+}
+
+export async function signInAction(_: unknown, form: FormData): Promise<AuthResult> {
   const email = String(form.get('email') ?? '').trim();
   const password = String(form.get('password') ?? '');
   if (!email || !password) return fail('Email and password, please.');
   const { error } = await getAuth().signIn.email({ email, password });
-  if (error) return fail(error.message || 'Wrong email or password.');
+  if (error) {
+    if (isUnverified(error)) return { ok: false, verify: email, error: 'Verify your email first — enter the code we sent you.' };
+    return fail(error.message || 'Wrong email or password.');
+  }
   redirect('/');
+}
+
+export async function verifyEmailCode(_: unknown, form: FormData): Promise<AuthResult> {
+  const email = String(form.get('email') ?? '').trim();
+  const password = String(form.get('password') ?? '');
+  const otp = String(form.get('code') ?? '').replace(/\D/g, '');
+  if (!email) return fail('Missing email — start again.');
+  if (otp.length < 4) return { ok: false, verify: email, error: 'Enter the code from your email.' };
+
+  const auth = getAuth();
+  const { data, error } = await auth.emailOtp.verifyEmail({ email, otp });
+  if (error) {
+    const msg = /otp|invalid|expired|attempt/i.test(error.message ?? '')
+      ? 'That code is wrong or expired. Try again, or tap “Resend code”.'
+      : error.message || 'Could not verify that code.';
+    return { ok: false, verify: email, error: msg };
+  }
+
+  // Neon only signs you in here if auto sign-in is enabled; otherwise sign in with the password.
+  if (!(data as { token?: string | null } | null)?.token) {
+    const signIn = await auth.signIn.email({ email, password });
+    if (signIn.error) return fail('Email verified! Now sign in with your password.');
+  }
+  redirect('/');
+}
+
+export async function resendEmailCode(email: string): Promise<ActionResult> {
+  if (!z.string().email().safeParse(email).success) return fail('Bad email');
+  const { error } = await getAuth().emailOtp.sendVerificationOtp({ email, type: 'email-verification' });
+  if (error) return fail(error.message || 'Could not send a new code. Try again in a minute.');
+  return OK;
 }
 
 export async function signOutAction() {

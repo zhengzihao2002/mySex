@@ -76,3 +76,6 @@ export type LoveNote = {
 };
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
+
+/** Auth actions can also ask the form to switch to the "enter the emailed code" step. */
+export type AuthResult = ActionResult | { ok: false; error?: string; verify: string };
