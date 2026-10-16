@@ -13,7 +13,19 @@ import { AVATARS } from '@/lib/content';
 import { prettyDate } from '@/lib/dates';
 import type { Profile } from '@/lib/types';
 
-export function SettingsView({ me, partner, anniversary, pairedSince }: { me: Profile; partner: Profile; anniversary: string | null; pairedSince: string }) {
+export function SettingsView({
+  me,
+  partner,
+  anniversary,
+  pairedSince,
+  devices,
+}: {
+  me: Profile;
+  partner: Profile;
+  anniversary: string | null;
+  pairedSince: string;
+  devices: React.ReactNode;
+}) {
   const [name, setName] = useState(me.name);
   const [avatar, setAvatar] = useState(me.avatar);
   const [cycle, setCycle] = useState(me.cycleLengthDefault);
@@ -88,6 +100,8 @@ export function SettingsView({ me, partner, anniversary, pairedSince }: { me: Pr
       </form>
 
       <PinSection />
+
+      {devices}
 
       <section className="card space-y-3">
         <h2 className="flex items-center gap-2 font-semibold">

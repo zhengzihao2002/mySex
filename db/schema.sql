@@ -106,3 +106,32 @@ create table if not exists desires (
   updated_at timestamptz not null default now(),
   primary key (user_id, item)
 );
+
+-- Devices you're signed in on (identified by a long-lived httpOnly cookie), with where they were last seen.
+create table if not exists devices (
+  device_id    text primary key,
+  user_id      text not null references profiles(user_id) on delete cascade,
+  user_agent   text,
+  ip           text,
+  city         text,
+  region       text,
+  country      text,
+  signed_in_at timestamptz not null default now(),
+  last_seen    timestamptz not null default now(),
+  revoked_at   timestamptz
+);
+create index if not exists devices_user_seen on devices (user_id, last_seen desc);
+
+-- Sign-in history (latest 50 per user are kept).
+create table if not exists login_events (
+  id         bigserial primary key,
+  user_id    text not null references profiles(user_id) on delete cascade,
+  device_id  text,
+  user_agent text,
+  ip         text,
+  city       text,
+  region     text,
+  country    text,
+  at         timestamptz not null default now()
+);
+create index if not exists login_events_user_at on login_events (user_id, at desc);

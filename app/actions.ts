@@ -8,6 +8,7 @@ import { getAuth } from '@/lib/auth/server';
 import { getCoupleContext, getViewer, hasCoupleHistory } from '@/lib/data';
 import { sql } from '@/lib/db';
 import { getRequestGeo } from '@/lib/geo';
+import { currentDeviceId, recordLogin } from '@/lib/devices';
 import { DESIRES } from '@/lib/content';
 import type { ActionResult, AuthResult } from '@/lib/types';
 
@@ -24,6 +25,8 @@ function accessCodeMatches(input: string) {
   const b = Buffer.from(SIGNUP_ACCESS_CODE);
   return a.length === b.length && timingSafeEqual(a, b);
 }
+
+const userIdOf = (data: unknown) => (data as { user?: { id?: string } } | null)?.user?.id ?? null;
 
 const fail = (error: string): ActionResult => ({ ok: false, error });
 const OK: ActionResult = { ok: true };
@@ -70,6 +73,7 @@ export async function signUpAction(_: unknown, form: FormData): Promise<AuthResu
   }
   // With email verification on, Neon creates the account but no session and emails a code.
   if (!(data as { token?: string | null } | null)?.token) return { ok: false, verify: email };
+  await recordLogin(userId);
   redirect('/onboarding');
 }
 
@@ -81,11 +85,12 @@ export async function signInAction(_: unknown, form: FormData): Promise<AuthResu
   const email = String(form.get('email') ?? '').trim();
   const password = String(form.get('password') ?? '');
   if (!email || !password) return fail('Email and password, please.');
-  const { error } = await getAuth().signIn.email({ email, password });
+  const { data, error } = await getAuth().signIn.email({ email, password });
   if (error) {
     if (isUnverified(error)) return { ok: false, verify: email, error: 'Verify your email first — enter the code we sent you.' };
     return fail(error.message || 'Wrong email or password.');
   }
+  await recordLogin(userIdOf(data));
   redirect('/');
 }
 
@@ -106,10 +111,13 @@ export async function verifyEmailCode(_: unknown, form: FormData): Promise<AuthR
   }
 
   // Neon only signs you in here if auto sign-in is enabled; otherwise sign in with the password.
+  let userId = userIdOf(data);
   if (!(data as { token?: string | null } | null)?.token) {
     const signIn = await auth.signIn.email({ email, password });
     if (signIn.error) return fail('Email verified! Now sign in with your password.');
+    userId = userIdOf(signIn.data) ?? userId;
   }
+  await recordLogin(userId);
   redirect('/');
 }
 
@@ -121,6 +129,8 @@ export async function resendEmailCode(email: string): Promise<ActionResult> {
 }
 
 export async function signOutAction() {
+  const deviceId = await currentDeviceId();
+  if (deviceId) await sql`update devices set revoked_at = now() where device_id = ${deviceId}`;
   await getAuth().signOut();
   redirect('/auth/sign-in');
 }
@@ -502,5 +512,32 @@ export async function saveSettings(input: z.input<typeof settingsSchema>): Promi
       cycle_length_default = ${d.cycleLengthDefault}, period_length_default = ${d.periodLengthDefault}
     where user_id = ${ctx.me.userId}`;
   await sql`update couples set anniversary = ${d.anniversary} where id = ${ctx.couple.id}`;
+  return done();
+}
+
+// ───────────────────────────── devices ─────────────────────────────
+
+/** Signs another device out: its next request is bounced to the sign-in page. */
+export async function signOutDevice(deviceId: string): Promise<ActionResult> {
+  const viewer = await getViewer();
+  if (!viewer) return fail('Not signed in.');
+  if (deviceId === (await currentDeviceId())) return fail('Use “Sign out” for this device.');
+  await sql`update devices set revoked_at = now() where device_id = ${deviceId} and user_id = ${viewer.user.id}`;
+  return done();
+}
+
+export async function signOutOtherDevices(): Promise<ActionResult> {
+  const viewer = await getViewer();
+  if (!viewer) return fail('Not signed in.');
+  const current = await currentDeviceId();
+  await sql`
+    update devices set revoked_at = now()
+    where user_id = ${viewer.user.id} and revoked_at is null and device_id is distinct from ${current}`;
+  try {
+    // Also kill every other Neon Auth session, in case a device lost its cookie.
+    await getAuth().revokeOtherSessions();
+  } catch (e) {
+    console.error('[devices] revokeOtherSessions failed', e);
+  }
   return done();
 }
