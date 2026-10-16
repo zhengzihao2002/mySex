@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { signOutAction } from '@/app/actions';
-import { requireViewer } from '@/lib/data';
+import { hasCoupleHistory, requireViewer } from '@/lib/data';
 import { OnboardingForm } from './OnboardingForm';
 
 export const dynamic = 'force-dynamic';
@@ -35,6 +35,7 @@ export default async function OnboardingPage() {
         defaultSex={viewer.profile?.sex ?? null}
         defaultAvatar={viewer.profile?.avatar ?? '💋'}
         needsConsent={!viewer.profile?.adultConsentAt}
+        sexLocked={!!viewer.profile.sex && (await hasCoupleHistory(viewer.user.id))}
       />
     </main>
   );

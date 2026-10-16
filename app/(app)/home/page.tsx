@@ -9,9 +9,9 @@ export default async function HomePage() {
   const ctx = await requireCouple();
   const { today } = await getToday();
   const [periods, sessions, logs, notes] = await Promise.all([
-    getPeriods(ctx.couple.id),
+    getPeriods(ctx.her.userId),
     getSessions(ctx.couple.id),
-    getDailyLogs([ctx.me.userId, ctx.partner.userId], addDays(today, -1)),
+    getDailyLogs(ctx, addDays(today, -1)),
     getNotes(ctx.couple.id, 5),
   ]);
   return <HomeView ctx={ctx} periods={periods} sessions={sessions} logs={logs} notes={notes} />;

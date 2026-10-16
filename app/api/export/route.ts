@@ -7,8 +7,8 @@ export async function GET() {
   if (!ctx) return Response.json({ error: 'Not paired' }, { status: 401 });
   const [sessions, periods, logs, notes] = await Promise.all([
     getSessions(ctx.couple.id),
-    getPeriods(ctx.couple.id),
-    getDailyLogs([ctx.me.userId, ctx.partner.userId]),
+    getPeriods(ctx.her.userId),
+    getDailyLogs(ctx),
     getNotes(ctx.couple.id, 1000),
   ]);
   const body = JSON.stringify(

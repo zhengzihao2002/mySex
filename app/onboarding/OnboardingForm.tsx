@@ -11,6 +11,7 @@ export function OnboardingForm(props: {
   defaultSex: Sex | null;
   defaultAvatar: string;
   needsConsent: boolean;
+  sexLocked?: boolean;
 }) {
   const [state, action, pending] = useActionState(completeOnboarding, null);
   const [sex, setSex] = useState<Sex | null>(props.defaultSex);
@@ -37,7 +38,8 @@ export function OnboardingForm(props: {
               type="button"
               key={value}
               onClick={() => setSex(value)}
-              className={`card flex flex-col items-center gap-1 bg-gradient-to-b to-transparent py-6 transition ${
+              disabled={props.sexLocked && value !== props.defaultSex}
+              className={`card flex flex-col items-center gap-1 bg-gradient-to-b to-transparent py-6 transition disabled:opacity-30 ${
                 sex === value ? `${grad} border-rose ring-2 ring-rose/50` : 'from-transparent'
               }`}
             >
@@ -47,6 +49,7 @@ export function OnboardingForm(props: {
           ))}
         </div>
         <input type="hidden" name="sex" value={sex ?? ''} />
+        {props.sexLocked && <p className="mt-2 text-xs text-ink-3">🔒 Locked — you have saved history with a partner.</p>}
       </div>
 
       <div>

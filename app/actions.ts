@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { getAuth } from '@/lib/auth/server';
-import { getCoupleContext, getViewer } from '@/lib/data';
+import { getCoupleContext, getViewer, hasCoupleHistory } from '@/lib/data';
 import { sql } from '@/lib/db';
 import { getRequestGeo } from '@/lib/geo';
 import { DESIRES } from '@/lib/content';
@@ -143,8 +143,9 @@ export async function completeOnboarding(_: unknown, form: FormData): Promise<Ac
 
   // Profiles are only created by signUpAction (after the access code check).
   if (!viewer.profile) return fail('This account wasn’t created with an access code.');
-  if (viewer.profile.coupleId && viewer.profile.sex !== sex) {
-    return fail('Unpair before changing your sex.');
+  if (viewer.profile.sex && viewer.profile.sex !== sex && (await hasCoupleHistory(viewer.user.id))) {
+    // Couples are keyed by (him, her); switching would orphan your saved history.
+    return fail('Your sex is locked because you have saved history together.');
   }
   await sql`
     update profiles set name = ${name}, sex = ${sex}, avatar = ${avatar || '💋'},
@@ -180,7 +181,7 @@ export async function pairWithCode(_: unknown, form: FormData): Promise<ActionRe
   const updated = await sql`
     with c as (
       insert into couples (male_id, female_id) values (${maleId}, ${femaleId})
-      on conflict (male_id, female_id) do update set male_id = excluded.male_id
+      on conflict (male_id, female_id) do update set unpaired_at = null
       returning id
     )
     update profiles set couple_id = (select id from c)
@@ -204,7 +205,9 @@ export async function regenerateInviteCode(): Promise<ActionResult> {
 
 export async function unpair(): Promise<ActionResult> {
   const ctx = await couple();
+  // Nothing is deleted: re-pairing the same two people reuses this couple and restores everything.
   await sql`update profiles set couple_id = null where couple_id = ${ctx.couple.id}`;
+  await sql`update couples set unpaired_at = now() where id = ${ctx.couple.id}`;
   await sql`delete from sessions where couple_id = ${ctx.couple.id} and status = 'active'`;
   revalidatePath('/', 'layout');
   redirect('/pair');

@@ -117,18 +117,21 @@ export async function getActiveSession(coupleId: string): Promise<SexSession | n
   return rows[0] ? toSession(rows[0]) : null;
 }
 
-export async function getPeriods(coupleId: string): Promise<Period[]> {
+/** Her cycle history belongs to her, so predictions carry over across partners. */
+export async function getPeriods(herUserId: string): Promise<Period[]> {
   const rows = await sql`
     select id, start_date::text as start, end_date::text as "end"
-    from periods where couple_id = ${coupleId} order by start_date`;
+    from periods where user_id = ${herUserId} order by start_date`;
   return rows.map((r) => ({ id: r.id, start: r.start, end: r.end }));
 }
 
-export async function getDailyLogs(userIds: string[], since?: string): Promise<DailyLog[]> {
+/** All of my check-ins, but only the partner's check-ins made while paired with me. */
+export async function getDailyLogs(ctx: CoupleContext, since?: string): Promise<DailyLog[]> {
   const rows = await sql`
     select user_id, log_date::text as date, mood, energy, libido, flow, symptoms, note
     from daily_logs
-    where user_id = any(${userIds}) and (${since ?? null}::date is null or log_date >= ${since ?? null}::date)
+    where (user_id = ${ctx.me.userId} or (user_id = ${ctx.partner.userId} and couple_id = ${ctx.couple.id}))
+      and (${since ?? null}::date is null or log_date >= ${since ?? null}::date)
     order by log_date`;
   return rows.map((r) => ({
     userId: r.user_id,
@@ -166,4 +169,44 @@ export async function getUnreadCount(coupleId: string, userId: string): Promise<
 export async function getDesires(userIds: string[]) {
   const rows = await sql`select user_id, item, answer from desires where user_id = any(${userIds})`;
   return rows as { user_id: string; item: string; answer: 'yes' | 'maybe' | 'no' }[];
+}
+
+export type PastPartner = {
+  coupleId: string;
+  name: string;
+  avatar: string;
+  sessions: number;
+  periods: number;
+  notes: number;
+  lastSession: string | null;
+  unpairedAt: string | null;
+};
+
+/** Couples this user was part of — their history stays saved for when they reconnect. */
+export async function getPastPartners(userId: string): Promise<PastPartner[]> {
+  const rows = await sql`
+    select c.id, c.unpaired_at, p.name, p.avatar,
+      (select count(*)::int from sessions s where s.couple_id = c.id and s.status = 'done') as sessions,
+      (select count(*)::int from periods pe where pe.couple_id = c.id) as periods,
+      (select count(*)::int from love_notes n where n.couple_id = c.id) as notes,
+      (select max(started_at) from sessions s where s.couple_id = c.id) as last_session
+    from couples c
+    join profiles p on p.user_id = case when c.male_id = ${userId} then c.female_id else c.male_id end
+    where c.male_id = ${userId} or c.female_id = ${userId}
+    order by c.unpaired_at desc nulls last`;
+  return rows.map((r) => ({
+    coupleId: r.id,
+    name: r.name,
+    avatar: r.avatar,
+    sessions: r.sessions,
+    periods: r.periods,
+    notes: r.notes,
+    lastSession: iso(r.last_session),
+    unpairedAt: iso(r.unpaired_at),
+  }));
+}
+
+export async function hasCoupleHistory(userId: string) {
+  const rows = await sql`select 1 from couples where male_id = ${userId} or female_id = ${userId} limit 1`;
+  return rows.length > 0;
 }

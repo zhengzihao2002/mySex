@@ -126,7 +126,8 @@ export function SettingsView({ me, partner, anniversary, pairedSince }: { me: Pr
 
       <Sheet open={unpairOpen} onClose={() => setUnpairOpen(false)} title="Unpair from your partner?">
         <p className="mb-4 text-sm text-ink-2">
-          You’ll both lose access to the shared calendar. Your history is kept — if you pair with {partner.name} again later, it comes back.
+          You’ll both be taken to the pairing screen. <b className="text-ink">Nothing is deleted.</b> Reconnect anytime with your invite codes and
+          all your sessions, periods, notes and stats with {partner.name} come right back.
         </p>
         <FormError error={danger.error} />
         <div className="grid grid-cols-2 gap-3">
@@ -134,7 +135,7 @@ export function SettingsView({ me, partner, anniversary, pairedSince }: { me: Pr
             Cancel
           </button>
           <button className="btn bg-menstrual text-white" disabled={danger.pending} onClick={() => danger.run(() => unpair())}>
-            Unpair
+            Unpair (keep our data)
           </button>
         </div>
       </Sheet>

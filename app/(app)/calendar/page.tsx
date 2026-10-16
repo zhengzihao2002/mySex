@@ -6,9 +6,9 @@ export const metadata = { title: 'Calendar · mySex' };
 export default async function CalendarPage() {
   const ctx = await requireCouple();
   const [periods, sessions, logs] = await Promise.all([
-    getPeriods(ctx.couple.id),
+    getPeriods(ctx.her.userId),
     getSessions(ctx.couple.id),
-    getDailyLogs([ctx.me.userId, ctx.partner.userId]),
+    getDailyLogs(ctx),
   ]);
   return (
     <CalendarView

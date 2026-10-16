@@ -22,6 +22,8 @@ create table if not exists couples (
   created_at  timestamptz not null default now(),
   unique (male_id, female_id)
 );
+-- Set when either partner unpairs; cleared when they reconnect. History is never deleted.
+alter table couples add column if not exists unpaired_at timestamptz;
 
 do $$ begin
   alter table profiles
