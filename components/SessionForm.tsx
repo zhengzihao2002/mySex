@@ -1,0 +1,272 @@
+'use client';
+
+import { useState } from 'react';
+import { Flame, MapPin, Minus, Navigation, Plus } from 'lucide-react';
+import { HEAT, PROTECTION, TAGS } from '@/lib/content';
+import { FormError } from './FormError';
+
+export type SessionFormValues = {
+  startedAt: string; // ISO
+  durationMin: number;
+  place: string;
+  useLocation: boolean;
+  useGps: boolean;
+  rating: number | null;
+  protection: string | null;
+  hisOrgasms: number | null;
+  herOrgasms: number | null;
+  tags: string[];
+  notes: string;
+};
+
+export function toLocalInput(d: Date) {
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+export function getGps(): Promise<{ latitude: number; longitude: number } | null> {
+  return new Promise((resolve) => {
+    if (!('geolocation' in navigator)) return resolve(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+      () => resolve(null),
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60_000 },
+    );
+  });
+}
+
+export function SessionForm({
+  mode,
+  initial,
+  places,
+  submitLabel,
+  onSubmit,
+  error,
+  pending,
+}: {
+  mode: 'finish' | 'past' | 'edit';
+  initial?: Partial<SessionFormValues>;
+  places: string[];
+  submitLabel: string;
+  onSubmit: (v: SessionFormValues) => void;
+  error?: string | null;
+  pending?: boolean;
+}) {
+  const [v, setV] = useState<SessionFormValues>({
+    startedAt: initial?.startedAt ?? new Date(Date.now() - 30 * 60_000).toISOString(),
+    durationMin: initial?.durationMin ?? 15,
+    place: initial?.place ?? '',
+    useLocation: initial?.useLocation ?? false,
+    useGps: false,
+    rating: initial?.rating ?? null,
+    protection: initial?.protection ?? null,
+    hisOrgasms: initial?.hisOrgasms ?? null,
+    herOrgasms: initial?.herOrgasms ?? null,
+    tags: initial?.tags ?? [],
+    notes: initial?.notes ?? '',
+  });
+  const set = <K extends keyof SessionFormValues>(k: K, val: SessionFormValues[K]) => setV((s) => ({ ...s, [k]: val }));
+
+  return (
+    <form
+      className="space-y-5"
+      onSubmit={(e) => {
+        e.preventDefault();
+        onSubmit(v);
+      }}
+    >
+      {mode !== 'finish' && (
+        <div className="grid grid-cols-1 gap-3">
+          <div>
+            <label className="label">When did it go down?</label>
+            <input
+              type="datetime-local"
+              className="input"
+              value={toLocalInput(new Date(v.startedAt))}
+              max={toLocalInput(new Date())}
+              onChange={(e) => e.target.value && set('startedAt', new Date(e.target.value).toISOString())}
+              required
+            />
+          </div>
+          <div>
+            <label className="label">How long? · {v.durationMin} min</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                max={1440}
+                className="input w-24 text-center"
+                value={v.durationMin}
+                onChange={(e) => set('durationMin', Math.max(0, Number(e.target.value) || 0))}
+              />
+              <div className="no-scrollbar flex gap-1.5 overflow-x-auto">
+                {[3, 5, 10, 15, 20, 30, 45, 60, 90].map((m) => (
+                  <button type="button" key={m} onClick={() => set('durationMin', m)} className={`chip shrink-0 ${v.durationMin === m ? 'chip-on' : ''}`}>
+                    {m}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div>
+        <label className="label">How hot was it?</label>
+        <div className="flex items-center gap-1">
+          {HEAT.map((h, i) => (
+            <button
+              type="button"
+              key={h}
+              onClick={() => set('rating', v.rating === i + 1 ? null : i + 1)}
+              className="p-1 transition active:scale-90"
+              aria-label={h}
+            >
+              <Flame
+                size={30}
+                className={v.rating && i < v.rating ? 'fill-rose text-rose' : 'text-line'}
+                strokeWidth={1.5}
+              />
+            </button>
+          ))}
+          <span className="ml-2 text-sm text-ink-2">{v.rating ? HEAT[v.rating - 1] : ''}</span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Stepper label="Her orgasms 💦" value={v.herOrgasms} onChange={(n) => set('herOrgasms', n)} />
+        <Stepper label="His orgasms 🍆" value={v.hisOrgasms} onChange={(n) => set('hisOrgasms', n)} />
+      </div>
+
+      <div>
+        <label className="label">Protection</label>
+        <div className="flex flex-wrap gap-2">
+          {PROTECTION.map((p) => (
+            <button
+              type="button"
+              key={p.key}
+              onClick={() => set('protection', v.protection === p.key ? null : p.key)}
+              className={`chip ${v.protection === p.key ? 'chip-on' : ''}`}
+            >
+              {p.emoji} {p.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <label className="label">What went down</label>
+        <div className="flex flex-wrap gap-2">
+          {TAGS.map((t) => {
+            const on = v.tags.includes(t);
+            return (
+              <button
+                type="button"
+                key={t}
+                onClick={() => set('tags', on ? v.tags.filter((x) => x !== t) : [...v.tags, t])}
+                className={`chip ${on ? 'chip-on' : ''}`}
+              >
+                {t}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div>
+        <label className="label">Where</label>
+        <input className="input" placeholder="Bedroom, his car, hotel in Vegas…" value={v.place} maxLength={60} onChange={(e) => set('place', e.target.value)} />
+        {places.length > 0 && (
+          <div className="no-scrollbar mt-2 flex gap-1.5 overflow-x-auto">
+            {places.slice(0, 10).map((p) => (
+              <button type="button" key={p} onClick={() => set('place', p)} className={`chip shrink-0 ${v.place === p ? 'chip-on' : ''}`}>
+                <MapPin size={12} /> {p}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {mode === 'past' && (
+        <div className="space-y-2">
+          <Toggle
+            on={v.useLocation}
+            onChange={(on) => setV((s) => ({ ...s, useLocation: on, useGps: on && s.useGps }))}
+            icon={<MapPin size={16} />}
+            title="We’re still there"
+            sub="Pin this session to your current location (IP)"
+          />
+          {v.useLocation && (
+            <Toggle on={v.useGps} onChange={(on) => set('useGps', on)} icon={<Navigation size={16} />} title="Use precise GPS" sub="Asks for location permission" />
+          )}
+        </div>
+      )}
+
+      <div>
+        <label className="label">Dirty details</label>
+        <textarea
+          className="input min-h-20"
+          maxLength={500}
+          placeholder="What made it memorable…"
+          value={v.notes}
+          onChange={(e) => set('notes', e.target.value)}
+        />
+      </div>
+
+      <FormError error={error} />
+      <button className="btn-primary w-full" disabled={pending}>
+        {pending ? 'Saving…' : submitLabel}
+      </button>
+    </form>
+  );
+}
+
+export function Stepper({ label, value, onChange }: { label: string; value: number | null; onChange: (n: number | null) => void }) {
+  const n = value ?? 0;
+  return (
+    <div className="rounded-2xl border border-line bg-surface-2 p-3">
+      <p className="mb-2 text-xs text-ink-3">{label}</p>
+      <div className="flex items-center justify-between">
+        <button type="button" className="rounded-full bg-surface p-2 active:scale-90" onClick={() => onChange(n > 0 ? n - 1 : null)} aria-label="Less">
+          <Minus size={16} />
+        </button>
+        <span className="text-2xl font-bold tabular-nums">{value ?? '–'}</span>
+        <button type="button" className="rounded-full bg-surface p-2 active:scale-90" onClick={() => onChange(Math.min(20, n + 1))} aria-label="More">
+          <Plus size={16} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export function Toggle({
+  on,
+  onChange,
+  icon,
+  title,
+  sub,
+}: {
+  on: boolean;
+  onChange: (on: boolean) => void;
+  icon?: React.ReactNode;
+  title: string;
+  sub?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!on)}
+      className="flex w-full items-center gap-3 rounded-2xl border border-line bg-surface-2 px-4 py-3 text-left"
+    >
+      <span className="text-ink-2">{icon}</span>
+      <span className="flex-1">
+        <span className="block text-sm font-medium">{title}</span>
+        {sub && <span className="block text-xs text-ink-3">{sub}</span>}
+      </span>
+      <span className={`relative h-7 w-12 rounded-full transition ${on ? 'bg-rose' : 'bg-line'}`}>
+        <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all ${on ? 'left-[22px]' : 'left-0.5'}`} />
+      </span>
+    </button>
+  );
+}
