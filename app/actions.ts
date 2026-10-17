@@ -292,11 +292,15 @@ export async function setPaused(id: string, paused: boolean): Promise<ActionResu
   const ctx = await couple();
   if (paused) {
     await sql`
-      update sessions set paused_at = now(), updated_at = now()
+      update sessions set paused_at = now(), updated_at = now(),
+        breaks = breaks || jsonb_build_array(jsonb_build_object('start', now(), 'end', null))
       where id = ${id} and couple_id = ${ctx.couple.id} and status = 'active' and paused_at is null`;
   } else {
     await sql`
-      update sessions set paused_sec = paused_sec + extract(epoch from now() - paused_at)::int, paused_at = null, updated_at = now()
+      update sessions set paused_sec = paused_sec + extract(epoch from now() - paused_at)::int, paused_at = null, updated_at = now(),
+        breaks = case when jsonb_array_length(breaks) > 0
+                      then jsonb_set(breaks, array[(jsonb_array_length(breaks) - 1)::text, 'end'], to_jsonb(now()))
+                      else breaks end
       where id = ${id} and couple_id = ${ctx.couple.id} and status = 'active' and paused_at is not null`;
   }
   return done();
@@ -323,6 +327,8 @@ export async function finishSession(id: string, input: z.input<typeof detailsSch
       ended_at = coalesce(paused_at, now()),
       duration_sec = greatest(0, extract(epoch from coalesce(paused_at, now()) - started_at)::int - paused_sec),
       paused_at = null,
+      -- The session ends where the last pause began, so an open trailing break isn't a break.
+      breaks = coalesce((select jsonb_agg(b) from jsonb_array_elements(breaks) b where b->>'end' is not null), '[]'::jsonb),
       place = coalesce(${d.place || null}, place),
       rating = ${d.rating ?? null}, protection = ${d.protection ?? null},
       his_orgasms = ${d.hisOrgasms ?? null}, her_orgasms = ${d.herOrgasms ?? null},
@@ -358,6 +364,7 @@ export async function discardActiveSession(id: string): Promise<ActionResult> {
 const pastSchema = detailsSchema.extend({
   startedAt: z.string().datetime({ offset: true }),
   durationMin: z.number().min(0).max(24 * 60),
+  breakMin: z.number().min(0).max(24 * 60).optional(),
   useLocation: z.boolean(),
   gps: coords,
 });
@@ -370,10 +377,11 @@ export async function logPastSession(input: z.input<typeof pastSchema>): Promise
   if (new Date(d.startedAt).getTime() > Date.now() + 5 * 60_000) return fail('That’s in the future — use the live timer instead 😉');
   const loc = await locationFields(d.useLocation, d.gps);
   const dur = Math.round(d.durationMin * 60);
+  const brk = Math.round((d.breakMin ?? 0) * 60);
   await sql`
-    insert into sessions (couple_id, created_by, status, started_at, ended_at, duration_sec,
+    insert into sessions (couple_id, created_by, status, started_at, ended_at, duration_sec, paused_sec,
       ip, city, region, country, latitude, longitude, geo_source, place, rating, protection, his_orgasms, her_orgasms, tags, notes)
-    values (${ctx.couple.id}, ${ctx.me.userId}, 'done', ${d.startedAt}, ${d.startedAt}::timestamptz + make_interval(secs => ${dur}), ${dur},
+    values (${ctx.couple.id}, ${ctx.me.userId}, 'done', ${d.startedAt}, ${d.startedAt}::timestamptz + make_interval(secs => ${dur + brk}), ${dur}, ${brk},
       ${loc.ip}, ${loc.city}, ${loc.region}, ${loc.country}, ${loc.latitude}, ${loc.longitude}, ${loc.source},
       ${d.place || null}, ${d.rating ?? null}, ${d.protection ?? null}, ${d.hisOrgasms ?? null}, ${d.herOrgasms ?? null},
       ${d.tags ?? []}, ${d.notes || null})`;
@@ -383,6 +391,7 @@ export async function logPastSession(input: z.input<typeof pastSchema>): Promise
 const editSchema = detailsSchema.extend({
   startedAt: z.string().datetime({ offset: true }),
   durationMin: z.number().min(0).max(24 * 60),
+  breakMin: z.number().min(0).max(24 * 60).optional(),
   version: z.string().datetime({ offset: true }),
 });
 
@@ -392,10 +401,14 @@ export async function updateSession(id: string, input: z.input<typeof editSchema
   if (!p.success) return fail('Invalid input');
   const d = p.data;
   const dur = Math.round(d.durationMin * 60);
+  const brk = Math.round((d.breakMin ?? 0) * 60);
   const rows = await sql`
     update sessions set
       started_at = ${d.startedAt}, duration_sec = ${dur},
-      ended_at = ${d.startedAt}::timestamptz + make_interval(secs => ${dur}),
+      ended_at = ${d.startedAt}::timestamptz + make_interval(secs => ${dur + brk}),
+      -- Keep the individual breaks only if the break total wasn't changed by hand.
+      breaks = case when paused_sec = ${brk} then breaks else '[]'::jsonb end,
+      paused_sec = ${brk},
       place = ${d.place || null}, rating = ${d.rating ?? null}, protection = ${d.protection ?? null},
       his_orgasms = ${d.hisOrgasms ?? null}, her_orgasms = ${d.herOrgasms ?? null},
       tags = ${d.tags ?? []}, notes = ${d.notes || null}, updated_at = now()
@@ -500,6 +513,13 @@ export async function saveDailyLog(input: z.input<typeof logSchema>): Promise<Ac
   return done();
 }
 
+export async function deleteDailyLog(date: string): Promise<ActionResult> {
+  const ctx = await couple();
+  if (!isoDate.safeParse(date).success) return fail('Bad date');
+  await sql`delete from daily_logs where user_id = ${ctx.me.userId} and log_date = ${date}`;
+  return done();
+}
+
 // ───────────────────────────── notes ─────────────────────────────
 
 export async function sendNote(body: string, kind: 'note' | 'wish' | 'tease' = 'note'): Promise<ActionResult> {
@@ -529,6 +549,18 @@ export async function deleteNote(id: string): Promise<ActionResult> {
   const ctx = await couple();
   // Either partner can delete any note in their shared thread.
   await sql`delete from love_notes where id = ${id} and couple_id = ${ctx.couple.id}`;
+  return done();
+}
+
+export async function editNote(id: string, body: string): Promise<ActionResult> {
+  const ctx = await couple();
+  const text = body.trim().slice(0, 1000);
+  if (!text) return fail('A note can’t be empty — delete it instead.');
+  const rows = await sql`
+    update love_notes set body = ${text}, edited_at = now()
+    where id = ${id} and couple_id = ${ctx.couple.id} and from_user = ${ctx.me.userId}
+    returning id`;
+  if (!rows.length) return fail('You can only edit your own notes.');
   return done();
 }
 
@@ -564,6 +596,12 @@ export async function answerDesire(item: string, answer: 'yes' | 'maybe' | 'no' 
       insert into desires (user_id, item, answer) values (${ctx.me.userId}, ${item}, ${answer})
       on conflict (user_id, item) do update set answer = excluded.answer, updated_at = now()`;
   }
+  return done();
+}
+
+export async function resetDesires(): Promise<ActionResult> {
+  const ctx = await couple();
+  await sql`delete from desires where user_id = ${ctx.me.userId}`;
   return done();
 }
 

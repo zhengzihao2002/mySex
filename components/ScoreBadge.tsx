@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import type { Score } from '@/lib/score';
+import type { Break } from '@/lib/types';
+import { SessionTimes } from './SessionTimes';
 
 export function scoreColor(total: number) {
   if (total >= 90) return '#facc15';
@@ -38,7 +40,9 @@ export function ScoreBadge({ score, size = 'sm' }: { score: Score; size?: 'sm' |
 }
 
 /** Full-screen, animated reveal of a session's score. */
-export function ScoreReveal({ score, onClose }: { score: Score; onClose: () => void }) {
+export type RevealTimes = { startedAt: string; activeSec: number; breakSec: number; breaks: Break[] };
+
+export function ScoreReveal({ score, times, onClose }: { score: Score; times?: RevealTimes; onClose: () => void }) {
   const [shown, setShown] = useState(0);
   useEffect(() => {
     let raf = 0;
@@ -57,7 +61,7 @@ export function ScoreReveal({ score, onClose }: { score: Score; onClose: () => v
   return (
     <div className="fixed inset-0 z-[60] flex animate-fade flex-col items-center justify-center bg-bg/95 px-6 backdrop-blur-2xl" onClick={onClose}>
       <p className="text-sm font-semibold tracking-[0.3em] text-ink-3 uppercase">mySex Score</p>
-      <div className="relative my-6 h-56 w-56">
+      <div className="relative my-4 h-48 w-48">
         <svg viewBox="0 0 220 220" className="h-full w-full -rotate-90">
           <defs>
             <linearGradient id="scoreGrad" x1="0" y1="0" x2="1" y2="1">
@@ -86,7 +90,12 @@ export function ScoreReveal({ score, onClose }: { score: Score; onClose: () => v
       <p className="font-display text-3xl font-bold">
         {score.emoji} {score.grade}
       </p>
-      <div className="mt-6 w-full max-w-xs space-y-2.5">
+      {times && (
+        <div className="mt-5 w-full max-w-xs">
+          <SessionTimes {...times} />
+        </div>
+      )}
+      <div className="mt-5 w-full max-w-xs space-y-2.5">
         {score.parts.map((p) => (
           <div key={p.key}>
             <div className="mb-1 flex justify-between text-xs">

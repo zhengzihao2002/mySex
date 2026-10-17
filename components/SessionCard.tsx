@@ -10,6 +10,7 @@ import { timeInTz } from '@/lib/tz';
 import type { SexSession } from '@/lib/types';
 import { ScoreBadge } from './ScoreBadge';
 import { SessionForm } from './SessionForm';
+import { SessionTimes } from './SessionTimes';
 import { Sheet } from './Sheet';
 import { useTz } from './TzProvider';
 import { useRun } from './useRun';
@@ -42,6 +43,7 @@ export function SessionCard({
           <p className="font-semibold">
             {showDate ? `${showDate} · ` : ''}
             {timeInTz(s.startedAt, tz)} · {formatDuration(s.durationSec ?? 0)}
+            {s.pausedSec ? <span className="text-xs font-normal text-ink-3"> (+{formatDuration(s.pausedSec)} breaks)</span> : null}
             {s.rating ? <span className="ml-1">{'🔥'.repeat(s.rating)}</span> : null}
           </p>
           <p className="truncate text-xs text-ink-3">
@@ -61,6 +63,9 @@ export function SessionCard({
       </button>
 
       <Sheet open={open} onClose={() => setOpen(false)} title="Edit session">
+        <div className="mb-3">
+          <SessionTimes startedAt={s.startedAt} activeSec={s.durationSec ?? 0} breakSec={s.pausedSec ?? 0} breaks={s.breaks} />
+        </div>
         <div className="mb-4 space-y-1 rounded-2xl bg-surface-2 p-3 text-xs text-ink-3">
           <p>Logged by {byName}</p>
           {(s.city || s.ip) && (
@@ -89,6 +94,7 @@ export function SessionCard({
             initial={{
               startedAt: s.startedAt,
               durationMin: Math.round((s.durationSec ?? 0) / 6) / 10,
+              breakMin: Math.round((s.pausedSec ?? 0) / 6) / 10,
               place: s.place ?? '',
               rating: s.rating,
               protection: s.protection,
@@ -106,6 +112,7 @@ export function SessionCard({
                   version: s.updatedAt,
                   startedAt: v.startedAt,
                   durationMin: v.durationMin,
+                  breakMin: v.breakMin,
                   place: v.place || null,
                   rating: v.rating,
                   protection: v.protection,

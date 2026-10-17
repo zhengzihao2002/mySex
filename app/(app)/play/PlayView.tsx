@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Dice5, Lock, Shuffle, Sparkles } from 'lucide-react';
-import { answerDesire } from '@/app/actions';
+import { answerDesire, resetDesires } from '@/app/actions';
 import { useRun } from '@/components/useRun';
 import { DARES, DESIRES, TAGS } from '@/lib/content';
 
@@ -149,6 +149,18 @@ function Desires({
             {partnerName}: {partnerAnswered}/{total}
           </span>
         </div>
+        {answered > 0 && (
+          <button
+            className="mt-2 text-xs text-ink-3 underline"
+            onClick={() => {
+              if (!confirm('Clear all your Yes/No/Maybe answers?')) return;
+              setLocal({});
+              run(() => resetDesires());
+            }}
+          >
+            Reset my answers
+          </button>
+        )}
       </div>
 
       <div className="card border-rose/40">

@@ -59,6 +59,8 @@ create table if not exists sessions (
 );
 -- Version stamp for optimistic concurrency when both partners edit the same session.
 alter table sessions add column if not exists updated_at timestamptz not null default now();
+-- Every pause during a live session: [{"start": ts, "end": ts|null}]. paused_sec is their total.
+alter table sessions add column if not exists breaks jsonb not null default '[]';
 create unique index if not exists sessions_one_active_per_couple on sessions (couple_id) where status = 'active';
 create index if not exists sessions_couple_started on sessions (couple_id, started_at desc);
 
@@ -98,6 +100,7 @@ create table if not exists love_notes (
   read_at    timestamptz,
   created_at timestamptz not null default now()
 );
+alter table love_notes add column if not exists edited_at timestamptz;
 create index if not exists love_notes_couple_created on love_notes (couple_id, created_at desc);
 
 -- "Yes / No / Maybe" list. Only mutual yes/maybe answers are ever revealed to the partner.

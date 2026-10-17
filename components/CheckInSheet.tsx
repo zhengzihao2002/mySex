@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { saveDailyLog } from '@/app/actions';
+import { deleteDailyLog, saveDailyLog } from '@/app/actions';
 import { FLOWS, MOODS, SYMPTOMS } from '@/lib/content';
 import { prettyDate } from '@/lib/dates';
 import type { DailyLog, Sex } from '@/lib/types';
@@ -110,6 +110,18 @@ function CheckInForm({ date, sex, existing, onDone }: { date: string; sex: Sex; 
       <button className="btn-primary w-full" disabled={pending}>
         {pending ? 'Saving…' : 'Save check-in'}
       </button>
+      {existing && (
+        <button
+          type="button"
+          className="btn w-full text-menstrual"
+          disabled={pending}
+          onClick={async () => {
+            if (confirm('Delete this check-in?') && (await run(() => deleteDailyLog(date)))) onDone();
+          }}
+        >
+          Delete check-in
+        </button>
+      )}
     </form>
   );
 }

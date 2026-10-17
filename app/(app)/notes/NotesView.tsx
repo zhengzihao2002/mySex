@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Send } from 'lucide-react';
-import { clearNotes, deleteNote, markNotesRead, sendNote } from '@/app/actions';
+import { clearNotes, deleteNote, editNote, markNotesRead, sendNote } from '@/app/actions';
 import { Sheet } from '@/components/Sheet';
 import { FormError } from '@/components/FormError';
 import { useTz } from '@/components/TzProvider';
@@ -24,6 +24,7 @@ export function NotesView({ notes, meId, partnerName, partnerAvatar }: { notes: 
   const [selected, setSelected] = useState<LoveNote | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
+  const [editing, setEditing] = useState<string | null>(null);
   const del = useRun();
   const { run, pending, error } = useRun();
   const bottom = useRef<HTMLDivElement>(null);
@@ -56,6 +57,7 @@ export function NotesView({ notes, meId, partnerName, partnerAvatar }: { notes: 
                   onClick={() => {
                     setSelected(n);
                     setConfirmDelete(false);
+                    setEditing(null);
                   }}
                   className={`rounded-3xl text-left px-4 py-2.5 text-[15px] leading-snug ${
                     mine ? 'rounded-br-lg bg-gradient-to-br from-rose to-plum text-white' : 'rounded-bl-lg border border-line bg-surface-2'
@@ -66,6 +68,7 @@ export function NotesView({ notes, meId, partnerName, partnerAvatar }: { notes: 
                 </button>
                 <span className="mt-0.5 px-2 text-[10px] text-ink-3">
                   {dateTimeInTz(n.createdAt, tz)}
+                  {n.editedAt ? ' · edited' : ''}
                   {mine && n.readAt ? ' · seen' : ''}
                 </span>
               </div>
@@ -84,8 +87,31 @@ export function NotesView({ notes, meId, partnerName, partnerAvatar }: { notes: 
         {selected && (
           <div className="space-y-3">
             <p className="rounded-2xl bg-surface-2 p-3 text-sm text-ink-2">“{selected.body}”</p>
-            {!confirmDelete ? (
+            {editing !== null ? (
               <>
+                <textarea className="input min-h-24" maxLength={1000} value={editing} onChange={(e) => setEditing(e.target.value)} autoFocus />
+                <div className="grid grid-cols-2 gap-3">
+                  <button className="btn-ghost" onClick={() => setEditing(null)}>
+                    Cancel
+                  </button>
+                  <button
+                    className="btn-primary"
+                    disabled={del.pending || !editing.trim()}
+                    onClick={async () => {
+                      if (await del.run(() => editNote(selected.id, editing))) setSelected(null);
+                    }}
+                  >
+                    Save
+                  </button>
+                </div>
+              </>
+            ) : !confirmDelete ? (
+              <>
+                {selected.fromUser === meId && (
+                  <button className="btn-ghost w-full" onClick={() => setEditing(selected.body)}>
+                    Edit
+                  </button>
+                )}
                 <button className="btn w-full bg-menstrual text-white" onClick={() => setConfirmDelete(true)}>
                   Delete for both of us
                 </button>

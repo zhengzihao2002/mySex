@@ -48,6 +48,7 @@ export function toSession(r: Row): SexSession {
     tags: r.tags ?? [],
     notes: r.notes,
     updatedAt: iso(r.updated_at) ?? iso(r.created_at)!,
+    breaks: Array.isArray(r.breaks) ? r.breaks : [],
   };
 }
 
@@ -148,7 +149,7 @@ export async function getDailyLogs(ctx: CoupleContext, since?: string): Promise<
 
 export async function getNotes(coupleId: string, limit = 100): Promise<LoveNote[]> {
   const rows = await sql`
-    select id, from_user, body, kind, read_at, created_at from love_notes
+    select id, from_user, body, kind, read_at, created_at, edited_at from love_notes
     where couple_id = ${coupleId} order by created_at desc limit ${limit}`;
   return rows.map((r) => ({
     id: r.id,
@@ -157,6 +158,7 @@ export async function getNotes(coupleId: string, limit = 100): Promise<LoveNote[
     kind: r.kind,
     readAt: iso(r.read_at),
     createdAt: iso(r.created_at)!,
+    editedAt: iso(r.edited_at),
   }));
 }
 

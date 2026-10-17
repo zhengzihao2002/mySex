@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, EyeOff, History, MapPin, Navigation, Pause, Play, Sun, Trash2 } from 'lucide-react';
 import { discardActiveSession, finishSession, logPastSession, setPaused, startSession } from '@/app/actions';
 import { FormError } from '@/components/FormError';
-import { ScoreReveal } from '@/components/ScoreBadge';
+import { ScoreReveal, type RevealTimes } from '@/components/ScoreBadge';
 import { getGps, SessionForm, Toggle, type SessionFormValues } from '@/components/SessionForm';
 import { Sheet } from '@/components/Sheet';
 import { useRun } from '@/components/useRun';
@@ -47,7 +47,7 @@ export function TimerView({
   const done = useMemo(() => sessions.filter((s) => s.status === 'done'), [sessions]);
   const places = useMemo(() => placeSuggestions(sessions), [sessions]);
   const [optimistic, setOptimistic] = useState<SexSession | null>(null);
-  const [reveal, setReveal] = useState<Score | null>(null);
+  const [reveal, setReveal] = useState<{ score: Score; times: RevealTimes } | null>(null);
   const { tz } = useTz();
 
   // The clock depends on Date.now(); render it only on the device to avoid hydration drift.
@@ -71,16 +71,16 @@ export function TimerView({
           starterName={names[current.createdBy] ?? 'You'}
           isMine={current.createdBy === meId}
           places={places}
-          onFinished={(values, durationSec) => {
+          onFinished={(values, durationSec, times) => {
             const scores = scoreSessions([...done, { ...current, ...values, status: 'done', durationSec }], tz);
             const s = scores.get(current.id);
-            if (s) setReveal(s);
+            if (s) setReveal({ score: s, times });
           }}
         />
       ) : (
         <IdleTimer places={places} done={done} onStart={(s) => setOptimistic(s)} onStartFailed={() => setOptimistic(null)} />
       )}
-      {reveal && <ScoreReveal score={reveal} onClose={() => setReveal(null)} />}
+      {reveal && <ScoreReveal score={reveal.score} times={reveal.times} onClose={() => setReveal(null)} />}
     </>
   );
 }
@@ -135,6 +135,7 @@ function IdleTimer({
       tags: [],
       notes: null,
       updatedAt: new Date().toISOString(),
+      breaks: [],
     });
     const ok = await start.run(() => startSession({ place: place || null, useLocation, gps }));
     if (!ok) onStartFailed();
@@ -211,6 +212,7 @@ export function toPayload(v: SessionFormValues, gps: { latitude: number; longitu
   return {
     startedAt: v.startedAt,
     durationMin: v.durationMin,
+    breakMin: v.breakMin,
     place: v.place || null,
     useLocation: v.useLocation,
     gps,
@@ -295,11 +297,15 @@ function LiveTimer({
   starterName: string;
   isMine: boolean;
   places: string[];
-  onFinished: (values: Partial<SexSession>, durationSec: number) => void;
+  onFinished: (values: Partial<SexSession>, durationSec: number, times: RevealTimes) => void;
 }) {
   const router = useRouter();
   const paused = !!session.pausedAt;
-  const now = useNow(!paused);
+  // Keep ticking while paused too, so the break clock runs.
+  const now = useNow(true);
+  const breakNo = session.breaks.length;
+  const breakSecs = session.pausedAt ? Math.max(0, (now - new Date(session.pausedAt).getTime()) / 1000) : 0;
+  const totalBreak = session.pausedSec + breakSecs;
   const secs = elapsedSec(session, now);
   const [keepAwake, setKeepAwake] = useState(true);
   const wake = useWakeLock(keepAwake && !paused);
@@ -440,7 +446,20 @@ function LiveTimer({
             <span className={`text-[64px] leading-none font-extralight tracking-tight tabular-nums ${paused ? 'text-ink-2' : ''}`}>
               {formatClock(secs)}
             </span>
-            <span className="mt-3 text-sm font-medium text-ink-2">{paused ? 'Taking a breather' : milestone(minutes)}</span>
+            <span className="mt-3 text-sm font-medium text-ink-2">
+              {paused ? (
+                <>
+                  Break #{Math.max(1, breakNo)} · <span className="tabular-nums text-luteal">{formatClock(breakSecs)}</span>
+                </>
+              ) : (
+                milestone(minutes)
+              )}
+            </span>
+            {breakNo > 0 && (
+              <span className="mt-1 text-[11px] text-ink-3 tabular-nums">
+                {breakNo} break{breakNo === 1 ? '' : 's'} · {formatDuration(totalBreak)} total
+              </span>
+            )}
           </div>
         </div>
 
@@ -556,7 +575,9 @@ function LiveTimer({
             const ok = await finish.run(() => finishSession(session.id, values));
             if (ok) {
               setFinishOpen(false);
-              onFinished(values, Math.round(elapsedSec(session, Date.now())));
+              const activeSec = Math.round(elapsedSec(session, Date.now()));
+              const breaks = session.breaks.filter((b) => b.end);
+              onFinished(values, activeSec, { startedAt: session.startedAt, activeSec, breakSec: session.pausedSec, breaks });
             } else router.refresh();
           }}
         />

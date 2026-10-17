@@ -52,7 +52,10 @@ export type SexSession = {
   tags: string[];
   notes: string | null;
   updatedAt: string;
+  breaks: Break[];
 };
+
+export type Break = { start: string; end: string | null };
 
 export type Period = { id: string; start: string; end: string | null };
 
@@ -74,6 +77,7 @@ export type LoveNote = {
   kind: 'note' | 'wish' | 'tease';
   readAt: string | null;
   createdAt: string;
+  editedAt: string | null;
 };
 
 export type ActionResult = { ok: true } | { ok: false; error: string };

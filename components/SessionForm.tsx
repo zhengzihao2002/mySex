@@ -8,6 +8,7 @@ import { FormError } from './FormError';
 export type SessionFormValues = {
   startedAt: string; // ISO
   durationMin: number;
+  breakMin: number;
   place: string;
   useLocation: boolean;
   useGps: boolean;
@@ -55,6 +56,7 @@ export function SessionForm({
   const [v, setV] = useState<SessionFormValues>({
     startedAt: initial?.startedAt ?? new Date(Date.now() - 30 * 60_000).toISOString(),
     durationMin: initial?.durationMin ?? 15,
+    breakMin: initial?.breakMin ?? 0,
     place: initial?.place ?? '',
     useLocation: initial?.useLocation ?? false,
     useGps: false,
@@ -89,13 +91,14 @@ export function SessionForm({
             />
           </div>
           <div>
-            <label className="label">How long? · {v.durationMin} min</label>
+            <label className="label">Active time · {v.durationMin} min</label>
             <div className="flex items-center gap-2">
               <input
                 type="number"
-                inputMode="numeric"
+                inputMode="decimal"
                 min={0}
                 max={1440}
+                step="any"
                 className="input w-24 text-center"
                 value={v.durationMin}
                 onChange={(e) => set('durationMin', Math.max(0, Number(e.target.value) || 0))}
@@ -108,6 +111,20 @@ export function SessionForm({
                 ))}
               </div>
             </div>
+          </div>
+          <div>
+            <label className="label">Breaks · {v.breakMin} min</label>
+            <input
+              type="number"
+              inputMode="decimal"
+              min={0}
+              max={1440}
+              step="any"
+              className="input w-24 text-center"
+              value={v.breakMin}
+              onChange={(e) => set('breakMin', Math.max(0, Number(e.target.value) || 0))}
+            />
+            <p className="mt-1 text-xs text-ink-3">Total time = {v.durationMin + v.breakMin} min</p>
           </div>
         </div>
       )}
