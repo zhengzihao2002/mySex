@@ -19,6 +19,7 @@ export type Score = { total: number; grade: string; emoji: string; parts: ScoreP
 
 const ADVENTURE_TAGS = new Set(['Outdoors', 'Car', 'Shower', 'Roleplay', 'Toys', 'Mirror', 'Blindfold', 'Standing']);
 
+// i18n:begin
 export function grade(total: number) {
   if (total >= 90) return { grade: 'Legendary', emoji: '👑' };
   if (total >= 75) return { grade: 'Steamy', emoji: '💦' };
@@ -53,6 +54,7 @@ export function scoreSession(s: ScoreInput, ctx: { newPlace: boolean; roundOfDay
     { key: 'variety', label: 'Variety', points: variety, max: 8 },
     { key: 'adventure', label: 'Adventure', points: Math.min(9, adventure), max: 9 },
   ].map((p) => ({ ...p, points: Math.round(p.points) }));
+  // i18n:end
 
   const total = Math.min(100, parts.reduce((a, p) => a + p.points, 0));
   return { total, ...grade(total), parts };

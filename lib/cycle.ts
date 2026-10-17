@@ -98,10 +98,12 @@ export function computeStats(periods: PeriodInput[], defaults: CycleDefaults): C
     : defaults.periodLength;
 
   const samples = recent.length;
+  // i18n:begin
   const regularity: CycleStats['regularity'] =
     samples < 2 ? 'learning' : sd <= 3 ? 'regular' : sd <= 7 ? 'somewhat irregular' : 'irregular';
   const confidence: CycleStats['confidence'] =
     samples >= 6 && sd <= 3 ? 'high' : samples >= 3 && sd <= 7 ? 'medium' : 'low';
+  // i18n:end
   const window = samples < 2 ? 3 : Math.min(7, Math.max(1, Math.round(sd)));
 
   return {

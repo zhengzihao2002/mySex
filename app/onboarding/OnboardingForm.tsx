@@ -3,6 +3,7 @@
 import { useActionState, useState } from 'react';
 import { completeOnboarding } from '@/app/actions';
 import { FormError } from '@/components/FormError';
+import { useT } from '@/components/I18nProvider';
 import { AVATARS } from '@/lib/content';
 import type { Sex } from '@/lib/types';
 
@@ -14,6 +15,7 @@ export function OnboardingForm(props: {
   sexLocked?: boolean;
 }) {
   const [state, action, pending] = useActionState(completeOnboarding, null);
+  const { t } = useT();
   const [sex, setSex] = useState<Sex | null>(props.defaultSex);
   const [avatar, setAvatar] = useState(props.defaultAvatar);
   const [consent, setConsent] = useState(!props.needsConsent);
@@ -21,12 +23,12 @@ export function OnboardingForm(props: {
   return (
     <form action={action} className="space-y-5">
       <div>
-        <label className="label" htmlFor="name">Your name</label>
+        <label className="label" htmlFor="name">{t('Your name')}</label>
         <input id="name" className="input" name="name" defaultValue={props.defaultName} maxLength={40} required />
       </div>
 
       <div>
-        <span className="label">I am</span>
+        <span className="label">{t('I am')}</span>
         <div className="grid grid-cols-2 gap-3">
           {(
             [
@@ -44,16 +46,16 @@ export function OnboardingForm(props: {
               }`}
             >
               <span className="text-4xl">{symbol}</span>
-              <span className="font-semibold">{label}</span>
+              <span className="font-semibold">{t(label)}</span>
             </button>
           ))}
         </div>
         <input type="hidden" name="sex" value={sex ?? ''} />
-        {props.sexLocked && <p className="mt-2 text-xs text-ink-3">🔒 Locked — you have saved history with a partner.</p>}
+        {props.sexLocked && <p className="mt-2 text-xs text-ink-3">🔒 {t('Locked — you have saved history with a partner.')}</p>}
       </div>
 
       <div>
-        <span className="label">Pick your vibe</span>
+        <span className="label">{t('Pick your vibe')}</span>
         <div className="flex flex-wrap gap-2">
           {AVATARS.map((a) => (
             <button
@@ -80,13 +82,13 @@ export function OnboardingForm(props: {
           className="mt-0.5 h-5 w-5 shrink-0 accent-rose"
         />
         <span>
-          I’m <b className="text-ink">18+</b> and I consent to explicit sexual content in this app.
+          {t('I’m')} <b className="text-ink">18+</b> {t('and I consent to explicit sexual content in this app.')}
         </span>
       </label>
 
       <FormError error={state && !state.ok ? state.error : null} />
       <button className="btn-primary w-full" disabled={pending || !sex || !consent}>
-        {pending ? 'Saving…' : 'Next: find my partner'}
+        {pending ? t('Saving…') : t('Next: find my partner')}
       </button>
     </form>
   );

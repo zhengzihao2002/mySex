@@ -1,4 +1,5 @@
 'use client';
+import { useT } from './I18nProvider';
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Delete, Lock } from 'lucide-react';
@@ -66,6 +67,7 @@ export function PinLock({ children }: { children: React.ReactNode }) {
 }
 
 function LockScreen({ hash, onUnlock }: { hash: string; onUnlock: () => void }) {
+  const { t } = useT();
   const [digits, setDigits] = useState('');
   const [shake, setShake] = useState(false);
 
@@ -83,7 +85,7 @@ function LockScreen({ hash, onUnlock }: { hash: string; onUnlock: () => void }) 
     });
   }, [digits, hash, onUnlock]);
 
-  return <Keypad title="Enter passcode" digits={digits} setDigits={setDigits} shake={shake} />;
+  return <Keypad title={t('Enter passcode')} digits={digits} setDigits={setDigits} shake={shake} />;
 }
 
 export function Keypad({
@@ -99,11 +101,12 @@ export function Keypad({
   shake?: boolean;
   onCancel?: () => void;
 }) {
+  const { t } = useT();
   return (
     <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-10 bg-bg/95 px-8 backdrop-blur-2xl">
       <div className="flex flex-col items-center gap-3">
         <Lock className="text-rose-2" />
-        <p className="text-lg font-semibold">{title}</p>
+        <p className="text-lg font-semibold">{t(title)}</p>
         <div className={`flex gap-4 ${shake ? 'animate-[shake_0.4s]' : ''}`}>
           {[0, 1, 2, 3].map((i) => (
             <span key={i} className={`h-3.5 w-3.5 rounded-full border-2 border-rose-2 ${i < digits.length ? 'bg-rose-2' : ''}`} />
@@ -117,7 +120,7 @@ export function Keypad({
           </PadButton>
         ))}
         <button className="text-sm text-ink-3" onClick={onCancel} disabled={!onCancel}>
-          {onCancel ? 'Cancel' : ''}
+          {onCancel ? t('Cancel') : ''}
         </button>
         <PadButton onClick={() => setDigits((d) => (d.length < 4 ? d + '0' : d))}>0</PadButton>
         <button className="flex items-center justify-center text-ink-2" onClick={() => setDigits((d) => d.slice(0, -1))} aria-label="Delete">

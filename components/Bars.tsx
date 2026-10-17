@@ -1,4 +1,5 @@
 'use client';
+import { useT } from './I18nProvider';
 
 import { useState } from 'react';
 
@@ -21,6 +22,7 @@ export function Bars({
   format?: (n: number) => string;
   avg?: number;
 }) {
+  const { t } = useT();
   const [active, setActive] = useState<string | null>(null);
   const max = Math.max(1, ...data.map((d) => d.value), avg ?? 0);
   const sel = data.find((d) => d.key === active);
@@ -33,13 +35,13 @@ export function Bars({
             <b className="text-ink">{format(sel.value)}</b> · {sel.detail ?? sel.label}
           </span>
         ) : (
-          <span className="text-ink-3">Tap a bar</span>
+          <span className="text-ink-3">{t('Tap a bar')}</span>
         )}
       </div>
       <div className="relative flex items-end gap-[2px] border-b border-line" style={{ height }} onMouseLeave={() => setActive(null)}>
         {avg != null && avg > 0 && (
           <div className="pointer-events-none absolute inset-x-0 border-t border-dashed border-ink-3/60" style={{ bottom: `${(avg / max) * 100}%` }}>
-            <span className="absolute -top-4 right-0 text-[10px] text-ink-3">avg {format(Math.round(avg * 10) / 10)}</span>
+            <span className="absolute -top-4 right-0 text-[10px] text-ink-3">{t('avg')} {format(Math.round(avg * 10) / 10)}</span>
           </div>
         )}
         {data.map((d) => (

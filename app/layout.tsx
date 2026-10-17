@@ -1,4 +1,6 @@
 import type { Metadata, Viewport } from 'next';
+import { I18nProvider } from '@/components/I18nProvider';
+import { getLang } from '@/lib/i18n/server';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -19,10 +21,13 @@ export const viewport: Viewport = {
   themeColor: '#0e070d',
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const lang = await getLang();
   return (
-    <html lang="en">
-      <body className="antialiased">{children}</body>
+    <html lang={lang === 'zh' ? 'zh-CN' : 'en'}>
+      <body className="antialiased">
+        <I18nProvider lang={lang}>{children}</I18nProvider>
+      </body>
     </html>
   );
 }

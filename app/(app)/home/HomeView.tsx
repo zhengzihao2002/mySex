@@ -1,4 +1,5 @@
 'use client';
+import { useT } from '@/components/I18nProvider';
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
@@ -31,6 +32,7 @@ export function HomeView({
   logs: DailyLog[];
   notes: LoveNote[];
 }) {
+  const { t, f } = useT();
   const { tz, today } = useTz();
   const { me, partner, couple, her } = ctx;
   const [checkIn, setCheckIn] = useState(false);
@@ -55,8 +57,8 @@ export function HomeView({
   const partnerLog = logs.find((l) => l.userId === partner.userId && l.date === today) ?? null;
   const latestFromPartner = notes.find((n) => n.fromUser === partner.userId);
 
-  const hour = Number(new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', hourCycle: 'h23' }).format(new Date()));
-  const greeting = hour < 5 ? 'Up late,' : hour < 12 ? 'Morning,' : hour < 18 ? 'Hey' : 'Evening,';
+  const hour = Number(new Intl.DateTimeFormat('en-US', /* 24h number only */ { timeZone: tz, hour: 'numeric', hourCycle: 'h23' }).format(new Date()));
+  const greeting = hour < 5 ? t('Up late,') : hour < 12 ? t('Morning,') : hour < 18 ? t('Hey') : t('Evening,');
 
   return (
     <div className="space-y-4 pt-2">
@@ -71,9 +73,9 @@ export function HomeView({
               {greeting} {me.name}
             </p>
             <p className="font-semibold">
-              You & {partner.name} ·{' '}
+              {t('You & {name}', { name: partner.name })} ·{' '}
               <button className="text-rose-2 underline decoration-dotted underline-offset-4" onClick={() => setTogetherOpen(true)}>
-                {daysTogether.toLocaleString()} day{daysTogether === 1 ? '' : 's'}
+                {f.plural(daysTogether, t('{n} day', { n: daysTogether.toLocaleString() }), t('{n} days', { n: daysTogether.toLocaleString() }))}
               </button>
             </p>
           </div>
@@ -88,30 +90,30 @@ export function HomeView({
       <CycleCard model={model} info={info} today={today} isHer={me.sex === 'female'} herName={her.name} />
 
       <div className="grid grid-cols-4 gap-2">
-        <Quick href="/timer" icon={<Timer size={22} />} label="Timer" accent />
-        <Quick href="/calendar" icon={<CalendarPlus size={22} />} label="Log" />
-        <Quick onClick={() => setCheckIn(true)} icon={<SmilePlus size={22} />} label="Check-in" />
-        <Quick href="/play" icon={<Dice5 size={22} />} label="Play" />
+        <Quick href="/timer" icon={<Timer size={22} />} label={t('Timer')} accent />
+        <Quick href="/calendar" icon={<CalendarPlus size={22} />} label={t('Log')} />
+        <Quick onClick={() => setCheckIn(true)} icon={<SmilePlus size={22} />} label={t('Check-in')} />
+        <Quick href="/play" icon={<Dice5 size={22} />} label={t('Play')} />
       </div>
 
       <MoodCard me={me.name} myLog={myLog} partnerName={partner.name} partnerLog={partnerLog} onCheckIn={() => setCheckIn(true)} />
 
       <div className="grid grid-cols-3 gap-2">
-        <Stat value={thisMonth} label="this month" />
-        <Stat value={streak} label={`week streak${streak >= 4 ? ' 🔥' : ''}`} />
-        <Stat value={daysSince == null ? '–' : daysSince} label={daysSince === 0 ? 'days since 😏' : 'days since'} />
+        <Stat value={thisMonth} label={t('this month')} />
+        <Stat value={streak} label={`${t('week streak')}${streak >= 4 ? ' 🔥' : ''}`} />
+        <Stat value={daysSince == null ? '–' : daysSince} label={daysSince === 0 ? `${t('days since')} 😏` : t('days since')} />
       </div>
 
       {last && (
         <Link href="/insights" className="card flex items-center gap-3">
           {scores.get(last.id) && <ScoreBadge score={scores.get(last.id)!} size="md" />}
           <div className="flex-1">
-            <p className="text-xs text-ink-3 uppercase">Last time</p>
+            <p className="text-xs text-ink-3 uppercase">{t('Last time')}</p>
             <p className="font-semibold">
-              {relativeDays(-(daysSince ?? 0))[0].toUpperCase() + relativeDays(-(daysSince ?? 0)).slice(1)} · {formatDuration(last.durationSec ?? 0)}
+              {f.relativeDays(-(daysSince ?? 0))[0].toUpperCase() + f.relativeDays(-(daysSince ?? 0)).slice(1)} · {f.formatDuration(last.durationSec ?? 0)}
             </p>
             <p className="text-xs text-ink-3">
-              {scores.get(last.id)?.emoji} {scores.get(last.id)?.grade}
+              {scores.get(last.id)?.emoji} {t(scores.get(last.id)?.grade ?? '')}
               {last.place ? ` · ${last.place}` : last.city ? ` · ${last.city}` : ''}
             </p>
           </div>
@@ -119,19 +121,19 @@ export function HomeView({
       )}
 
       <Link href="/notes" className="card block">
-        <p className="mb-1 text-xs text-ink-3 uppercase">From {partner.name}</p>
+        <p className="mb-1 text-xs text-ink-3 uppercase">{t('From {name}', { name: partner.name })}</p>
         {latestFromPartner ? (
           <p className={`${latestFromPartner.readAt ? 'text-ink-2' : 'font-semibold'}`}>
             {NOTE_KINDS[latestFromPartner.kind].emoji} {latestFromPartner.body}
           </p>
         ) : (
-          <p className="text-ink-3">No notes yet. Slide into their notes 💌</p>
+          <p className="text-ink-3">{t('No notes yet. Slide into their notes 💌')}</p>
         )}
       </Link>
 
       <Milestone together={together} today={today} anniversary={couple.anniversary} />
 
-      <Sheet open={togetherOpen} onClose={() => setTogetherOpen(false)} title="How long have you been together?">
+      <Sheet open={togetherOpen} onClose={() => setTogetherOpen(false)} title={t('How long have you been together?')}>
         {togetherOpen && (
           <TogetherForm today={today} current={together} isCustom={!!couple.anniversary} partnerName={partner.name} onDone={() => setTogetherOpen(false)} />
         )}
@@ -143,6 +145,7 @@ export function HomeView({
 }
 
 function LiveBanner({ session }: { session: SexSession }) {
+  const { t, f } = useT();
   const [now, setNow] = useState<number | null>(null);
   useEffect(() => {
     setNow(Date.now());
@@ -157,7 +160,7 @@ function LiveBanner({ session }: { session: SexSession }) {
         <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/70" />
         <span className="relative inline-flex h-3 w-3 rounded-full bg-white" />
       </span>
-      <span className="flex-1 font-semibold">{session.pausedAt ? 'Paused — round two?' : 'Live right now'}</span>
+      <span className="flex-1 font-semibold">{session.pausedAt ? t('Paused — round two?') : t('Live right now')}</span>
       <span className="font-mono text-xl tabular-nums">{now == null ? '--:--' : formatClock(secs)}</span>
     </Link>
   );
@@ -176,12 +179,13 @@ function CycleCard({
   isHer: boolean;
   herName: string;
 }) {
+  const { t, f } = useT();
   if (!model || !info) {
     return (
       <Link href="/calendar" className="card block">
-        <p className="text-xs text-ink-3 uppercase">Cycle</p>
-        <p className="mt-1 font-semibold">{isHer ? 'Log your last period to unlock predictions 🩸' : `Waiting for ${herName} to log her period`}</p>
-        <p className="mt-1 text-sm text-ink-3">mySex learns her cycle, predicts periods, fertile days and when she’s most in the mood.</p>
+        <p className="text-xs text-ink-3 uppercase">{t('Cycle')}</p>
+        <p className="mt-1 font-semibold">{isHer ? t('Log your last period to unlock predictions 🩸') : t('Waiting for {name} to log her period', { name: herName })}</p>
+        <p className="mt-1 text-sm text-ink-3">{t('mySex learns her cycle, predicts periods, fertile days and when she’s most in the mood.')}</p>
       </Link>
     );
   }
@@ -226,36 +230,36 @@ function CycleCard({
           <circle cx={64 + R * Math.cos(angle)} cy={64 + R * Math.sin(angle)} r="7" fill="#fff" stroke="var(--color-bg)" strokeWidth="3" />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-[10px] text-ink-3 uppercase">Day</span>
+          <span className="text-[10px] text-ink-3 uppercase">{t('Day')}</span>
           <span className="text-3xl font-bold tabular-nums">{info.cycleDay}</span>
-          <span className="text-[10px] text-ink-3">of {info.cycleLength}</span>
+          <span className="text-[10px] text-ink-3">{t('of {n}', { n: info.cycleLength })}</span>
         </div>
       </div>
       <div className="min-w-0 flex-1 space-y-1.5">
         <p className="text-lg font-bold" style={{ color: phase.color === '#7c3aed' ? '#a78bfa' : undefined }}>
-          {phase.emoji} {phase.name}
+          {phase.emoji} {t(phase.name)}
         </p>
         {model.daysLate > 0 ? (
-          <p className="text-sm font-semibold text-menstrual">Period is {model.daysLate} day{model.daysLate > 1 ? 's' : ''} late</p>
+          <p className="text-sm font-semibold text-menstrual">{t('Period is {n} days late', { n: model.daysLate })}</p>
         ) : info.isPeriod || info.isPredictedPeriod ? (
-          <p className="text-sm">Period day {info.cycleDay}</p>
+          <p className="text-sm">{t('Period day {n}', { n: info.cycleDay })}</p>
         ) : (
           toNext != null && (
             <p className="text-sm">
-              Period <b>{relativeDays(toNext)}</b> <span className="text-ink-3">· {prettyDate(next!.periodStart)}</span>
+              {t('Period')} <b>{f.relativeDays(toNext)}</b> <span className="text-ink-3">· {f.prettyDate(next!.periodStart)}</span>
             </p>
           )
         )}
         {fertile && (
           <p className="text-xs text-ink-2">
-            {fertile.fertileStart <= today ? 'Fertile now' : 'Fertile'} · {prettyRange(fertile.fertileStart, fertile.fertileEnd)}
+            {fertile.fertileStart <= today ? t('Fertile now') : t('Fertile')} · {f.prettyRange(fertile.fertileStart, fertile.fertileEnd)}
           </p>
         )}
         <p className="text-xs">
-          <span className="text-ink-3">Pregnancy risk </span>
-          <b style={{ color: PREGNANCY_CHANCE[info.pregnancyChance].color }}>{PREGNANCY_CHANCE[info.pregnancyChance].label}</b>
-          <span className="text-ink-3"> · Libido </span>
-          <span className="text-ink-2">{phase.libido.split(/[.—]/)[0]}</span>
+          <span className="text-ink-3">{t('Pregnancy risk')} </span>
+          <b style={{ color: PREGNANCY_CHANCE[info.pregnancyChance].color }}>{t(PREGNANCY_CHANCE[info.pregnancyChance].label)}</b>
+          <span className="text-ink-3"> · {t('Libido')} </span>
+          <span className="text-ink-2">{t(phase.libido).split(/[.—。]/)[0]}</span>
         </p>
       </div>
     </Link>
@@ -263,6 +267,7 @@ function CycleCard({
 }
 
 function Quick({ href, onClick, icon, label, accent }: { href?: string; onClick?: () => void; icon: React.ReactNode; label: string; accent?: boolean }) {
+  const { t, f } = useT();
   const cls = `flex flex-col items-center gap-1.5 rounded-3xl border py-3 text-xs font-medium transition active:scale-95 ${
     accent ? 'border-rose/50 bg-rose/15 text-ink' : 'border-line/70 bg-surface/80 text-ink-2'
   }`;
@@ -280,6 +285,7 @@ function Quick({ href, onClick, icon, label, accent }: { href?: string; onClick?
 }
 
 function Stat({ value, label }: { value: React.ReactNode; label: string }) {
+  const { t, f } = useT();
   return (
     <div className="card px-3 py-3 text-center">
       <p className="text-2xl font-bold tabular-nums">{value}</p>
@@ -301,15 +307,16 @@ function MoodCard({
   partnerLog: DailyLog | null;
   onCheckIn: () => void;
 }) {
+  const { t, f } = useT();
   const { run, pending, error } = useRun();
   const [sent, setSent] = useState(false);
   const mood = (l: DailyLog | null) => MOODS.find((m) => m.key === l?.mood);
   return (
     <div className="card">
       <div className="flex items-center justify-between">
-        <p className="text-xs text-ink-3 uppercase">Today’s vibe</p>
+        <p className="text-xs text-ink-3 uppercase">{t('Today’s vibe')}</p>
         <button className="text-xs font-semibold text-rose-2" onClick={onCheckIn}>
-          {myLog ? 'Update' : 'Check in'}
+          {myLog ? t('Update') : t('Check in')}
         </button>
       </div>
       <div className="mt-2 grid grid-cols-2 gap-3">
@@ -322,7 +329,7 @@ function MoodCard({
             <div>
               <p className="text-sm font-medium">{name as string}</p>
               <p className="text-xs text-ink-3">
-                {log ? `${mood(log as DailyLog)?.label ?? 'Checked in'}${(log as DailyLog).libido ? ` · ${'🔥'.repeat((log as DailyLog).libido!)}` : ''}` : 'No check-in yet'}
+                {log ? `${t(mood(log as DailyLog)?.label ?? 'Checked in')}${(log as DailyLog).libido ? ` · ${'🔥'.repeat((log as DailyLog).libido!)}` : ''}` : t('No check-in yet')}
               </p>
             </div>
           </div>
@@ -332,35 +339,36 @@ function MoodCard({
         className="btn mt-3 w-full border border-rose/40 bg-rose/10 text-rose-2"
         disabled={pending || sent}
         onClick={async () => {
-          if (await run(() => sendNote(`${me} is in the mood. Get over here 😈`, 'tease'))) setSent(true);
+          if (await run(() => sendNote(t('{name} is in the mood. Get over here 😈', { name: me }), 'tease'))) setSent(true);
         }}
       >
-        <Flame size={16} /> {sent ? 'Signal sent 😏' : 'I’m in the mood'}
+        <Flame size={16} /> {sent ? t('Signal sent 😏') : t('I’m in the mood')}
       </button>
-      {error && <p className="mt-2 text-xs text-rose-2">{error}</p>}
+      {error && <p className="mt-2 text-xs text-rose-2">{t(error)}</p>}
     </div>
   );
 }
 
 function Milestone({ together, today, anniversary }: { together: string; today: string; anniversary: string | null }) {
+  const { t, f } = useT();
   const days = diffDays(today, together) + 1;
   const nextHundred = Math.ceil((days + 1) / 100) * 100;
-  const items: { label: string; inDays: number }[] = [{ label: `Day ${nextHundred.toLocaleString()} together`, inDays: nextHundred - days }];
+  const items: { label: string; inDays: number }[] = [{ label: t('Day {n} together', { n: nextHundred.toLocaleString() }), inDays: nextHundred - days }];
   if (anniversary) {
     const [, m, d] = anniversary.split('-');
     let next = `${today.slice(0, 4)}-${m}-${d}`;
     if (next < today) next = `${Number(today.slice(0, 4)) + 1}-${m}-${d}`;
     const years = Number(next.slice(0, 4)) - Number(anniversary.slice(0, 4));
-    if (years > 0) items.push({ label: `${years}-year anniversary 🥂`, inDays: diffDays(next, today) });
+    if (years > 0) items.push({ label: t('{n}-year anniversary 🥂', { n: years }), inDays: diffDays(next, today) });
   }
   items.sort((a, b) => a.inDays - b.inDays);
   return (
     <div className="card flex items-center justify-between">
       <div>
-        <p className="text-xs text-ink-3 uppercase">Next milestone</p>
+        <p className="text-xs text-ink-3 uppercase">{t('Next milestone')}</p>
         <p className="font-semibold">{items[0].label}</p>
       </div>
-      <p className="text-right text-sm text-rose-2">{relativeDays(items[0].inDays)}</p>
+      <p className="text-right text-sm text-rose-2">{f.relativeDays(items[0].inDays)}</p>
     </div>
   );
 }
@@ -378,6 +386,7 @@ function TogetherForm({
   partnerName: string;
   onDone: () => void;
 }) {
+  const { t, f } = useT();
   const [date, setDate] = useState(current);
   const [days, setDays] = useState(String(diffDays(today, current) + 1));
   const { run, pending, error, setError } = useRun();
@@ -387,13 +396,13 @@ function TogetherForm({
       className="space-y-4"
       onSubmit={async (e) => {
         e.preventDefault();
-        if (!date) return setError('Pick a date or enter a number of days.');
+        if (!date) return setError(t('Pick a date or enter a number of days.'));
         if (await run(() => setAnniversary(date))) onDone();
       }}
     >
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="label">Days together</label>
+          <label className="label">{t('Days together')}</label>
           <input
             className="input text-center text-2xl font-bold"
             type="number"
@@ -408,7 +417,7 @@ function TogetherForm({
           />
         </div>
         <div>
-          <label className="label">Together since</label>
+          <label className="label">{t('Together since')}</label>
           <input
             className="input"
             type="date"
@@ -421,10 +430,10 @@ function TogetherForm({
           />
         </div>
       </div>
-      <p className="text-xs text-ink-3">Type a number of days or pick the date you got together. {partnerName} sees the same counter.</p>
+      <p className="text-xs text-ink-3">{t('Type a number of days or pick the date you got together. {name} sees the same counter.', { name: partnerName })}</p>
       <FormError error={error} />
       <button className="btn-primary w-full" disabled={pending}>
-        {pending ? 'Saving…' : 'Save'}
+        {pending ? t('Saving…') : t('Save')}
       </button>
       {isCustom && (
         <button
@@ -435,7 +444,7 @@ function TogetherForm({
             if (await run(() => setAnniversary(null))) onDone();
           }}
         >
-          Reset to the day we paired in mySex
+          {t('Reset to the day we paired in mySex')}
         </button>
       )}
     </form>

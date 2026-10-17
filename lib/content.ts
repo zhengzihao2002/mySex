@@ -1,5 +1,8 @@
 import type { Phase } from './cycle';
 
+// All display strings below are English keys; the UI translates them with t() (see lib/i18n/zh.ts).
+// i18n:begin
+
 // Phase colors validated for colour-blind separation on the dark surface.
 export const PHASES: Record<
   Phase,
@@ -183,6 +186,8 @@ export const NOTE_KINDS = {
 } as const;
 
 export const AVATARS = ['💋', '😈', '🍑', '🍆', '🔥', '🌶️', '💦', '🦊', '🐻', '🐰', '👑', '🌹', '💜', '🖤', '😇', '🥂'];
+
+// i18n:end
 
 export function flagEmoji(cc: string | null | undefined) {
   if (!cc || cc.length !== 2) return '📍';

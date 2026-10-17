@@ -1,4 +1,5 @@
 'use client';
+import { useT } from './I18nProvider';
 
 import { useState } from 'react';
 import { deleteDailyLog, saveDailyLog } from '@/app/actions';
@@ -22,14 +23,16 @@ export function CheckInSheet({
   sex: Sex;
   existing: DailyLog | null;
 }) {
+  const { t, f: fmt } = useT();
   return (
-    <Sheet open={open} onClose={onClose} title={`Check-in · ${prettyDate(date, { weekday: true })}`}>
+    <Sheet open={open} onClose={onClose} title={`${t('Check-in')} · ${fmt.prettyDate(date, { weekday: true })}`}>
       {open && <CheckInForm key={date} date={date} sex={sex} existing={existing} onDone={onClose} />}
     </Sheet>
   );
 }
 
 function CheckInForm({ date, sex, existing, onDone }: { date: string; sex: Sex; existing: DailyLog | null; onDone: () => void }) {
+  const { t } = useT();
   const [mood, setMood] = useState(existing?.mood ?? null);
   const [libido, setLibido] = useState(existing?.libido ?? null);
   const [energy, setEnergy] = useState(existing?.energy ?? null);
@@ -48,7 +51,7 @@ function CheckInForm({ date, sex, existing, onDone }: { date: string; sex: Sex; 
       }}
     >
       <div>
-        <label className="label">Mood</label>
+        <label className="label">{t('Mood')}</label>
         <div className="grid grid-cols-5 gap-2">
           {MOODS.map((m) => (
             <button
@@ -60,29 +63,29 @@ function CheckInForm({ date, sex, existing, onDone }: { date: string; sex: Sex; 
               }`}
             >
               <span className="text-2xl">{m.emoji}</span>
-              {m.label}
+              {t(m.label)}
             </button>
           ))}
         </div>
       </div>
 
-      <Scale label="Horniness" value={libido} onChange={setLibido} icons={['🧊', '🙂', '😏', '🥵', '😈']} />
-      <Scale label="Energy" value={energy} onChange={setEnergy} icons={['🪫', '😪', '🙂', '⚡', '🚀']} />
+      <Scale label={t('Horniness')} value={libido} onChange={setLibido} icons={['🧊', '🙂', '😏', '🥵', '😈']} />
+      <Scale label={t('Energy')} value={energy} onChange={setEnergy} icons={['🪫', '😪', '🙂', '⚡', '🚀']} />
 
       {sex === 'female' && (
         <>
           <div>
-            <label className="label">Flow</label>
+            <label className="label">{t('Flow')}</label>
             <div className="flex flex-wrap gap-2">
               {FLOWS.map((f) => (
                 <button type="button" key={f} onClick={() => setFlow(flow === f ? null : f)} className={`chip capitalize ${flow === f ? 'chip-on' : ''}`}>
-                  {'💧'.repeat(FLOWS.indexOf(f) + 1)} {f}
+                  {'💧'.repeat(FLOWS.indexOf(f) + 1)} {t(f)}
                 </button>
               ))}
             </div>
           </div>
           <div>
-            <label className="label">Symptoms</label>
+            <label className="label">{t('Symptoms')}</label>
             <div className="flex flex-wrap gap-2">
               {SYMPTOMS.map((s) => {
                 const on = symptoms.includes(s);
@@ -93,7 +96,7 @@ function CheckInForm({ date, sex, existing, onDone }: { date: string; sex: Sex; 
                     onClick={() => setSymptoms(on ? symptoms.filter((x) => x !== s) : [...symptoms, s])}
                     className={`chip ${on ? 'chip-on' : ''}`}
                   >
-                    {s}
+                    {t(s)}
                   </button>
                 );
               })}
@@ -103,12 +106,12 @@ function CheckInForm({ date, sex, existing, onDone }: { date: string; sex: Sex; 
       )}
 
       <div>
-        <label className="label">Note</label>
-        <textarea className="input min-h-16" maxLength={300} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Anything on your mind (or in your pants)…" />
+        <label className="label">{t('Note')}</label>
+        <textarea className="input min-h-16" maxLength={300} value={note} onChange={(e) => setNote(e.target.value)} placeholder={t('Anything on your mind (or in your pants)…')} />
       </div>
       <FormError error={error} />
       <button className="btn-primary w-full" disabled={pending}>
-        {pending ? 'Saving…' : 'Save check-in'}
+        {pending ? t('Saving…') : t('Save check-in')}
       </button>
       {existing && (
         <button
@@ -116,10 +119,10 @@ function CheckInForm({ date, sex, existing, onDone }: { date: string; sex: Sex; 
           className="btn w-full text-menstrual"
           disabled={pending}
           onClick={async () => {
-            if (confirm('Delete this check-in?') && (await run(() => deleteDailyLog(date)))) onDone();
+            if (confirm(t('Delete this check-in?')) && (await run(() => deleteDailyLog(date)))) onDone();
           }}
         >
-          Delete check-in
+          {t('Delete check-in')}
         </button>
       )}
     </form>
@@ -127,6 +130,7 @@ function CheckInForm({ date, sex, existing, onDone }: { date: string; sex: Sex; 
 }
 
 function Scale({ label, value, onChange, icons }: { label: string; value: number | null; onChange: (n: number | null) => void; icons: string[] }) {
+  const { t } = useT();
   return (
     <div>
       <label className="label">{label}</label>

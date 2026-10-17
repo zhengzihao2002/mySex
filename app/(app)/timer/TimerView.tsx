@@ -1,4 +1,5 @@
 'use client';
+import { useT } from '@/components/I18nProvider';
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -24,14 +25,14 @@ function elapsedSec(s: Pick<SexSession, 'startedAt' | 'pausedAt' | 'pausedSec'>,
 }
 
 function milestone(min: number) {
-  if (min < 2) return 'And we’re off 😏';
-  if (min < 5) return 'Quickie territory ⚡';
-  if (min < 10) return 'Warming up 🔥';
-  if (min < 20) return 'Now we’re talking 😈';
-  if (min < 30) return 'Getting steamy 💦';
-  if (min < 45) return 'Marathon mode 🏃';
-  if (min < 60) return 'Absolute legends 🏆';
-  return 'Okay, show-offs 👑';
+  if (min < 2) return /*i18n*/ 'And we’re off 😏';
+  if (min < 5) return /*i18n*/ 'Quickie territory ⚡';
+  if (min < 10) return /*i18n*/ 'Warming up 🔥';
+  if (min < 20) return /*i18n*/ 'Now we’re talking 😈';
+  if (min < 30) return /*i18n*/ 'Getting steamy 💦';
+  if (min < 45) return /*i18n*/ 'Marathon mode 🏃';
+  if (min < 60) return /*i18n*/ 'Absolute legends 🏆';
+  return /*i18n*/ 'Okay, show-offs 👑';
 }
 
 export function TimerView({
@@ -98,6 +99,7 @@ function IdleTimer({
   onStart: (s: SexSession) => void;
   onStartFailed: () => void;
 }) {
+  const { t, f } = useT();
   const [place, setPlace] = useState('');
   const [useLocation, setUseLocation] = useState(true);
   const [useGps, setUseGps] = useState(false);
@@ -143,8 +145,8 @@ function IdleTimer({
 
   return (
     <div className="flex flex-col items-center pt-4">
-      <p className="text-xs font-semibold tracking-[0.3em] text-ink-3 uppercase">Live timer</p>
-      <h1 className="font-display mt-1 text-3xl font-bold">Ready when you are</h1>
+      <p className="text-xs font-semibold tracking-[0.3em] text-ink-3 uppercase">{t('Live timer')}</p>
+      <h1 className="font-display mt-1 text-3xl font-bold">{t('Ready when you are')}</h1>
 
       <button onClick={begin} disabled={start.pending} className="group relative my-10 flex h-56 w-56 items-center justify-center" aria-label="Start timer">
         <span className="absolute inset-0 rounded-full bg-rose/30 [animation:ripple_2.4s_ease-out_infinite]" />
@@ -154,13 +156,13 @@ function IdleTimer({
           <svg viewBox="0 0 24 24" className="h-14 w-14 animate-beat fill-white">
             <path d="M12 21s-7.5-4.6-10-9.2C.4 8.6 2.3 4.5 6.2 4.5c2.2 0 3.8 1.3 4.6 2.6.2.3.6.3.8 0 .8-1.3 2.4-2.6 4.6-2.6 3.9 0 5.8 4.1 4.2 7.3C19.5 16.4 12 21 12 21z" />
           </svg>
-          <span className="mt-2 text-lg font-bold tracking-wide">Start the clock</span>
+          <span className="mt-2 text-lg font-bold tracking-wide">{t('Start the clock')}</span>
         </span>
       </button>
 
       <div className="w-full space-y-3">
         <div>
-          <input className="input" placeholder="Where? (optional) — bedroom, shower, car…" value={place} maxLength={60} onChange={(e) => setPlace(e.target.value)} />
+          <input className="input" placeholder={t('Where? (optional) — bedroom, shower, car…')} value={place} maxLength={60} onChange={(e) => setPlace(e.target.value)} />
           {places.length > 0 && (
             <div className="no-scrollbar mt-2 flex gap-1.5 overflow-x-auto">
               {places.slice(0, 10).map((p) => (
@@ -171,30 +173,30 @@ function IdleTimer({
             </div>
           )}
         </div>
-        <Toggle on={useLocation} onChange={setUseLocation} icon={<MapPin size={16} />} title="Record location" sub="Saves your IP & city so you can see where you did it" />
+        <Toggle on={useLocation} onChange={setUseLocation} icon={<MapPin size={16} />} title={t('Record location')} sub={t('Saves your IP & city so you can see where you did it')} />
         {useLocation && (
-          <Toggle on={useGps} onChange={setUseGps} icon={<Navigation size={16} />} title="Precise GPS pin" sub="More exact than IP — asks for permission" />
+          <Toggle on={useGps} onChange={setUseGps} icon={<Navigation size={16} />} title={t('Precise GPS pin')} sub={t('More exact than IP — asks for permission')} />
         )}
         <FormError error={start.error} />
 
         <button onClick={() => setPastOpen(true)} className="btn-ghost w-full">
-          <History size={16} /> Forgot the timer? Log a past session
+          <History size={16} /> {t('Forgot the timer? Log a past session')}
         </button>
 
         {last && (
           <p className="pt-2 text-center text-xs text-ink-3">
-            Last time: {prettyDate(dayInTz(last.startedAt, tz))} ·{' '}
-            {formatDuration(last.durationSec ?? 0)} · score {scores.get(last.id)?.total ?? '–'}
+            {t('Last time:')} {f.prettyDate(dayInTz(last.startedAt, tz))} ·{' '}
+            {f.formatDuration(last.durationSec ?? 0)} · {t('score')} {scores.get(last.id)?.total ?? '–'}
           </p>
         )}
       </div>
 
-      <Sheet open={pastOpen} onClose={() => setPastOpen(false)} title="Log a past session">
+      <Sheet open={pastOpen} onClose={() => setPastOpen(false)} title={t('Log a past session')}>
         <SessionForm
           mode="past"
           places={places}
           initial={{ useLocation: false }}
-          submitLabel="Save it 😈"
+          submitLabel={t('Save it 😈')}
           error={past.error}
           pending={past.pending}
           onSubmit={async (v) => {
@@ -299,6 +301,7 @@ function LiveTimer({
   places: string[];
   onFinished: (values: Partial<SexSession>, durationSec: number, times: RevealTimes) => void;
 }) {
+  const { t, f } = useT();
   const router = useRouter();
   const paused = !!session.pausedAt;
   // Keep ticking while paused too, so the break clock runs.
@@ -322,7 +325,7 @@ function LiveTimer({
   const stamina = Math.round(40 * (1 - Math.exp(-minutes / 15)));
   const headAngle = secFrac * 2 * Math.PI - Math.PI / 2;
   const { tz } = useTz();
-  const startedLabel = timeInTz(session.startedAt, tz);
+  const startedLabel = f.timeInTz(session.startedAt, tz);
   const where = session.place || [session.city, session.country].filter(Boolean).join(', ');
 
   const openFinish = async () => {
@@ -348,7 +351,7 @@ function LiveTimer({
         </Link>
         <div className="flex items-center gap-2 rounded-full bg-surface-2/70 px-3 py-1.5 text-xs font-semibold tracking-widest uppercase backdrop-blur">
           <span className={`h-2 w-2 rounded-full ${paused ? 'bg-luteal' : 'animate-pulse bg-rose'}`} />
-          {pendingStart ? 'Starting' : paused ? 'Paused' : 'Live'}
+          {pendingStart ? t('Starting') : paused ? t('Paused') : t('Live')}
         </div>
         <div className="flex gap-2">
           {wake.supported && (
@@ -449,15 +452,15 @@ function LiveTimer({
             <span className="mt-3 text-sm font-medium text-ink-2">
               {paused ? (
                 <>
-                  Break #{Math.max(1, breakNo)} · <span className="tabular-nums text-luteal">{formatClock(breakSecs)}</span>
+                  {t('Break #{n}', { n: Math.max(1, breakNo) })} · <span className="tabular-nums text-luteal">{formatClock(breakSecs)}</span>
                 </>
               ) : (
-                milestone(minutes)
+                t(milestone(minutes))
               )}
             </span>
             {breakNo > 0 && (
               <span className="mt-1 text-[11px] text-ink-3 tabular-nums">
-                {breakNo} break{breakNo === 1 ? '' : 's'} · {formatDuration(totalBreak)} total
+                {f.plural(breakNo, t('{n} break', { n: breakNo }), t('{n} breaks', { n: breakNo }))} · {t('{d} total', { d: f.formatDuration(totalBreak) })}
               </span>
             )}
           </div>
@@ -465,7 +468,7 @@ function LiveTimer({
 
         <div className="mt-6 flex items-center gap-2 text-xs text-ink-3">
           <span>
-            {isMine ? 'You' : starterName} started at {startedLabel}
+            {t('{name} started at {time}', { name: isMine ? t('You') : starterName, time: startedLabel })}
           </span>
           {where && (
             <>
@@ -479,7 +482,7 @@ function LiveTimer({
 
         <div className="mt-4 w-full max-w-[300px]">
           <div className="mb-1 flex justify-between text-[11px] text-ink-3">
-            <span>Stamina points</span>
+            <span>{t('Stamina points')}</span>
             <span className="tabular-nums">{stamina}/40</span>
           </div>
           <div className="h-1 overflow-hidden rounded-full bg-white/10">
@@ -504,7 +507,7 @@ function LiveTimer({
             disabled={pendingStart || act.pending}
             className="h-16 flex-1 rounded-full bg-gradient-to-r from-rose to-plum text-lg font-bold text-white shadow-[0_10px_40px_rgba(255,61,127,0.45)] transition active:scale-95 disabled:opacity-50"
           >
-            We’re done 💦
+            {t('We’re done 💦')}
           </button>
           <button
             onClick={() => act.run(() => setPaused(session.id, !paused))}
@@ -520,15 +523,15 @@ function LiveTimer({
       {dim && (
         <button className="fixed inset-0 z-[70] flex flex-col items-center justify-center bg-black" onClick={() => setDim(false)}>
           <span className="text-4xl font-extralight text-white/20 tabular-nums">{formatClock(secs)}</span>
-          <span className="mt-2 text-[10px] text-white/15">tap to wake</span>
+          <span className="mt-2 text-[10px] text-white/15">{t('tap to wake')}</span>
         </button>
       )}
 
-      <Sheet open={confirmDiscard} onClose={() => setConfirmDiscard(false)} title="Discard this session?">
-        <p className="mb-4 text-sm text-ink-2">The timer stops and nothing is saved. Use this for false starts and interruptions 🙈</p>
+      <Sheet open={confirmDiscard} onClose={() => setConfirmDiscard(false)} title={t('Discard this session?')}>
+        <p className="mb-4 text-sm text-ink-2">{t('The timer stops and nothing is saved. Use this for false starts and interruptions 🙈')}</p>
         <div className="grid grid-cols-2 gap-3">
           <button className="btn-ghost" onClick={() => setConfirmDiscard(false)}>
-            Keep going
+            {t('Keep going')}
           </button>
           <button
             className="btn bg-menstrual text-white"
@@ -540,7 +543,7 @@ function LiveTimer({
               }
             }}
           >
-            Discard
+            {t('Discard')}
           </button>
         </div>
       </Sheet>
@@ -550,16 +553,16 @@ function LiveTimer({
         onClose={() => setFinishOpen(false)}
         title={
           <span>
-            {formatClock(frozenAt.current || secs)} <span className="text-sm font-normal text-ink-3">· spill the details</span>
+            {formatClock(frozenAt.current || secs)} <span className="text-sm font-normal text-ink-3">· {t('spill the details')}</span>
           </span>
         }
       >
-        <p className="mb-4 text-xs text-ink-3">The clock is paused. Close this sheet and hit ▶ if you’re going for round two.</p>
+        <p className="mb-4 text-xs text-ink-3">{t('The clock is paused. Close this sheet and hit ▶ if you’re going for round two.')}</p>
         <SessionForm
           mode="finish"
           places={places}
           initial={{ place: session.place ?? '' }}
-          submitLabel="Save & see our score"
+          submitLabel={t('Save & see our score')}
           error={finish.error}
           pending={finish.pending}
           onSubmit={async (v) => {

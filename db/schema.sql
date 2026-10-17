@@ -14,6 +14,8 @@ create table if not exists profiles (
   created_at            timestamptz not null default now()
 );
 
+alter table profiles add column if not exists lang text check (lang in ('en', 'zh'));
+
 create table if not exists couples (
   id          uuid primary key default gen_random_uuid(),
   male_id     text not null references profiles(user_id) on delete cascade,

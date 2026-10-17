@@ -1,18 +1,20 @@
 'use client';
+import { useT } from './I18nProvider';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { BarChart3, CalendarHeart, Home, MessageCircleHeart } from 'lucide-react';
 
 const tabs = [
-  { href: '/home', label: 'Home', Icon: Home },
-  { href: '/calendar', label: 'Calendar', Icon: CalendarHeart },
+  { href: '/home', label: /*i18n*/ 'Home', Icon: Home },
+  { href: '/calendar', label: /*i18n*/ 'Calendar', Icon: CalendarHeart },
   null,
-  { href: '/insights', label: 'Insights', Icon: BarChart3 },
-  { href: '/notes', label: 'Notes', Icon: MessageCircleHeart },
+  { href: '/insights', label: /*i18n*/ 'Insights', Icon: BarChart3 },
+  { href: '/notes', label: /*i18n*/ 'Notes', Icon: MessageCircleHeart },
 ] as const;
 
 export function TabBar({ unread, live }: { unread: number; live: boolean }) {
+  const { t: tr } = useT();
   const path = usePathname();
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-line/60 bg-bg/95 pb-safe backdrop-blur-2xl">
@@ -40,7 +42,7 @@ export function TabBar({ unread, live }: { unread: number; live: boolean }) {
               }`}
             >
               <t.Icon size={22} strokeWidth={path.startsWith(t.href) ? 2.4 : 1.8} />
-              {t.label}
+              {tr(t.label)}
               {t.href === '/notes' && unread > 0 && (
                 <span className="absolute top-1.5 right-[calc(50%-18px)] min-w-4 rounded-full bg-rose px-1 text-[10px] leading-4 font-bold text-white">
                   {unread}

@@ -1,4 +1,5 @@
 'use client';
+import { useT } from './I18nProvider';
 
 import { useState } from 'react';
 import { Flame, MapPin, Minus, Navigation, Plus } from 'lucide-react';
@@ -53,6 +54,7 @@ export function SessionForm({
   error?: string | null;
   pending?: boolean;
 }) {
+  const { t, f } = useT();
   const [v, setV] = useState<SessionFormValues>({
     startedAt: initial?.startedAt ?? new Date(Date.now() - 30 * 60_000).toISOString(),
     durationMin: initial?.durationMin ?? 15,
@@ -80,7 +82,7 @@ export function SessionForm({
       {mode !== 'finish' && (
         <div className="grid grid-cols-1 gap-3">
           <div>
-            <label className="label">When did it go down?</label>
+            <label className="label">{t('When did it go down?')}</label>
             <input
               type="datetime-local"
               className="input"
@@ -91,7 +93,7 @@ export function SessionForm({
             />
           </div>
           <div>
-            <label className="label">Active time · {v.durationMin} min</label>
+            <label className="label">{t('Active time · {n} min', { n: v.durationMin })}</label>
             <div className="flex items-center gap-2">
               <input
                 type="number"
@@ -113,7 +115,7 @@ export function SessionForm({
             </div>
           </div>
           <div>
-            <label className="label">Breaks · {v.breakMin} min</label>
+            <label className="label">{t('Breaks · {n} min', { n: v.breakMin })}</label>
             <input
               type="number"
               inputMode="decimal"
@@ -124,13 +126,13 @@ export function SessionForm({
               value={v.breakMin}
               onChange={(e) => set('breakMin', Math.max(0, Number(e.target.value) || 0))}
             />
-            <p className="mt-1 text-xs text-ink-3">Total time = {v.durationMin + v.breakMin} min</p>
+            <p className="mt-1 text-xs text-ink-3">{t('Total time = {n} min', { n: v.durationMin + v.breakMin })}</p>
           </div>
         </div>
       )}
 
       <div>
-        <label className="label">How hot was it?</label>
+        <label className="label">{t('How hot was it?')}</label>
         <div className="flex items-center gap-1">
           {HEAT.map((h, i) => (
             <button
@@ -147,17 +149,17 @@ export function SessionForm({
               />
             </button>
           ))}
-          <span className="ml-2 text-sm text-ink-2">{v.rating ? HEAT[v.rating - 1] : ''}</span>
+          <span className="ml-2 text-sm text-ink-2">{v.rating ? t(HEAT[v.rating - 1]) : ''}</span>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <Stepper label="Her orgasms 💦" value={v.herOrgasms} onChange={(n) => set('herOrgasms', n)} />
-        <Stepper label="His orgasms 🍆" value={v.hisOrgasms} onChange={(n) => set('hisOrgasms', n)} />
+        <Stepper label={t('Her orgasms 💦')} value={v.herOrgasms} onChange={(n) => set('herOrgasms', n)} />
+        <Stepper label={t('His orgasms 🍆')} value={v.hisOrgasms} onChange={(n) => set('hisOrgasms', n)} />
       </div>
 
       <div>
-        <label className="label">Protection</label>
+        <label className="label">{t('Protection')}</label>
         <div className="flex flex-wrap gap-2">
           {PROTECTION.map((p) => (
             <button
@@ -166,25 +168,26 @@ export function SessionForm({
               onClick={() => set('protection', v.protection === p.key ? null : p.key)}
               className={`chip ${v.protection === p.key ? 'chip-on' : ''}`}
             >
-              {p.emoji} {p.label}
+              {p.emoji} {t(p.label)}
             </button>
           ))}
         </div>
       </div>
 
       <div>
-        <label className="label">What went down</label>
+        <label className="label">{t('What went down')}</label>
         <div className="flex flex-wrap gap-2">
-          {TAGS.map((t) => {
-            const on = v.tags.includes(t);
+          {TAGS.map((tag) => {
+            const on = v.tags.includes(tag);
             return (
               <button
                 type="button"
-                key={t}
-                onClick={() => set('tags', on ? v.tags.filter((x) => x !== t) : [...v.tags, t])}
+                key={tag}
+                data-tag={tag}
+                onClick={() => set('tags', on ? v.tags.filter((x) => x !== tag) : [...v.tags, tag])}
                 className={`chip ${on ? 'chip-on' : ''}`}
               >
-                {t}
+                {t(tag)}
               </button>
             );
           })}
@@ -192,8 +195,8 @@ export function SessionForm({
       </div>
 
       <div>
-        <label className="label">Where</label>
-        <input className="input" placeholder="Bedroom, his car, hotel in Vegas…" value={v.place} maxLength={60} onChange={(e) => set('place', e.target.value)} />
+        <label className="label">{t('Where')}</label>
+        <input className="input" placeholder={t('Bedroom, his car, hotel in Vegas…')} value={v.place} maxLength={60} onChange={(e) => set('place', e.target.value)} />
         {places.length > 0 && (
           <div className="no-scrollbar mt-2 flex gap-1.5 overflow-x-auto">
             {places.slice(0, 10).map((p) => (
@@ -211,21 +214,21 @@ export function SessionForm({
             on={v.useLocation}
             onChange={(on) => setV((s) => ({ ...s, useLocation: on, useGps: on && s.useGps }))}
             icon={<MapPin size={16} />}
-            title="We’re still there"
-            sub="Pin this session to your current location (IP)"
+            title={t('We’re still there')}
+            sub={t('Pin this session to your current location (IP)')}
           />
           {v.useLocation && (
-            <Toggle on={v.useGps} onChange={(on) => set('useGps', on)} icon={<Navigation size={16} />} title="Use precise GPS" sub="Asks for location permission" />
+            <Toggle on={v.useGps} onChange={(on) => set('useGps', on)} icon={<Navigation size={16} />} title={t('Use precise GPS')} sub={t('Asks for location permission')} />
           )}
         </div>
       )}
 
       <div>
-        <label className="label">Dirty details</label>
+        <label className="label">{t('Dirty details')}</label>
         <textarea
           className="input min-h-20"
           maxLength={500}
-          placeholder="What made it memorable…"
+          placeholder={t('What made it memorable…')}
           value={v.notes}
           onChange={(e) => set('notes', e.target.value)}
         />
@@ -233,7 +236,7 @@ export function SessionForm({
 
       <FormError error={error} />
       <button className="btn-primary w-full" disabled={pending}>
-        {pending ? 'Saving…' : submitLabel}
+        {pending ? t('Saving…') : submitLabel}
       </button>
     </form>
   );

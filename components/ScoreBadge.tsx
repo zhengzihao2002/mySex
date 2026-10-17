@@ -1,4 +1,5 @@
 'use client';
+import { useT } from './I18nProvider';
 
 import { useEffect, useState } from 'react';
 import type { Score } from '@/lib/score';
@@ -43,6 +44,7 @@ export function ScoreBadge({ score, size = 'sm' }: { score: Score; size?: 'sm' |
 export type RevealTimes = { startedAt: string; activeSec: number; breakSec: number; breaks: Break[] };
 
 export function ScoreReveal({ score, times, onClose }: { score: Score; times?: RevealTimes; onClose: () => void }) {
+  const { t } = useT();
   const [shown, setShown] = useState(0);
   useEffect(() => {
     let raf = 0;
@@ -60,7 +62,7 @@ export function ScoreReveal({ score, times, onClose }: { score: Score; times?: R
   const C = 2 * Math.PI * R;
   return (
     <div className="fixed inset-0 z-[60] flex animate-fade flex-col items-center justify-center bg-bg/95 px-6 backdrop-blur-2xl" onClick={onClose}>
-      <p className="text-sm font-semibold tracking-[0.3em] text-ink-3 uppercase">mySex Score</p>
+      <p className="text-sm font-semibold tracking-[0.3em] text-ink-3 uppercase">{t('mySex Score')}</p>
       <div className="relative my-4 h-48 w-48">
         <svg viewBox="0 0 220 220" className="h-full w-full -rotate-90">
           <defs>
@@ -88,7 +90,7 @@ export function ScoreReveal({ score, times, onClose }: { score: Score; times?: R
         </div>
       </div>
       <p className="font-display text-3xl font-bold">
-        {score.emoji} {score.grade}
+        {score.emoji} {t(score.grade)}
       </p>
       {times && (
         <div className="mt-5 w-full max-w-xs">
@@ -99,7 +101,7 @@ export function ScoreReveal({ score, times, onClose }: { score: Score; times?: R
         {score.parts.map((p) => (
           <div key={p.key}>
             <div className="mb-1 flex justify-between text-xs">
-              <span className="text-ink-2">{p.label}</span>
+              <span className="text-ink-2">{t(p.label)}</span>
               <span className="tabular-nums text-ink-3">
                 {p.points}/{p.max}
               </span>
@@ -110,7 +112,7 @@ export function ScoreReveal({ score, times, onClose }: { score: Score; times?: R
           </div>
         ))}
       </div>
-      <p className="mt-8 text-xs text-ink-3">Tap anywhere to close</p>
+      <p className="mt-8 text-xs text-ink-3">{t('Tap anywhere to close')}</p>
     </div>
   );
 }

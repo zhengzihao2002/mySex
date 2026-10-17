@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useActionState, useState, useTransition } from 'react';
 import { resendEmailCode, signInAction, signUpAction, verifyEmailCode } from '@/app/actions';
 import { FormError } from '@/components/FormError';
+import { useT } from '@/components/I18nProvider';
 import type { AuthResult } from '@/lib/types';
 
 type Creds = { email: string; password: string };
@@ -23,22 +24,23 @@ const errorOf = (s: AuthResult | null) => (s && !s.ok ? (s.error ?? null) : null
 const verifyOf = (s: AuthResult | null) => (s && !s.ok && 'verify' in s ? s.verify : null);
 
 export function SignInForm() {
+  const { t } = useT();
   const { creds, state, action, pending } = useCredsAction(signInAction);
   const [back, setBack] = useState<AuthResult | null>(null);
   const verify = state !== back ? verifyOf(state) : null;
   if (verify) return <CodeStep email={verify} password={creds.password} note={errorOf(state)} onBack={() => setBack(state)} />;
   return (
     <form action={action} className="space-y-3">
-      <input className="input" name="email" type="email" autoComplete="email" placeholder="Email" defaultValue={creds.email} required />
-      <input className="input" name="password" type="password" autoComplete="current-password" placeholder="Password" required />
+      <input className="input" name="email" type="email" autoComplete="email" placeholder={t('Email')} defaultValue={creds.email} required />
+      <input className="input" name="password" type="password" autoComplete="current-password" placeholder={t('Password')} required />
       <FormError error={verifyOf(state) ? null : errorOf(state)} />
       <button className="btn-primary w-full" disabled={pending}>
-        {pending ? 'Sliding in…' : 'Sign in'}
+        {pending ? t('Sliding in…') : t('Sign in')}
       </button>
       <p className="pt-2 text-center text-sm text-ink-3">
-        New here?{' '}
+        {t('New here?')}{' '}
         <Link href="/auth/sign-up" className="font-semibold text-rose-2">
-          Create an account
+          {t('Create an account')}
         </Link>
       </p>
     </form>
@@ -46,6 +48,7 @@ export function SignInForm() {
 }
 
 export function SignUpForm() {
+  const { t } = useT();
   const { creds, state, action, pending } = useCredsAction(signUpAction);
   const [back, setBack] = useState<AuthResult | null>(null);
   const verify = state !== back ? verifyOf(state) : null;
@@ -55,12 +58,12 @@ export function SignUpForm() {
   return (
     <form action={action} className="space-y-3">
       <div>
-        <label className="label" htmlFor="accessCode">Access code · invite only 🔒</label>
+        <label className="label" htmlFor="accessCode">{t('Access code · invite only 🔒')}</label>
         <input
           id="accessCode"
           className="input font-mono"
           name="accessCode"
-          placeholder="The secret code you were given"
+          placeholder={t('The secret code you were given')}
           autoCapitalize="off"
           autoCorrect="off"
           autoComplete="off"
@@ -68,32 +71,31 @@ export function SignUpForm() {
           required
         />
       </div>
-      <input className="input" name="name" autoComplete="given-name" placeholder="First name or nickname" maxLength={40} required />
-      <input className="input" name="email" type="email" autoComplete="email" placeholder="Email" required />
-      <input className="input" name="password" type="password" autoComplete="new-password" placeholder="Password (8+ characters)" minLength={8} required />
+      <input className="input" name="name" autoComplete="given-name" placeholder={t('First name or nickname')} maxLength={40} required />
+      <input className="input" name="email" type="email" autoComplete="email" placeholder={t('Email')} required />
+      <input className="input" name="password" type="password" autoComplete="new-password" placeholder={t('Password (8+ characters)')} minLength={8} required />
 
       <div className="card space-y-3 border-rose/30 bg-rose/5">
-        <p className="text-xs font-bold tracking-widest text-rose-2 uppercase">Adults only · 18+</p>
+        <p className="text-xs font-bold tracking-widest text-rose-2 uppercase">{t('Adults only · 18+')}</p>
         <p className="text-sm leading-relaxed text-ink-2">
-          mySex is an explicit app for consenting adult couples. It contains frank sexual language, sex tracking,
-          kink lists and dirty dares. Your data is shared only with the one partner you pair with.
+          {t('mySex is an explicit app for consenting adult couples. It contains frank sexual language, sex tracking, kink lists and dirty dares. Your data is shared only with the one partner you pair with.')}
         </p>
         <Consent name="adult" checked={adult} onChange={setAdult}>
-          I confirm I am <b className="text-ink">18 years or older</b> (or the age of majority where I live).
+          {t('I confirm I am')} <b className="text-ink">{t('18 years or older')}</b> {t('(or the age of majority where I live).')}
         </Consent>
         <Consent name="consent" checked={consent} onChange={setConsent}>
-          I consent to viewing <b className="text-ink">explicit sexual content</b> and to sharing my logs with my partner.
+          {t('I consent to viewing')} <b className="text-ink">{t('explicit sexual content')}</b> {t('and to sharing my logs with my partner.')}
         </Consent>
       </div>
 
       <FormError error={errorOf(state)} />
       <button className="btn-primary w-full" disabled={pending || !adult || !consent}>
-        {pending ? 'Getting things ready…' : 'I’m 18+ — let’s get naughty'}
+        {pending ? t('Getting things ready…') : t('I’m 18+ — let’s get naughty')}
       </button>
       <p className="pt-2 text-center text-sm text-ink-3">
-        Already have an account?{' '}
+        {t('Already have an account?')}{' '}
         <Link href="/auth/sign-in" className="font-semibold text-rose-2">
-          Sign in
+          {t('Sign in')}
         </Link>
       </p>
     </form>
@@ -127,6 +129,7 @@ function Consent({
 }
 
 function CodeStep({ email, password, note, onBack }: { email: string; password: string; note?: string | null; onBack: () => void }) {
+  const { t } = useT();
   const [state, action, pending] = useActionState(verifyEmailCode, null);
   const [resending, startResend] = useTransition();
   const [resent, setResent] = useState<string | null>(null);
@@ -136,11 +139,11 @@ function CodeStep({ email, password, note, onBack }: { email: string; password: 
     <form action={action} className="space-y-4">
       <div className="card space-y-1 text-center">
         <p className="text-3xl">📬</p>
-        <p className="font-semibold">Check your email</p>
+        <p className="font-semibold">{t('Check your email')}</p>
         <p className="text-sm text-ink-2">
-          We sent a verification code to <b className="text-ink">{email}</b>. Enter it below to unlock mySex.
+          {t('We sent a verification code to')} <b className="text-ink">{email}</b>. {t('Enter it below to unlock mySex.')}
         </p>
-        {note && !error && <p className="text-xs text-ink-3">{note}</p>}
+        {note && !error && <p className="text-xs text-ink-3">{t(note)}</p>}
       </div>
       <input type="hidden" name="email" value={email} />
       <input type="hidden" name="password" value={password} />
@@ -157,11 +160,11 @@ function CodeStep({ email, password, note, onBack }: { email: string; password: 
       />
       <FormError error={error} />
       <button className="btn-primary w-full" disabled={pending}>
-        {pending ? 'Checking…' : 'Verify & continue'}
+        {pending ? t('Checking…') : t('Verify & continue')}
       </button>
       <div className="flex justify-between text-sm">
         <button type="button" className="text-ink-3" onClick={onBack}>
-          ← Use a different email
+          ← {t('Use a different email')}
         </button>
         <button
           type="button"
@@ -174,10 +177,10 @@ function CodeStep({ email, password, note, onBack }: { email: string; password: 
             })
           }
         >
-          {resending ? 'Sending…' : 'Resend code'}
+          {resending ? t('Sending…') : t('Resend code')}
         </button>
       </div>
-      {resent && <p className="text-center text-xs text-ink-3">{resent}</p>}
+      {resent && <p className="text-center text-xs text-ink-3">{t(resent)}</p>}
     </form>
   );
 }

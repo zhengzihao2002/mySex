@@ -1,4 +1,5 @@
 'use client';
+import { useT } from './I18nProvider';
 
 import { formatDuration } from '@/lib/dates';
 import type { Break } from '@/lib/types';
@@ -15,6 +16,7 @@ export function SessionTimes({
   breakSec: number;
   breaks: Break[];
 }) {
+  const { t, f } = useT();
   const closed = breaks.filter((b) => b.end);
   const total = activeSec + breakSec;
   const t0 = new Date(startedAt).getTime();
@@ -24,9 +26,9 @@ export function SessionTimes({
   return (
     <div className="space-y-2">
       <div className="grid grid-cols-3 gap-2 text-center">
-        <Stat label="Total" value={formatDuration(total)} />
-        <Stat label="Active" value={formatDuration(activeSec)} accent />
-        <Stat label="Breaks" value={breakSec ? formatDuration(breakSec) : '–'} />
+        <Stat label={t('Total')} value={f.formatDuration(total)} />
+        <Stat label={t('Active')} value={f.formatDuration(activeSec)} accent />
+        <Stat label={t('Breaks')} value={breakSec ? f.formatDuration(breakSec) : '–'} />
       </div>
       {total > 0 && (
         <div className="relative h-2 overflow-hidden rounded-full bg-rose/80" aria-hidden>
@@ -45,8 +47,8 @@ export function SessionTimes({
       )}
       {count > 0 && (
         <p className="text-center text-[11px] text-ink-3">
-          {count} break{count === 1 ? '' : 's'}
-          {longest > 0 ? ` · longest ${formatDuration(longest)}` : ''}
+          {f.plural(count, t('{n} break', { n: count }), t('{n} breaks', { n: count }))}
+          {longest > 0 ? ` · ${t('longest {d}', { d: f.formatDuration(longest) })}` : ''}
         </p>
       )}
     </div>

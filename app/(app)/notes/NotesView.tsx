@@ -1,4 +1,5 @@
 'use client';
+import { useT } from '@/components/I18nProvider';
 
 import { useEffect, useRef, useState } from 'react';
 import { Send } from 'lucide-react';
@@ -11,13 +12,16 @@ import { NOTE_KINDS } from '@/lib/content';
 import { dateTimeInTz } from '@/lib/tz';
 import type { LoveNote } from '@/lib/types';
 
+// i18n:begin
 const PROMPTS: Record<LoveNote['kind'], string[]> = {
   note: ['Last night was 🔥', 'I can’t stop thinking about you', 'You looked so good today', 'Thank you for being you 🥰'],
   wish: ['Tonight I want you to take control', 'Lingerie night? I’ll pick 😏', 'Let’s try something new tonight', 'Shower together later?'],
   tease: ['Guess what I’m (not) wearing', 'Come home early 😈', 'I’m already wet thinking about tonight', 'Bedroom. 10 minutes. Don’t be late.'],
 };
+// i18n:end
 
 export function NotesView({ notes, meId, partnerName, partnerAvatar }: { notes: LoveNote[]; meId: string; partnerName: string; partnerAvatar: string }) {
+  const { t, f } = useT();
   const { tz } = useTz();
   const [kind, setKind] = useState<LoveNote['kind']>('note');
   const [text, setText] = useState('');
@@ -41,11 +45,11 @@ export function NotesView({ notes, meId, partnerName, partnerAvatar }: { notes: 
 
   return (
     <div className="flex min-h-[calc(100dvh-140px)] flex-col pt-2">
-      <h1 className="font-display text-3xl font-bold">Dirty notes</h1>
-      <p className="mb-4 text-sm text-ink-3">Just between you and {partnerName}.</p>
+      <h1 className="font-display text-3xl font-bold">{t('Dirty notes')}</h1>
+      <p className="mb-4 text-sm text-ink-3">{t('Just between you and {name}.', { name: partnerName })}</p>
 
       <div className="flex-1 space-y-2 pb-4">
-        {ordered.length === 0 && <p className="card text-center text-sm text-ink-2">No notes yet. Make the first move 😏</p>}
+        {ordered.length === 0 && <p className="card text-center text-sm text-ink-2">{t('No notes yet. Make the first move 😏')}</p>}
         {ordered.map((n) => {
           const mine = n.fromUser === meId;
           return (
@@ -67,9 +71,9 @@ export function NotesView({ notes, meId, partnerName, partnerAvatar }: { notes: 
                   {n.body}
                 </button>
                 <span className="mt-0.5 px-2 text-[10px] text-ink-3">
-                  {dateTimeInTz(n.createdAt, tz)}
-                  {n.editedAt ? ' · edited' : ''}
-                  {mine && n.readAt ? ' · seen' : ''}
+                  {f.dateTimeInTz(n.createdAt, tz)}
+                  {n.editedAt ? ` · ${t('edited')}` : ''}
+                  {mine && n.readAt ? ` · ${t('seen')}` : ''}
                 </span>
               </div>
             </div>
@@ -77,13 +81,13 @@ export function NotesView({ notes, meId, partnerName, partnerAvatar }: { notes: 
         })}
         {ordered.length > 0 && (
           <button className="mx-auto block pt-2 text-xs text-ink-3" onClick={() => setConfirmClear(true)}>
-            Clear all notes
+            {t('Clear all notes')}
           </button>
         )}
         <div ref={bottom} />
       </div>
 
-      <Sheet open={!!selected} onClose={() => setSelected(null)} title="Note">
+      <Sheet open={!!selected} onClose={() => setSelected(null)} title={t('Note')}>
         {selected && (
           <div className="space-y-3">
             <p className="rounded-2xl bg-surface-2 p-3 text-sm text-ink-2">“{selected.body}”</p>
@@ -92,7 +96,7 @@ export function NotesView({ notes, meId, partnerName, partnerAvatar }: { notes: 
                 <textarea className="input min-h-24" maxLength={1000} value={editing} onChange={(e) => setEditing(e.target.value)} autoFocus />
                 <div className="grid grid-cols-2 gap-3">
                   <button className="btn-ghost" onClick={() => setEditing(null)}>
-                    Cancel
+                    {t('Cancel')}
                   </button>
                   <button
                     className="btn-primary"
@@ -101,7 +105,7 @@ export function NotesView({ notes, meId, partnerName, partnerAvatar }: { notes: 
                       if (await del.run(() => editNote(selected.id, editing))) setSelected(null);
                     }}
                   >
-                    Save
+                    {t('Save')}
                   </button>
                 </div>
               </>
@@ -109,11 +113,11 @@ export function NotesView({ notes, meId, partnerName, partnerAvatar }: { notes: 
               <>
                 {selected.fromUser === meId && (
                   <button className="btn-ghost w-full" onClick={() => setEditing(selected.body)}>
-                    Edit
+                    {t('Edit')}
                   </button>
                 )}
                 <button className="btn w-full bg-menstrual text-white" onClick={() => setConfirmDelete(true)}>
-                  Delete for both of us
+                  {t('Delete for both of us')}
                 </button>
                 <button
                   className="btn-ghost w-full"
@@ -124,15 +128,15 @@ export function NotesView({ notes, meId, partnerName, partnerAvatar }: { notes: 
                     setSelected(null);
                   }}
                 >
-                  Copy text
+                  {t('Copy text')}
                 </button>
               </>
             ) : (
               <>
-                <p className="text-sm text-ink-2">Delete this note? It disappears for you and {partnerName}. This can’t be undone.</p>
+                <p className="text-sm text-ink-2">{t('Delete this note? It disappears for you and {name}. This can’t be undone.', { name: partnerName })}</p>
                 <div className="grid grid-cols-2 gap-3">
                   <button className="btn-ghost" onClick={() => setConfirmDelete(false)}>
-                    Keep
+                    {t('Keep')}
                   </button>
                   <button
                     className="btn bg-menstrual text-white"
@@ -141,7 +145,7 @@ export function NotesView({ notes, meId, partnerName, partnerAvatar }: { notes: 
                       if (await del.run(() => deleteNote(selected.id))) setSelected(null);
                     }}
                   >
-                    Delete
+                    {t('Delete')}
                   </button>
                 </div>
               </>
@@ -151,11 +155,11 @@ export function NotesView({ notes, meId, partnerName, partnerAvatar }: { notes: 
         )}
       </Sheet>
 
-      <Sheet open={confirmClear} onClose={() => setConfirmClear(false)} title="Clear all notes?">
-        <p className="mb-4 text-sm text-ink-2">Every note between you and {partnerName} is deleted for both of you. This can’t be undone.</p>
+      <Sheet open={confirmClear} onClose={() => setConfirmClear(false)} title={t('Clear all notes?')}>
+        <p className="mb-4 text-sm text-ink-2">{t('Every note between you and {name} is deleted for both of you. This can’t be undone.', { name: partnerName })}</p>
         <div className="grid grid-cols-2 gap-3">
           <button className="btn-ghost" onClick={() => setConfirmClear(false)}>
-            Cancel
+            {t('Cancel')}
           </button>
           <button
             className="btn bg-menstrual text-white"
@@ -164,7 +168,7 @@ export function NotesView({ notes, meId, partnerName, partnerAvatar }: { notes: 
               if (await del.run(() => clearNotes())) setConfirmClear(false);
             }}
           >
-            Clear all
+            {t('Clear all')}
           </button>
         </div>
       </Sheet>
@@ -173,14 +177,14 @@ export function NotesView({ notes, meId, partnerName, partnerAvatar }: { notes: 
         <div className="flex gap-2">
           {(Object.keys(NOTE_KINDS) as LoveNote['kind'][]).map((k) => (
             <button key={k} onClick={() => setKind(k)} className={`chip ${kind === k ? 'chip-on' : ''}`}>
-              {NOTE_KINDS[k].emoji} {NOTE_KINDS[k].label}
+              {NOTE_KINDS[k].emoji} {t(NOTE_KINDS[k].label)}
             </button>
           ))}
         </div>
         <div className="no-scrollbar flex gap-1.5 overflow-x-auto">
           {PROMPTS[kind].map((p) => (
-            <button key={p} onClick={() => setText(p)} className="chip shrink-0 text-xs">
-              {p}
+            <button key={p} onClick={() => setText(t(p))} className="chip shrink-0 text-xs">
+              {t(p)}
             </button>
           ))}
         </div>
@@ -195,7 +199,7 @@ export function NotesView({ notes, meId, partnerName, partnerAvatar }: { notes: 
             className="input max-h-32 min-h-12 flex-1 resize-none py-3"
             rows={1}
             maxLength={1000}
-            placeholder={kind === 'wish' ? 'Tonight I want…' : kind === 'tease' ? 'Make them blush…' : 'Say something sweet (or filthy)…'}
+            placeholder={kind === 'wish' ? t('Tonight I want…') : kind === 'tease' ? t('Make them blush…') : t('Say something sweet (or filthy)…')}
             value={text}
             onChange={(e) => setText(e.target.value)}
           />
@@ -203,7 +207,7 @@ export function NotesView({ notes, meId, partnerName, partnerAvatar }: { notes: 
             <Send size={18} />
           </button>
         </form>
-        {error && <p className="text-xs text-rose-2">{error}</p>}
+        {error && <p className="text-xs text-rose-2">{t(error)}</p>}
       </div>
     </div>
   );

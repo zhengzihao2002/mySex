@@ -9,6 +9,8 @@ import { getCoupleContext, getViewer, hasCoupleHistory } from '@/lib/data';
 import { db, sql } from '@/lib/db';
 import { getRequestGeo } from '@/lib/geo';
 import { currentDeviceId, recordLogin } from '@/lib/devices';
+import { cookies } from 'next/headers';
+import { LANG_COOKIE, parseLang } from '@/lib/i18n/core';
 import { DESIRES } from '@/lib/content';
 import type { ActionResult, AuthResult } from '@/lib/types';
 
@@ -109,6 +111,7 @@ export async function signInAction(_: unknown, form: FormData): Promise<AuthResu
     return fail(error.message || 'Wrong email or password.');
   }
   await recordLogin(userIdOf(data));
+  await applySavedLanguage(userIdOf(data));
   redirect('/');
 }
 
@@ -136,6 +139,7 @@ export async function verifyEmailCode(_: unknown, form: FormData): Promise<AuthR
     userId = userIdOf(signIn.data) ?? userId;
   }
   await recordLogin(userId);
+  await applySavedLanguage(userId);
   redirect('/');
 }
 
@@ -199,7 +203,7 @@ export async function pairWithCode(_: unknown, form: FormData): Promise<ActionRe
   if (!other) return fail('No one has that code. Double-check it?');
   if (other.couple_id) return fail('That person is already taken 💔');
   if (!other.sex) return fail('Your partner hasn’t finished setting up yet.');
-  if (other.sex === me.sex) return fail(`mySex pairs a him and a her — you’re both ${me.sex}.`);
+  if (other.sex === me.sex) return fail(me.sex === 'male' ? 'mySex pairs a him and a her — you’re both guys.' : 'mySex pairs a him and a her — you’re both girls.');
   if (!other.adult_consent_at) return fail('Your partner hasn’t confirmed they are 18+ yet.');
 
   const maleId = me.sex === 'male' ? me.userId : other.user_id;
@@ -653,4 +657,27 @@ export async function signOutOtherDevices(): Promise<ActionResult> {
     console.error('[devices] revokeOtherSessions failed', e);
   }
   return done();
+}
+
+// ───────────────────────────── language ─────────────────────────────
+
+const langCookie = { path: '/', maxAge: 60 * 60 * 24 * 400, sameSite: 'lax' as const };
+
+/** Switches the UI language for this device and (if signed in) remembers it on the profile. */
+export async function setLanguage(lang: string): Promise<ActionResult> {
+  const l = parseLang(lang);
+  if (!l) return fail('Unknown language');
+  (await cookies()).set(LANG_COOKIE, l, langCookie);
+  const viewer = await getViewer().catch(() => null);
+  if (viewer?.profile) await sql`update profiles set lang = ${l} where user_id = ${viewer.user.id}`;
+  revalidatePath('/', 'layout');
+  return OK;
+}
+
+/** After sign-in, a new device picks up the language saved on the profile. */
+async function applySavedLanguage(userId: string | null) {
+  if (!userId) return;
+  const rows = await sql`select lang from profiles where user_id = ${userId}`;
+  const l = parseLang(rows[0]?.lang);
+  if (l) (await cookies()).set(LANG_COOKIE, l, langCookie);
 }

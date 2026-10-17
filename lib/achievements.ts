@@ -21,6 +21,7 @@ export function achievements(sessions: SexSession[], scores: Map<string, Score>,
   const add = (key: string, emoji: string, title: string, desc: string, unlocked: boolean) =>
     list.push({ key, emoji, title, desc, unlocked });
 
+  // i18n:begin
   add('first', '💋', 'First time', 'Log your first session', sessions.length >= 1);
   add('ten', '🔟', 'Getting busy', '10 sessions', sessions.length >= 10);
   add('fifty', '🏅', 'Half century', '50 sessions', sessions.length >= 50);
@@ -42,5 +43,6 @@ export function achievements(sessions: SexSession[], scores: Map<string, Score>,
   add('daily', '📆', 'Daily dose', '7 days in a row', longestDailyStreak(days) >= 7);
   add('outdoors', '🌲', 'Fresh air', 'Did it outdoors', tags.has('Outdoors'));
   add('car', '🚗', 'Backseat', 'Did it in a car', tags.has('Car'));
+  // i18n:end
   return list;
 }

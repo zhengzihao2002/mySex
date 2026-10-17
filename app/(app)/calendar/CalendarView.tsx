@@ -14,7 +14,8 @@ import { toPayload } from '../timer/TimerView';
 import { placeSuggestions, scoreSessions } from '@/lib/clientScore';
 import { MOODS, PHASES, PREGNANCY_CHANCE } from '@/lib/content';
 import { buildCycleModel, dayInfo, type CycleDefaults, type DayInfo } from '@/lib/cycle';
-import { addDays, diffDays, fromDayNum, MONTHS, prettyDate, toDayNum } from '@/lib/dates';
+import { addDays, diffDays, fromDayNum, toDayNum } from '@/lib/dates';
+import { useT } from '@/components/I18nProvider';
 import { dayInTz } from '@/lib/tz';
 import type { DailyLog, Period, Profile, SexSession } from '@/lib/types';
 
@@ -69,12 +70,13 @@ export function CalendarView({
     });
 
   const touch = useRef<number | null>(null);
+  const { t, f } = useT();
 
   return (
     <div className="pt-2">
       <header className="mb-3 flex items-center justify-between">
         <div>
-          <h1 className="font-display text-3xl font-bold">{MONTHS[cursor.m - 1]}</h1>
+          <h1 className="font-display text-3xl font-bold">{f.monthName(cursor.m)}</h1>
           <p className="text-sm text-ink-3">{cursor.y}</p>
         </div>
         <div className="flex items-center gap-2">
@@ -85,7 +87,7 @@ export function CalendarView({
               setSelected(today);
             }}
           >
-            Today
+            {t('Today')}
           </button>
           <button className="rounded-full bg-surface-2 p-2" onClick={() => shift(-1)} aria-label="Previous month">
             <ChevronLeft size={20} />
@@ -107,7 +109,7 @@ export function CalendarView({
         }}
       >
         <div className="mb-1 grid grid-cols-7 text-center text-[11px] font-semibold text-ink-3">
-          {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
+          {[0, 1, 2, 3, 4, 5, 6].map((i) => f.weekdayLetter(i)).map((d, i) => (
             <span key={i} className="py-1">
               {d}
             </span>
@@ -167,6 +169,7 @@ function DayCell({
   onClick: () => void;
 }) {
   const phase = info ? PHASES[info.phase] : null;
+  const { t, f } = useT();
   return (
     <button
       onClick={onClick}
@@ -174,7 +177,7 @@ function DayCell({
         isSelected ? 'ring-2 ring-ink/80' : ''
       }`}
       style={{ background: phase && !info?.isPeriod ? phase.tint : undefined }}
-      aria-label={`${prettyDate(date)}${info ? ', ' + phase!.name : ''}${sex ? `, ${sex} sex` : ''}`}
+      aria-label={`${f.prettyDate(date)}${info ? ', ' + t(phase!.name) : ''}${sex ? ` · ${sex} ♥` : ''}`}
     >
       <span
         className={`relative flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold tabular-nums ${
@@ -199,21 +202,22 @@ function DayCell({
 }
 
 function Legend() {
+  const { t } = useT();
   const items: [React.ReactNode, string][] = [
-    [<span key="p" className="h-3 w-3 rounded-full bg-menstrual" />, 'Period'],
-    [<span key="pp" className="h-3 w-3 rounded-full border-2 border-dashed border-menstrual" />, 'Predicted'],
-    [<span key="f" className="h-3 w-3 rounded-full" style={{ background: PHASES.follicular.tint, border: `1px solid ${PHASES.follicular.color}` }} />, 'Follicular'],
-    [<span key="o" className="h-3 w-3 rounded-full border-2 border-ovulation bg-ovulation/30" />, 'Ovulation'],
-    [<span key="fw" className="h-1.5 w-1.5 rounded-full bg-ovulation" />, 'Fertile'],
-    [<span key="l" className="h-3 w-3 rounded-full" style={{ background: PHASES.luteal.tint, border: `1px solid ${PHASES.luteal.color}` }} />, 'Luteal'],
-    [<Heart key="h" size={11} className="fill-rose text-rose" />, 'Sex'],
+    [<span key="p" className="h-3 w-3 rounded-full bg-menstrual" />, /*i18n*/ 'Period'],
+    [<span key="pp" className="h-3 w-3 rounded-full border-2 border-dashed border-menstrual" />, /*i18n*/ 'Predicted'],
+    [<span key="f" className="h-3 w-3 rounded-full" style={{ background: PHASES.follicular.tint, border: `1px solid ${PHASES.follicular.color}` }} />, /*i18n*/ 'Follicular'],
+    [<span key="o" className="h-3 w-3 rounded-full border-2 border-ovulation bg-ovulation/30" />, /*i18n*/ 'Ovulation'],
+    [<span key="fw" className="h-1.5 w-1.5 rounded-full bg-ovulation" />, /*i18n*/ 'Fertile'],
+    [<span key="l" className="h-3 w-3 rounded-full" style={{ background: PHASES.luteal.tint, border: `1px solid ${PHASES.luteal.color}` }} />, /*i18n*/ 'Luteal'],
+    [<Heart key="h" size={11} className="fill-rose text-rose" />, /*i18n*/ 'Sex'],
   ];
   return (
     <div className="no-scrollbar mt-3 flex gap-3 overflow-x-auto px-1 text-[11px] text-ink-3">
       {items.map(([icon, label]) => (
         <span key={label} className="flex shrink-0 items-center gap-1.5">
           {icon}
-          {label}
+          {t(label)}
         </span>
       ))}
     </div>
@@ -255,6 +259,7 @@ function DayPanel({
   const myLog = logs.find((l) => l.userId === me.userId) ?? null;
   const partnerLog = logs.find((l) => l.userId === partner.userId) ?? null;
   const isHer = me.sex === 'female';
+  const { t, f } = useT();
 
   // The logged period this day belongs to (or the open one just before it).
   const containing = periods.find((p) => p.start <= date && (p.end ? p.end >= date : diffDays(date, p.start) < 10));
@@ -271,9 +276,9 @@ function DayPanel({
       <div className="flex items-end justify-between">
         <div>
           <p className="text-xs font-semibold tracking-widest text-ink-3 uppercase">
-            {date === today ? 'Today' : date === addDays(today, -1) ? 'Yesterday' : date === addDays(today, 1) ? 'Tomorrow' : ''}
+            {date === today ? t('Today') : date === addDays(today, -1) ? t('Yesterday') : date === addDays(today, 1) ? t('Tomorrow') : ''}
           </p>
-          <h2 className="text-xl font-bold">{prettyDate(date, { weekday: true, year: true })}</h2>
+          <h2 className="text-xl font-bold">{f.prettyDate(date, { weekday: true, year: true })}</h2>
         </div>
       </div>
 
@@ -285,31 +290,31 @@ function DayPanel({
             </span>
             <div className="flex-1">
               <p className="font-bold">
-                {phase.name} phase{info.predictedCycle || info.isPredictedPeriod ? <span className="ml-1 text-xs font-normal text-ink-3">(predicted)</span> : null}
+                {t('{phase} phase', { phase: t(phase.name) })}{info.predictedCycle || info.isPredictedPeriod ? <span className="ml-1 text-xs font-normal text-ink-3">({t('predicted')})</span> : null}
               </p>
               <p className="text-xs text-ink-3">
-                Cycle day {info.cycleDay} of {info.cycleLength}
-                {info.isOvulation ? ' · Ovulation day 🥚' : info.isFertile ? ' · Fertile window' : ''}
-                {info.isPms ? ' · PMS zone' : ''}
+                {t('Cycle day {d} of {n}', { d: info.cycleDay, n: info.cycleLength })}
+                {info.isOvulation ? ` · ${t('Ovulation day')} 🥚` : info.isFertile ? ` · ${t('Fertile window')}` : ''}
+                {info.isPms ? ` · ${t('PMS zone')}` : ''}
               </p>
             </div>
             <div className="text-right">
-              <p className="text-[10px] text-ink-3 uppercase">Pregnancy risk</p>
+              <p className="text-[10px] text-ink-3 uppercase">{t('Pregnancy risk')}</p>
               <p className="text-sm font-bold" style={{ color: PREGNANCY_CHANCE[info.pregnancyChance].color }}>
-                {PREGNANCY_CHANCE[info.pregnancyChance].label}
+                {t(PREGNANCY_CHANCE[info.pregnancyChance].label)}
               </p>
             </div>
           </div>
-          <p className="mt-3 text-sm text-ink-2">{phase.blurb}</p>
+          <p className="mt-3 text-sm text-ink-2">{t(phase.blurb)}</p>
           <p className="mt-2 text-sm">
-            <span className="font-semibold text-rose-2">{isHer ? 'For you: ' : 'Pro tip: '}</span>
-            {isHer ? phase.her : phase.him}
+            <span className="font-semibold text-rose-2">{isHer ? t('For you:') : t('Pro tip:')} </span>
+            {isHer ? t(phase.her) : t(phase.him)}
           </p>
         </div>
       ) : (
         !hasModel && (
           <div className="card text-sm text-ink-2">
-            {isHer ? 'Log when your period starts and mySex will predict your cycle, fertile days and PMS.' : `Once ${partner.name} logs her period, her cycle shows up here.`}
+            {isHer ? t('Log when your period starts and mySex will predict your cycle, fertile days and PMS.') : t('Once {name} logs her period, her cycle shows up here.', { name: partner.name })}
           </div>
         )
       )}
@@ -320,21 +325,21 @@ function DayPanel({
             <>
               {!containing.end && date >= containing.start && (
                 <button className="btn-ghost flex-1" disabled={per.pending} onClick={() => per.run(() => endPeriod(date))}>
-                  <Droplet size={16} /> Period ended today
+                  <Droplet size={16} /> {t('Period ended today')}
                 </button>
               )}
               <button className="btn-ghost flex-1" onClick={() => setEditPeriod(containing)}>
-                Edit period
+                {t('Edit period')}
               </button>
             </>
           ) : (
             <>
               <button className="btn-ghost flex-1 border-menstrual/50" disabled={per.pending} onClick={() => per.run(() => startPeriod(date))}>
-                <Droplet size={16} className="text-menstrual" /> Period started
+                <Droplet size={16} className="text-menstrual" /> {t('Period started')}
               </button>
               {openBefore && (
                 <button className="btn-ghost flex-1" disabled={per.pending} onClick={() => per.run(() => endPeriod(date))}>
-                  Period ended
+                  {t('Period ended')}
                 </button>
               )}
             </>
@@ -349,7 +354,7 @@ function DayPanel({
         ))}
         {!isFuture && (
           <button className="btn-ghost w-full border-dashed" onClick={() => setLogOpen(true)}>
-            <Plus size={16} /> {sessions.length ? 'Log another round' : 'We did it this day'}
+            <Plus size={16} /> {sessions.length ? t('Log another round') : t('We did it this day')}
           </button>
         )}
       </div>
@@ -357,23 +362,23 @@ function DayPanel({
       {!isFuture && (
         <div className="card">
           <div className="mb-2 flex items-center justify-between">
-            <p className="text-sm font-semibold">Check-ins</p>
+            <p className="text-sm font-semibold">{t('Check-ins')}</p>
             <button className="chip" onClick={() => setCheckInOpen(true)}>
-              <SmilePlus size={14} /> {myLog ? 'Edit mine' : 'Add mine'}
+              <SmilePlus size={14} /> {myLog ? t('Edit mine') : t('Add mine')}
             </button>
           </div>
-          <LogLine name="You" log={myLog} />
+          <LogLine name={t('You')} log={myLog} />
           <LogLine name={partner.name} log={partnerLog} />
         </div>
       )}
 
-      <Sheet open={logOpen} onClose={() => setLogOpen(false)} title={`Log sex · ${prettyDate(date)}`}>
+      <Sheet open={logOpen} onClose={() => setLogOpen(false)} title={`${t('Log sex')} · ${f.prettyDate(date)}`}>
         {logOpen && (
           <SessionForm
             mode="past"
             places={places}
             initial={{ startedAt: defaultStart() }}
-            submitLabel="Save it 😈"
+            submitLabel={t('Save it 😈')}
             error={add.error}
             pending={add.pending}
             onSubmit={async (v) => {
@@ -391,22 +396,24 @@ function DayPanel({
 
 function LogLine({ name, log }: { name: string; log: DailyLog | null }) {
   const mood = MOODS.find((m) => m.key === log?.mood);
-  if (!log) return <p className="py-1 text-sm text-ink-3">{name}: no check-in</p>;
+  const { t } = useT();
+  if (!log) return <p className="py-1 text-sm text-ink-3">{name}: {t('no check-in')}</p>;
   return (
     <div className="py-1 text-sm">
-      <span className="font-medium">{name}:</span> {mood ? `${mood.emoji} ${mood.label}` : ''}
-      {log.libido ? ` · horny ${log.libido}/5` : ''}
-      {log.energy ? ` · energy ${log.energy}/5` : ''}
-      {log.flow ? ` · ${log.flow} flow` : ''}
-      {log.symptoms.length > 0 && <span className="block text-xs text-ink-3">{log.symptoms.join(', ')}</span>}
+      <span className="font-medium">{name}:</span> {mood ? `${mood.emoji} ${t(mood.label)}` : ''}
+      {log.libido ? ` · ${t('horny')} ${log.libido}/5` : ''}
+      {log.energy ? ` · ${t('energy')} ${log.energy}/5` : ''}
+      {log.flow ? ` · ${t('flow')}: ${t(log.flow)}` : ''}
+      {log.symptoms.length > 0 && <span className="block text-xs text-ink-3">{log.symptoms.map((x) => t(x)).join(', ')}</span>}
       {log.note && <span className="block text-xs text-ink-2 italic">“{log.note}”</span>}
     </div>
   );
 }
 
 function PeriodSheet({ period, onClose }: { period: Period | null; onClose: () => void }) {
+  const { t } = useT();
   return (
-    <Sheet open={!!period} onClose={onClose} title="Edit period">
+    <Sheet open={!!period} onClose={onClose} title={t('Edit period')}>
       {period && <PeriodForm key={period.id} period={period} onClose={onClose} />}
     </Sheet>
   );
@@ -416,6 +423,7 @@ function PeriodForm({ period, onClose }: { period: Period; onClose: () => void }
   const [start, setStart] = useState(period.start);
   const [end, setEnd] = useState(period.end ?? '');
   const { run, pending, error } = useRun();
+  const { t } = useT();
   return (
     <form
       className="space-y-4"
@@ -426,17 +434,17 @@ function PeriodForm({ period, onClose }: { period: Period; onClose: () => void }
     >
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="label">Started</label>
+          <label className="label">{t('Started')}</label>
           <input type="date" className="input" value={start} onChange={(e) => setStart(e.target.value)} required />
         </div>
         <div>
-          <label className="label">Ended</label>
+          <label className="label">{t('Ended')}</label>
           <input type="date" className="input" value={end} min={start} onChange={(e) => setEnd(e.target.value)} />
         </div>
       </div>
       <FormError error={error} />
       <button className="btn-primary w-full" disabled={pending}>
-        Save
+        {t('Save')}
       </button>
       <button
         type="button"
@@ -446,7 +454,7 @@ function PeriodForm({ period, onClose }: { period: Period; onClose: () => void }
           if (await run(() => deletePeriod(period.id))) onClose();
         }}
       >
-        Delete this period
+        {t('Delete this period')}
       </button>
     </form>
   );
