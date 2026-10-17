@@ -78,7 +78,7 @@ export function SettingsView({
         <div>
           <label className="label">Together since</label>
           <input type="date" className="input" value={anniv} onChange={(e) => setAnniv(e.target.value)} />
-          <p className="mt-1 text-xs text-ink-3">Used for your days-together counter and anniversary countdowns. Shared with {partner.name}.</p>
+          <p className="mt-1 text-xs text-ink-3">Used for your days-together counter and anniversary countdowns (you can also tap the counter on Home). Shared with {partner.name}.</p>
         </div>
         {me.sex === 'female' && (
           <div className="grid grid-cols-2 gap-3">

@@ -3,7 +3,9 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { CalendarPlus, Dice5, Flame, Settings, SmilePlus, Timer } from 'lucide-react';
-import { sendNote } from '@/app/actions';
+import { sendNote, setAnniversary } from '@/app/actions';
+import { FormError } from '@/components/FormError';
+import { Sheet } from '@/components/Sheet';
 import { CheckInSheet } from '@/components/CheckInSheet';
 import { ScoreBadge } from '@/components/ScoreBadge';
 import { useTz } from '@/components/TzProvider';
@@ -11,7 +13,7 @@ import { useRun } from '@/components/useRun';
 import { scoreSessions } from '@/lib/clientScore';
 import { MOODS, NOTE_KINDS, PHASES, PREGNANCY_CHANCE } from '@/lib/content';
 import { buildCycleModel, dayInfo, findCycle, phaseSpans, upcomingCycles } from '@/lib/cycle';
-import { diffDays, formatClock, formatDuration, prettyDate, prettyRange, relativeDays } from '@/lib/dates';
+import { addDays, diffDays, formatClock, formatDuration, prettyDate, prettyRange, relativeDays } from '@/lib/dates';
 import { weeklyStreak } from '@/lib/stats';
 import { dayInTz } from '@/lib/tz';
 import type { CoupleContext, DailyLog, LoveNote, Period, SexSession } from '@/lib/types';
@@ -32,6 +34,7 @@ export function HomeView({
   const { tz, today } = useTz();
   const { me, partner, couple, her } = ctx;
   const [checkIn, setCheckIn] = useState(false);
+  const [togetherOpen, setTogetherOpen] = useState(false);
   const active = sessions.find((s) => s.status === 'active');
   const done = useMemo(() => sessions.filter((s) => s.status === 'done'), [sessions]);
   const scores = useMemo(() => scoreSessions(done, tz), [done, tz]);
@@ -68,9 +71,10 @@ export function HomeView({
               {greeting} {me.name}
             </p>
             <p className="font-semibold">
-              You & {partner.name} · <span className="text-rose-2">
+              You & {partner.name} ·{' '}
+              <button className="text-rose-2 underline decoration-dotted underline-offset-4" onClick={() => setTogetherOpen(true)}>
                 {daysTogether.toLocaleString()} day{daysTogether === 1 ? '' : 's'}
-              </span>
+              </button>
             </p>
           </div>
         </div>
@@ -126,6 +130,12 @@ export function HomeView({
       </Link>
 
       <Milestone together={together} today={today} anniversary={couple.anniversary} />
+
+      <Sheet open={togetherOpen} onClose={() => setTogetherOpen(false)} title="How long have you been together?">
+        {togetherOpen && (
+          <TogetherForm today={today} current={together} isCustom={!!couple.anniversary} partnerName={partner.name} onDone={() => setTogetherOpen(false)} />
+        )}
+      </Sheet>
 
       <CheckInSheet open={checkIn} onClose={() => setCheckIn(false)} date={today} sex={me.sex!} existing={myLog} />
     </div>
@@ -352,5 +362,82 @@ function Milestone({ together, today, anniversary }: { together: string; today: 
       </div>
       <p className="text-right text-sm text-rose-2">{relativeDays(items[0].inDays)}</p>
     </div>
+  );
+}
+
+function TogetherForm({
+  today,
+  current,
+  isCustom,
+  partnerName,
+  onDone,
+}: {
+  today: string;
+  current: string;
+  isCustom: boolean;
+  partnerName: string;
+  onDone: () => void;
+}) {
+  const [date, setDate] = useState(current);
+  const [days, setDays] = useState(String(diffDays(today, current) + 1));
+  const { run, pending, error, setError } = useRun();
+
+  return (
+    <form
+      className="space-y-4"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        if (!date) return setError('Pick a date or enter a number of days.');
+        if (await run(() => setAnniversary(date))) onDone();
+      }}
+    >
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="label">Days together</label>
+          <input
+            className="input text-center text-2xl font-bold"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            value={days}
+            onChange={(e) => {
+              setDays(e.target.value);
+              const n = Math.floor(Number(e.target.value));
+              if (n >= 1) setDate(addDays(today, -(n - 1)));
+            }}
+          />
+        </div>
+        <div>
+          <label className="label">Together since</label>
+          <input
+            className="input"
+            type="date"
+            max={today}
+            value={date}
+            onChange={(e) => {
+              setDate(e.target.value);
+              if (e.target.value) setDays(String(diffDays(today, e.target.value) + 1));
+            }}
+          />
+        </div>
+      </div>
+      <p className="text-xs text-ink-3">Type a number of days or pick the date you got together. {partnerName} sees the same counter.</p>
+      <FormError error={error} />
+      <button className="btn-primary w-full" disabled={pending}>
+        {pending ? 'Saving…' : 'Save'}
+      </button>
+      {isCustom && (
+        <button
+          type="button"
+          className="btn w-full text-ink-3"
+          disabled={pending}
+          onClick={async () => {
+            if (await run(() => setAnniversary(null))) onDone();
+          }}
+        >
+          Reset to the day we paired in mySex
+        </button>
+      )}
+    </form>
   );
 }

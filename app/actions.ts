@@ -527,7 +527,26 @@ export async function markNotesRead(): Promise<ActionResult> {
 
 export async function deleteNote(id: string): Promise<ActionResult> {
   const ctx = await couple();
-  await sql`delete from love_notes where id = ${id} and couple_id = ${ctx.couple.id} and from_user = ${ctx.me.userId}`;
+  // Either partner can delete any note in their shared thread.
+  await sql`delete from love_notes where id = ${id} and couple_id = ${ctx.couple.id}`;
+  return done();
+}
+
+export async function clearNotes(): Promise<ActionResult> {
+  const ctx = await couple();
+  await sql`delete from love_notes where couple_id = ${ctx.couple.id}`;
+  return done();
+}
+
+/** Sets (or with null, resets to the pairing date) the "together since" date shown as the days counter. */
+export async function setAnniversary(date: string | null): Promise<ActionResult> {
+  const ctx = await couple();
+  if (date !== null) {
+    if (!isoDate.safeParse(date).success) return fail('Pick a valid date.');
+    if (new Date(date + 'T00:00:00Z').getTime() > Date.now() + 86_400_000) return fail('That date is in the future.');
+    if (date < '1950-01-01') return fail('That’s a little too long ago 😅');
+  }
+  await sql`update couples set anniversary = ${date} where id = ${ctx.couple.id}`;
   return done();
 }
 

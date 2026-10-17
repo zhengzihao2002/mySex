@@ -2,7 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Send } from 'lucide-react';
-import { deleteNote, markNotesRead, sendNote } from '@/app/actions';
+import { clearNotes, deleteNote, markNotesRead, sendNote } from '@/app/actions';
+import { Sheet } from '@/components/Sheet';
+import { FormError } from '@/components/FormError';
 import { useTz } from '@/components/TzProvider';
 import { useRun } from '@/components/useRun';
 import { NOTE_KINDS } from '@/lib/content';
@@ -19,6 +21,10 @@ export function NotesView({ notes, meId, partnerName, partnerAvatar }: { notes: 
   const { tz } = useTz();
   const [kind, setKind] = useState<LoveNote['kind']>('note');
   const [text, setText] = useState('');
+  const [selected, setSelected] = useState<LoveNote | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
+  const del = useRun();
   const { run, pending, error } = useRun();
   const bottom = useRef<HTMLDivElement>(null);
   const unread = notes.some((n) => n.fromUser !== meId && !n.readAt);
@@ -45,15 +51,19 @@ export function NotesView({ notes, meId, partnerName, partnerAvatar }: { notes: 
             <div key={n.id} className={`flex items-end gap-2 ${mine ? 'justify-end' : ''}`}>
               {!mine && <span className="text-xl">{partnerAvatar}</span>}
               <div className={`max-w-[78%] ${mine ? 'items-end' : ''} flex flex-col`}>
-                <div
-                  className={`rounded-3xl px-4 py-2.5 text-[15px] leading-snug ${
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelected(n);
+                    setConfirmDelete(false);
+                  }}
+                  className={`rounded-3xl text-left px-4 py-2.5 text-[15px] leading-snug ${
                     mine ? 'rounded-br-lg bg-gradient-to-br from-rose to-plum text-white' : 'rounded-bl-lg border border-line bg-surface-2'
                   } ${n.kind === 'tease' ? 'ring-1 ring-luteal/60' : n.kind === 'wish' ? 'ring-1 ring-ovulation/60' : ''}`}
-                  onDoubleClick={() => mine && run(() => deleteNote(n.id))}
                 >
                   {n.kind !== 'note' && <span className="mr-1">{NOTE_KINDS[n.kind].emoji}</span>}
                   {n.body}
-                </div>
+                </button>
                 <span className="mt-0.5 px-2 text-[10px] text-ink-3">
                   {dateTimeInTz(n.createdAt, tz)}
                   {mine && n.readAt ? ' · seen' : ''}
@@ -62,8 +72,76 @@ export function NotesView({ notes, meId, partnerName, partnerAvatar }: { notes: 
             </div>
           );
         })}
+        {ordered.length > 0 && (
+          <button className="mx-auto block pt-2 text-xs text-ink-3" onClick={() => setConfirmClear(true)}>
+            Clear all notes
+          </button>
+        )}
         <div ref={bottom} />
       </div>
+
+      <Sheet open={!!selected} onClose={() => setSelected(null)} title="Note">
+        {selected && (
+          <div className="space-y-3">
+            <p className="rounded-2xl bg-surface-2 p-3 text-sm text-ink-2">“{selected.body}”</p>
+            {!confirmDelete ? (
+              <>
+                <button className="btn w-full bg-menstrual text-white" onClick={() => setConfirmDelete(true)}>
+                  Delete for both of us
+                </button>
+                <button
+                  className="btn-ghost w-full"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(selected.body);
+                    } catch {}
+                    setSelected(null);
+                  }}
+                >
+                  Copy text
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-ink-2">Delete this note? It disappears for you and {partnerName}. This can’t be undone.</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <button className="btn-ghost" onClick={() => setConfirmDelete(false)}>
+                    Keep
+                  </button>
+                  <button
+                    className="btn bg-menstrual text-white"
+                    disabled={del.pending}
+                    onClick={async () => {
+                      if (await del.run(() => deleteNote(selected.id))) setSelected(null);
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </>
+            )}
+            <FormError error={del.error} />
+          </div>
+        )}
+      </Sheet>
+
+      <Sheet open={confirmClear} onClose={() => setConfirmClear(false)} title="Clear all notes?">
+        <p className="mb-4 text-sm text-ink-2">Every note between you and {partnerName} is deleted for both of you. This can’t be undone.</p>
+        <div className="grid grid-cols-2 gap-3">
+          <button className="btn-ghost" onClick={() => setConfirmClear(false)}>
+            Cancel
+          </button>
+          <button
+            className="btn bg-menstrual text-white"
+            disabled={del.pending}
+            onClick={async () => {
+              if (await del.run(() => clearNotes())) setConfirmClear(false);
+            }}
+          >
+            Clear all
+          </button>
+        </div>
+      </Sheet>
 
       <div className="sticky bottom-[calc(env(safe-area-inset-bottom)+84px)] -mx-4 space-y-2 bg-bg/90 px-4 pt-2 pb-2 backdrop-blur-xl">
         <div className="flex gap-2">
