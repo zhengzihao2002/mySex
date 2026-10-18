@@ -17,7 +17,7 @@ export function TabBar({ unread, live }: { unread: number; live: boolean }) {
   const { t: tr } = useT();
   const path = usePathname();
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-line/60 bg-bg/95 pb-safe backdrop-blur-2xl">
+    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-line/60 bg-bg/95 pb-[calc(env(safe-area-inset-bottom)*0.35)] backdrop-blur-2xl">
       <div className="mx-auto grid max-w-lg grid-cols-5 items-end px-2">
         {tabs.map((t) =>
           t === null ? (
