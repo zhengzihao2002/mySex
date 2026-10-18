@@ -271,13 +271,18 @@ function SexTab({ sessions: allSessions, herName, hisName }: Parameters<typeof I
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-2">
-        <Tile value={countOf('intercourse')} label={`🍆 ${t('Intercourse')}`} />
-        <Tile value={countOf('oral')} label={`👅 ${t('Oral')}`} />
-      </div>
       <KindFilter value={kind} onChange={setKind} />
 
       <div className="grid grid-cols-2 gap-2">
+        <div className="card p-3">
+          <p className="text-2xl font-bold tabular-nums">{sessions.length}</p>
+          <p className="text-[11px] text-ink-3">{kind === 'all' ? t('sessions all-time') : t(KIND_META[kind].label)}</p>
+          {kind === 'all' && (
+            <p className="mt-0.5 text-[11px] text-ink-2">
+              🍆 {countOf('intercourse')} · 👅 {countOf('oral')}
+            </p>
+          )}
+        </div>
         <Tile value={f.formatDuration(totalSec)} label={t('naked time together')} />
         <Tile value={f.formatDuration(avgSec)} label={t('average length')} />
         <Tile value={avgScore} label={t('average score')} />
