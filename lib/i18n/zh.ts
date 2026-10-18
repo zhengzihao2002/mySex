@@ -677,4 +677,5 @@ export const zh: Record<string, string> = {
   "All": "全部",
   "History 📖": "记录 📖",
   "Intercourse by phase": "各阶段的性交次数",
+  "No {type} recorded yet.": "还没有{type}记录。",
 };

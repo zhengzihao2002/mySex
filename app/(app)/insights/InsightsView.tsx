@@ -217,25 +217,39 @@ function CycleTab({ periods, sessions, herLogs, isHer, herName, defaults }: Para
 // ─────────────────────────────── sex ───────────────────────────────
 
 function SexTab({ sessions: allSessions, herName, hisName }: Parameters<typeof InsightsView>[0]) {
-  const { t, f } = useT();
+  const { t } = useT();
   const { tz, today } = useTz();
   const [kind, setKind] = useState<'all' | SessionKind>('all');
   const sessions = useMemo(() => (kind === 'all' ? allSessions : allSessions.filter((s) => s.kind === kind)), [allSessions, kind]);
-  const countOf = (k: SessionKind) => allSessions.filter((s) => s.kind === k).length;
-  const scores = useMemo(() => scoreSessions(sessions, tz), [sessions, tz]);
-  const places = useMemo(() => placeSuggestions(sessions), [sessions]);
-  const badges = useMemo(() => achievements(sessions, scores, tz, today), [sessions, scores, tz, today]);
+  // Achievements are always about everything, regardless of the filter.
+  const allScores = useMemo(() => scoreSessions(allSessions, tz), [allSessions, tz]);
+  const badges = useMemo(() => achievements(allSessions, allScores, tz, today), [allSessions, allScores, tz, today]);
 
-  if (!allSessions.length || !sessions.length) {
-    return (
-      <div className="card text-center text-sm text-ink-2">
-        {allSessions.length ? <KindFilter value={kind} onChange={setKind} /> : null}
-        {t('Nothing logged yet. Hit the ❤️ button and start the clock 😏')}
+  return (
+    <div className="space-y-4">
+      {allSessions.length > 0 && <KindFilter value={kind} onChange={setKind} />}
+      {!allSessions.length ? (
+        <div className="card text-center text-sm text-ink-2">{t('Nothing logged yet. Hit the ❤️ button and start the clock 😏')}</div>
+      ) : !sessions.length ? (
+        <div className="card text-center text-sm text-ink-2">
+          {t('No {type} recorded yet.', { type: t(KIND_META[kind as SessionKind].label) })}
+        </div>
+      ) : (
+        <SexStats key={kind} sessions={sessions} kind={kind} allSessions={allSessions} scores={allScores} herName={herName} hisName={hisName} />
+      )}
+      <section className="card">
+        <h3 className="mb-1 font-semibold">{t('Achievements')}</h3>
+        <p className="text-xs text-ink-3">{t('{a} of {b} unlocked', { a: badges.filter((b) => b.unlocked).length, b: badges.length })}</p>
         <BadgeGrid badges={badges} />
-      </div>
-    );
-  }
+      </section>
+    </div>
+  );
+}
 
+function SexStats({ sessions, kind, allSessions, scores, herName, hisName }: { sessions: SexSession[]; kind: 'all' | SessionKind; allSessions: SexSession[]; scores: ReturnType<typeof scoreSessions>; herName: string; hisName: string }) {
+  const { t, f } = useT();
+  const { tz, today } = useTz();
+  const countOf = (k: SessionKind) => allSessions.filter((s) => s.kind === k).length;
   const totalSec = sessions.reduce((a, s) => a + (s.durationSec ?? 0), 0);
   const avgSec = totalSec / sessions.length;
   const scoreVals = sessions.map((s) => scores.get(s.id)?.total ?? 0);
@@ -271,8 +285,6 @@ function SexTab({ sessions: allSessions, herName, hisName }: Parameters<typeof I
 
   return (
     <div className="space-y-4">
-      <KindFilter value={kind} onChange={setKind} />
-
       <div className="grid grid-cols-2 gap-2">
         <div className="card p-3">
           <p className="text-2xl font-bold tabular-nums">{sessions.length}</p>
@@ -350,13 +362,6 @@ function SexTab({ sessions: allSessions, herName, hisName }: Parameters<typeof I
         </section>
       )}
 
-      <section className="card">
-        <h3 className="mb-1 font-semibold">{t('Achievements')}</h3>
-        <p className="text-xs text-ink-3">
-          {t('{a} of {b} unlocked', { a: badges.filter((b) => b.unlocked).length, b: badges.length })}
-        </p>
-        <BadgeGrid badges={badges} />
-      </section>
     </div>
   );
 }
