@@ -4,7 +4,7 @@ import { useT } from '@/components/I18nProvider';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronDown, EyeOff, History, MapPin, Navigation, Pause, Play, Sun, Trash2 } from 'lucide-react';
+import { ChevronDown, EyeOff, History, MapPin, Navigation, Pause, Play, Trash2 } from 'lucide-react';
 import { discardActiveSession, finishSession, logPastSession, setPaused, startSession } from '@/app/actions';
 import { FormError } from '@/components/FormError';
 import { ScoreReveal, type RevealTimes } from '@/components/ScoreBadge';
@@ -310,8 +310,8 @@ function LiveTimer({
   const breakSecs = session.pausedAt ? Math.max(0, (now - new Date(session.pausedAt).getTime()) / 1000) : 0;
   const totalBreak = session.pausedSec + breakSecs;
   const secs = elapsedSec(session, now);
-  const [keepAwake, setKeepAwake] = useState(true);
-  const wake = useWakeLock(keepAwake && !paused);
+  // The screen stays on automatically while a session is running (no toggle needed).
+  useWakeLock(!paused);
   const [dim, setDim] = useState(false);
   const [finishOpen, setFinishOpen] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
@@ -354,15 +354,6 @@ function LiveTimer({
           {pendingStart ? t('Starting') : paused ? t('Paused') : t('Live')}
         </div>
         <div className="flex gap-2">
-          {wake.supported && (
-            <button
-              onClick={() => setKeepAwake((k) => !k)}
-              className={`rounded-full p-2.5 backdrop-blur ${keepAwake ? 'bg-rose/30 text-ink' : 'bg-surface-2/70 text-ink-3'}`}
-              aria-label="Keep screen awake"
-            >
-              <Sun size={18} />
-            </button>
-          )}
           <button onClick={() => setDim(true)} className="rounded-full bg-surface-2/70 p-2.5 text-ink-2 backdrop-blur" aria-label="Discreet mode">
             <EyeOff size={18} />
           </button>
