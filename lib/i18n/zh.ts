@@ -4,7 +4,7 @@ export const zh: Record<string, string> = {
   "Today": "今天",
   "Yesterday": "昨天",
   "Tomorrow": "明天",
-  "{phase} phase": "{phase}期",
+  "{phase} phase": "{phase}",
   "predicted": "预测",
   "Cycle day {d} of {n}": "周期第 {d} 天 / 共 {n} 天",
   "Ovulation day": "排卵日",
