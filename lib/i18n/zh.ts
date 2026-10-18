@@ -672,4 +672,9 @@ export const zh: Record<string, string> = {
   "heavy": "大量",
   "Unknown device": "未知设备",
   "Export our data (JSON)": "导出我们的数据（JSON）",
+  "Intercourse": "性交",
+  "Oral": "口交",
+  "All": "全部",
+  "History 📖": "记录 📖",
+  "Intercourse by phase": "各阶段的性交次数",
 };

@@ -3,6 +3,7 @@
 
 export type ScoreInput = {
   id: string;
+  kind?: string;
   startedAt: string;
   durationSec: number | null;
   rating: number | null;

@@ -10,6 +10,7 @@ import type { Score } from '@/lib/score';
 import { timeInTz } from '@/lib/tz';
 import type { SexSession } from '@/lib/types';
 import { ScoreBadge } from './ScoreBadge';
+import { KIND_META } from './KindPicker';
 import { SessionForm } from './SessionForm';
 import { SessionTimes } from './SessionTimes';
 import { Sheet } from './Sheet';
@@ -44,7 +45,7 @@ export function SessionCard({
         <div className="min-w-0 flex-1">
           <p className="font-semibold">
             {showDate ? `${showDate} · ` : ''}
-            {f.timeInTz(s.startedAt, tz)} · {f.formatDuration(s.durationSec ?? 0)}
+            {KIND_META[s.kind].emoji} {f.timeInTz(s.startedAt, tz)} · {f.formatDuration(s.durationSec ?? 0)}
             {s.pausedSec ? <span className="text-xs font-normal text-ink-3"> (+{t('{d} breaks', { d: f.formatDuration(s.pausedSec) })})</span> : null}
             {s.rating ? <span className="ml-1">{'🔥'.repeat(s.rating)}</span> : null}
           </p>
@@ -94,6 +95,7 @@ export function SessionCard({
             mode="edit"
             places={places}
             initial={{
+              kind: s.kind,
               startedAt: s.startedAt,
               durationMin: Math.round((s.durationSec ?? 0) / 6) / 10,
               breakMin: Math.round((s.pausedSec ?? 0) / 6) / 10,
@@ -112,6 +114,7 @@ export function SessionCard({
               const ok = await run(() =>
                 updateSession(s.id, {
                   version: s.updatedAt,
+                  kind: v.kind,
                   startedAt: v.startedAt,
                   durationMin: v.durationMin,
                   breakMin: v.breakMin,

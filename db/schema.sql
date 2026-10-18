@@ -63,6 +63,11 @@ create table if not exists sessions (
 alter table sessions add column if not exists updated_at timestamptz not null default now();
 -- Every pause during a live session: [{"start": ts, "end": ts|null}]. paused_sec is their total.
 alter table sessions add column if not exists breaks jsonb not null default '[]';
+-- 'intercourse' or 'oral': counted separately everywhere.
+alter table sessions add column if not exists kind text not null default 'intercourse';
+do $$ begin
+  alter table sessions add constraint sessions_kind_check check (kind in ('intercourse', 'oral'));
+exception when duplicate_object then null; end $$;
 create unique index if not exists sessions_one_active_per_couple on sessions (couple_id) where status = 'active';
 create index if not exists sessions_couple_started on sessions (couple_id, started_at desc);
 

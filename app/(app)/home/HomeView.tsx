@@ -49,7 +49,10 @@ export function HomeView({
   const together = couple.anniversary ?? couple.createdAt.slice(0, 10);
   const daysTogether = diffDays(today, together) + 1;
   const sessionDays = done.map((s) => dayInTz(s.startedAt, tz));
-  const thisMonth = sessionDays.filter((d) => d.slice(0, 7) === today.slice(0, 7)).length;
+  const monthOf = (k: 'intercourse' | 'oral') =>
+    done.filter((s) => (k === 'oral') === (s.kind === 'oral') && dayInTz(s.startedAt, tz).slice(0, 7) === today.slice(0, 7)).length;
+  const thisMonth = monthOf('intercourse');
+  const thisMonthOral = monthOf('oral');
   const streak = weeklyStreak(sessionDays, today);
   const last = done[0];
   const daysSince = last ? diffDays(today, dayInTz(last.startedAt, tz)) : null;
@@ -98,8 +101,11 @@ export function HomeView({
 
       <MoodCard me={me.name} myLog={myLog} partnerName={partner.name} partnerLog={partnerLog} onCheckIn={() => setCheckIn(true)} />
 
-      <div className="grid grid-cols-3 gap-2">
-        <Stat value={thisMonth} label={t('this month')} />
+      <div className="grid grid-cols-2 gap-2">
+        <Stat value={thisMonth} label={`🍆 ${t('Intercourse')} · ${t('this month')}`} />
+        <Stat value={thisMonthOral} label={`👅 ${t('Oral')} · ${t('this month')}`} />
+      </div>
+      <div className="grid grid-cols-2 gap-2">
         <Stat value={streak} label={`${t('week streak')}${streak >= 4 ? ' 🔥' : ''}`} />
         <Stat value={daysSince == null ? '–' : daysSince} label={daysSince === 0 ? `${t('days since')} 😏` : t('days since')} />
       </div>

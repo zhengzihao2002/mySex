@@ -22,10 +22,11 @@ export function achievements(sessions: SexSession[], scores: Map<string, Score>,
     list.push({ key, emoji, title, desc, unlocked });
 
   // i18n:begin
-  add('first', '💋', 'First time', 'Log your first session', sessions.length >= 1);
-  add('ten', '🔟', 'Getting busy', '10 sessions', sessions.length >= 10);
-  add('fifty', '🏅', 'Half century', '50 sessions', sessions.length >= 50);
-  add('hundred', '💯', 'Century club', '100 sessions', sessions.length >= 100);
+  const inter = sessions.filter((s) => s.kind !== 'oral').length;
+  add('first', '💋', 'First time', 'Log your first session', inter >= 1);
+  add('ten', '🔟', 'Getting busy', '10 sessions', inter >= 10);
+  add('fifty', '🏅', 'Half century', '50 sessions', inter >= 50);
+  add('hundred', '💯', 'Century club', '100 sessions', inter >= 100);
   add('marathon', '🏃', 'Marathon', 'A session of 60+ minutes', mins.some((m) => m >= 60));
   add('quickie', '⚡', 'Speed run', 'Done in under 5 minutes', mins.some((m) => m > 0 && m < 5));
   add('double', '✌️', 'Double dip', 'Twice in one day', [...perDay.values()].some((n) => n >= 2));

@@ -26,6 +26,7 @@ function toProfile(r: Row): Profile {
 export function toSession(r: Row): SexSession {
   return {
     id: r.id,
+    kind: r.kind === 'oral' ? 'oral' : 'intercourse',
     createdBy: r.created_by,
     status: r.status,
     startedAt: iso(r.started_at)!,

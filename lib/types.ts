@@ -28,8 +28,11 @@ export type CoupleContext = {
   him: Profile;
 };
 
+export type SessionKind = 'intercourse' | 'oral';
+
 export type SexSession = {
   id: string;
+  kind: SessionKind;
   createdBy: string;
   status: 'active' | 'done';
   startedAt: string;

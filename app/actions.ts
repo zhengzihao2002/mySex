@@ -268,7 +268,10 @@ async function locationFields(useLocation: boolean, gps?: { latitude: number; lo
   };
 }
 
+const kindSchema = z.enum(['intercourse', 'oral']);
+
 const startSchema = z.object({
+  kind: kindSchema.optional(),
   place: z.string().trim().max(60).optional().nullable(),
   useLocation: z.boolean(),
   gps: coords,
@@ -281,8 +284,8 @@ export async function startSession(input: z.input<typeof startSchema>): Promise<
   const loc = await locationFields(p.data.useLocation, p.data.gps);
   try {
     await sql`
-      insert into sessions (couple_id, created_by, status, started_at, ip, city, region, country, latitude, longitude, geo_source, place)
-      values (${ctx.couple.id}, ${ctx.me.userId}, 'active', now(), ${loc.ip}, ${loc.city}, ${loc.region}, ${loc.country},
+      insert into sessions (couple_id, created_by, status, started_at, kind, ip, city, region, country, latitude, longitude, geo_source, place)
+      values (${ctx.couple.id}, ${ctx.me.userId}, 'active', now(), ${p.data.kind ?? 'intercourse'}, ${loc.ip}, ${loc.city}, ${loc.region}, ${loc.country},
               ${loc.latitude}, ${loc.longitude}, ${loc.source}, ${p.data.place || null})`;
   } catch (e) {
     // One active session per couple (unique index): if the partner beat us to it, we simply join theirs.
@@ -311,6 +314,7 @@ export async function setPaused(id: string, paused: boolean): Promise<ActionResu
 }
 
 const detailsSchema = z.object({
+  kind: kindSchema.optional(),
   place: z.string().trim().max(60).nullable().optional(),
   rating: z.number().int().min(1).max(5).nullable().optional(),
   protection: z.string().max(20).nullable().optional(),
@@ -328,6 +332,7 @@ export async function finishSession(id: string, input: z.input<typeof detailsSch
   const rows = await sql`
     update sessions set
       status = 'done',
+      kind = coalesce(${d.kind ?? null}, kind),
       ended_at = coalesce(paused_at, now()),
       duration_sec = greatest(0, extract(epoch from coalesce(paused_at, now()) - started_at)::int - paused_sec),
       paused_at = null,
@@ -383,9 +388,9 @@ export async function logPastSession(input: z.input<typeof pastSchema>): Promise
   const dur = Math.round(d.durationMin * 60);
   const brk = Math.round((d.breakMin ?? 0) * 60);
   await sql`
-    insert into sessions (couple_id, created_by, status, started_at, ended_at, duration_sec, paused_sec,
+    insert into sessions (couple_id, created_by, status, kind, started_at, ended_at, duration_sec, paused_sec,
       ip, city, region, country, latitude, longitude, geo_source, place, rating, protection, his_orgasms, her_orgasms, tags, notes)
-    values (${ctx.couple.id}, ${ctx.me.userId}, 'done', ${d.startedAt}, ${d.startedAt}::timestamptz + make_interval(secs => ${dur + brk}), ${dur}, ${brk},
+    values (${ctx.couple.id}, ${ctx.me.userId}, 'done', ${d.kind ?? 'intercourse'}, ${d.startedAt}, ${d.startedAt}::timestamptz + make_interval(secs => ${dur + brk}), ${dur}, ${brk},
       ${loc.ip}, ${loc.city}, ${loc.region}, ${loc.country}, ${loc.latitude}, ${loc.longitude}, ${loc.source},
       ${d.place || null}, ${d.rating ?? null}, ${d.protection ?? null}, ${d.hisOrgasms ?? null}, ${d.herOrgasms ?? null},
       ${d.tags ?? []}, ${d.notes || null})`;
@@ -408,6 +413,7 @@ export async function updateSession(id: string, input: z.input<typeof editSchema
   const brk = Math.round((d.breakMin ?? 0) * 60);
   const rows = await sql`
     update sessions set
+      kind = coalesce(${d.kind ?? null}, kind),
       started_at = ${d.startedAt}, duration_sec = ${dur},
       ended_at = ${d.startedAt}::timestamptz + make_interval(secs => ${dur + brk}),
       -- Keep the individual breaks only if the break total wasn't changed by hand.

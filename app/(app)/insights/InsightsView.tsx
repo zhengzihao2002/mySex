@@ -4,6 +4,7 @@ import { useT } from '@/components/I18nProvider';
 import { useMemo, useState } from 'react';
 import { ExternalLink, MapPin } from 'lucide-react';
 import { Bars, HBars } from '@/components/Bars';
+import { KindFilter, KIND_META } from '@/components/KindPicker';
 import { ScoreBadge } from '@/components/ScoreBadge';
 import { SessionCard } from '@/components/SessionCard';
 import { useTz } from '@/components/TzProvider';
@@ -14,9 +15,9 @@ import { flagEmoji, PHASES, PROTECTION } from '@/lib/content';
 import { buildCycleModel, dayInfo, findCycle, phaseSpans, upcomingCycles, type CycleDefaults, type Phase } from '@/lib/cycle';
 import { diffDays, formatDuration, MONTHS, prettyDate, prettyRange, relativeDays, WEEKDAYS } from '@/lib/dates';
 import { dayInTz, hourInTz } from '@/lib/tz';
-import type { DailyLog, Period, SexSession } from '@/lib/types';
+import type { DailyLog, Period, SessionKind, SexSession } from '@/lib/types';
 
-type Tab = 'cycle' | 'sex' | 'places';
+type Tab = 'cycle' | 'sex' | 'history' | 'places';
 const PHASE_ORDER: Phase[] = ['menstrual', 'follicular', 'ovulation', 'luteal'];
 
 export function InsightsView(props: {
@@ -33,11 +34,12 @@ export function InsightsView(props: {
   return (
     <div className="space-y-4 pt-2">
       <h1 className="font-display text-3xl font-bold">{t('Insights')}</h1>
-      <div className="grid grid-cols-3 rounded-2xl bg-surface-2 p-1 text-sm font-semibold">
+      <div className="grid grid-cols-4 rounded-2xl bg-surface-2 p-1 text-xs font-semibold">
         {(
           [
             ['sex', /*i18n*/ 'Sex 🔥'],
             ['cycle', /*i18n*/ 'Cycle 🌙'],
+            ['history', /*i18n*/ 'History 📖'],
             ['places', /*i18n*/ 'Places 📍'],
           ] as const
         ).map(([k, label]) => (
@@ -48,6 +50,7 @@ export function InsightsView(props: {
       </div>
       {tab === 'cycle' && <CycleTab {...props} />}
       {tab === 'sex' && <SexTab {...props} />}
+      {tab === 'history' && <HistoryTab sessions={props.sessions} />}
       {tab === 'places' && <PlacesTab sessions={props.sessions} />}
     </div>
   );
@@ -74,7 +77,7 @@ function CycleTab({ periods, sessions, herLogs, isHer, herName, defaults }: Para
     if (info) libido.set(info.phase, [...(libido.get(info.phase) ?? []), l.libido!]);
   }
   const sexByPhase = new Map<Phase, number>();
-  for (const s of sessions) {
+  for (const s of sessions.filter((x) => x.kind !== 'oral')) {
     const info = dayInfo(model, dayInTz(s.startedAt, tz));
     if (info && !info.predictedCycle) sexByPhase.set(info.phase, (sexByPhase.get(info.phase) ?? 0) + 1);
   }
@@ -108,7 +111,7 @@ function CycleTab({ periods, sessions, herLogs, isHer, herName, defaults }: Para
                 <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: PHASES[s.phase].color }} />
                 <div>
                   <p className="font-semibold text-ink">
-                    {PHASES[s.phase].name} · {s.days}d
+                    {t(PHASES[s.phase].name)} · {t('{n}d', { n: s.days })}
                   </p>
                   <p className="text-ink-3">{f.prettyRange(s.start, s.end)}</p>
                 </div>
@@ -150,7 +153,7 @@ function CycleTab({ periods, sessions, herLogs, isHer, herName, defaults }: Para
       )}
 
       <section className="card">
-        <h3 className="mb-3 font-semibold">{t('Sex by phase')}</h3>
+        <h3 className="mb-3 font-semibold">{t('Intercourse by phase')}</h3>
         <HBars data={PHASE_ORDER.map((p) => ({ key: p, label: `${PHASES[p].emoji} ${t(PHASES[p].name)}`, value: sexByPhase.get(p) ?? 0, color: PHASES[p].color }))} />
         {libido.size > 0 && (
           <>
@@ -213,17 +216,20 @@ function CycleTab({ periods, sessions, herLogs, isHer, herName, defaults }: Para
 
 // ─────────────────────────────── sex ───────────────────────────────
 
-function SexTab({ sessions, herName, hisName }: Parameters<typeof InsightsView>[0]) {
+function SexTab({ sessions: allSessions, herName, hisName }: Parameters<typeof InsightsView>[0]) {
   const { t, f } = useT();
   const { tz, today } = useTz();
-  const [showAll, setShowAll] = useState(false);
+  const [kind, setKind] = useState<'all' | SessionKind>('all');
+  const sessions = useMemo(() => (kind === 'all' ? allSessions : allSessions.filter((s) => s.kind === kind)), [allSessions, kind]);
+  const countOf = (k: SessionKind) => allSessions.filter((s) => s.kind === k).length;
   const scores = useMemo(() => scoreSessions(sessions, tz), [sessions, tz]);
   const places = useMemo(() => placeSuggestions(sessions), [sessions]);
   const badges = useMemo(() => achievements(sessions, scores, tz, today), [sessions, scores, tz, today]);
 
-  if (!sessions.length) {
+  if (!allSessions.length || !sessions.length) {
     return (
       <div className="card text-center text-sm text-ink-2">
+        {allSessions.length ? <KindFilter value={kind} onChange={setKind} /> : null}
         {t('Nothing logged yet. Hit the ❤️ button and start the clock 😏')}
         <BadgeGrid badges={badges} />
       </div>
@@ -262,12 +268,16 @@ function SexTab({ sessions, herName, hisName }: Parameters<typeof InsightsView>[
   const tagCounts = new Map<string, number>();
   sessions.forEach((s) => s.tags.forEach((x) => tagCounts.set(x, (tagCounts.get(x) ?? 0) + 1)));
   const topTags = [...tagCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
-  const list = showAll ? sessions : sessions.slice(0, 10);
 
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-2">
-        <Tile value={sessions.length} label={t('sessions all-time')} />
+        <Tile value={countOf('intercourse')} label={`🍆 ${t('Intercourse')}`} />
+        <Tile value={countOf('oral')} label={`👅 ${t('Oral')}`} />
+      </div>
+      <KindFilter value={kind} onChange={setKind} />
+
+      <div className="grid grid-cols-2 gap-2">
         <Tile value={f.formatDuration(totalSec)} label={t('naked time together')} />
         <Tile value={f.formatDuration(avgSec)} label={t('average length')} />
         <Tile value={avgScore} label={t('average score')} />
@@ -342,18 +352,6 @@ function SexTab({ sessions, herName, hisName }: Parameters<typeof InsightsView>[
         </p>
         <BadgeGrid badges={badges} />
       </section>
-
-      <section className="space-y-2">
-        <h3 className="px-1 font-semibold">{t('History')}</h3>
-        {list.map((s) => (
-          <SessionCard key={s.id} s={s} score={scores.get(s.id)} places={places} byName={t('one of you')} showDate={f.prettyDate(dayInTz(s.startedAt, tz))} />
-        ))}
-        {!showAll && sessions.length > 10 && (
-          <button className="btn-ghost w-full" onClick={() => setShowAll(true)}>
-            {t('Show all {n}', { n: sessions.length })}
-          </button>
-        )}
-      </section>
     </div>
   );
 }
@@ -393,6 +391,60 @@ function Tile({ value, label, small }: { value: React.ReactNode; label: string; 
     <div className="card p-3">
       <p className={`${small ? 'text-lg capitalize' : 'text-2xl'} font-bold tabular-nums`}>{value}</p>
       <p className="text-[11px] text-ink-3">{label}</p>
+    </div>
+  );
+}
+
+// ─────────────────────────────── history ───────────────────────────────
+
+function HistoryTab({ sessions }: { sessions: SexSession[] }) {
+  const { t, f } = useT();
+  const { tz } = useTz();
+  const [kind, setKind] = useState<'all' | SessionKind>('all');
+  const scores = useMemo(() => scoreSessions(sessions, tz), [sessions, tz]);
+  const places = useMemo(() => placeSuggestions(sessions), [sessions]);
+  const shown = useMemo(() => (kind === 'all' ? sessions : sessions.filter((s) => s.kind === kind)), [sessions, kind]);
+  const count = (k: SessionKind) => sessions.filter((s) => s.kind === k).length;
+
+  // Newest first, grouped by month with a count per type.
+  const groups = useMemo(() => {
+    const map = new Map<string, SexSession[]>();
+    for (const s of shown) {
+      const m = dayInTz(s.startedAt, tz).slice(0, 7);
+      map.set(m, [...(map.get(m) ?? []), s]);
+    }
+    return [...map.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+  }, [shown, tz]);
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-3 gap-2">
+        <Tile value={sessions.length} label={t('Total')} />
+        <Tile value={count('intercourse')} label={`🍆 ${t('Intercourse')}`} />
+        <Tile value={count('oral')} label={`👅 ${t('Oral')}`} />
+      </div>
+      <KindFilter value={kind} onChange={setKind} />
+      {!groups.length && <p className="card text-center text-sm text-ink-2">{t('Nothing logged yet. Hit the ❤️ button and start the clock 😏')}</p>}
+      {groups.map(([month, list]) => {
+        const [y, m] = month.split('-').map(Number);
+        const inter = list.filter((s) => s.kind !== 'oral').length;
+        const oral = list.length - inter;
+        return (
+          <section key={month} className="space-y-2">
+            <div className="flex items-baseline justify-between px-1">
+              <h3 className="font-semibold">{f.lang === 'zh' ? `${y}年${m}月` : `${f.monthName(m)} ${y}`}</h3>
+              <p className="text-xs text-ink-3">
+                {inter > 0 && `🍆 ${inter}`}
+                {inter > 0 && oral > 0 && '  ·  '}
+                {oral > 0 && `👅 ${oral}`}
+              </p>
+            </div>
+            {list.map((s) => (
+              <SessionCard key={s.id} s={s} score={scores.get(s.id)} places={places} byName={t('one of you')} showDate={f.prettyDate(dayInTz(s.startedAt, tz))} />
+            ))}
+          </section>
+        );
+      })}
     </div>
   );
 }

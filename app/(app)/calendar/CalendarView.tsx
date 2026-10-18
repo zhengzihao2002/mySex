@@ -122,7 +122,8 @@ export function CalendarView({
               date={d}
               inMonth={d.slice(0, 7) === first.slice(0, 7)}
               info={model ? dayInfo(model, d) : null}
-              sex={byDay.get(d)?.length ?? 0}
+              sex={(byDay.get(d) ?? []).filter((x) => x.kind !== 'oral').length}
+              oral={(byDay.get(d) ?? []).filter((x) => x.kind === 'oral').length}
               isToday={d === today}
               isSelected={d === selected}
               onClick={() => setSelected(d)}
@@ -156,6 +157,7 @@ function DayCell({
   inMonth,
   info,
   sex,
+  oral,
   isToday,
   isSelected,
   onClick,
@@ -164,6 +166,7 @@ function DayCell({
   inMonth: boolean;
   info: DayInfo | null;
   sex: number;
+  oral: number;
   isToday: boolean;
   isSelected: boolean;
   onClick: () => void;
@@ -177,7 +180,7 @@ function DayCell({
         isSelected ? 'ring-2 ring-ink/80' : ''
       }`}
       style={{ background: phase && !info?.isPeriod ? phase.tint : undefined }}
-      aria-label={`${f.prettyDate(date)}${info ? ', ' + t(phase!.name) : ''}${sex ? ` · ${sex} ♥` : ''}`}
+      aria-label={`${f.prettyDate(date)}${info ? ', ' + t(phase!.name) : ''}${sex ? ` · ${sex} ♥` : ''}${oral ? ` · ${oral} 👅` : ''}`}
     >
       <span
         className={`relative flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold tabular-nums ${
@@ -195,7 +198,12 @@ function DayCell({
             {sex > 1 && <span className="text-[9px] font-bold text-rose-2">{sex}</span>}
           </>
         )}
-        {info?.isFertile && !info.isOvulation && sex === 0 && <span className="h-1 w-1 rounded-full bg-ovulation" />}
+        {oral > 0 && (
+          <span className="flex items-center text-[9px] leading-none">
+            👅{oral > 1 && <span className="ml-px font-bold text-rose-2">{oral}</span>}
+          </span>
+        )}
+        {info?.isFertile && !info.isOvulation && sex === 0 && oral === 0 && <span className="h-1 w-1 rounded-full bg-ovulation" />}
       </span>
     </button>
   );
@@ -210,7 +218,8 @@ function Legend() {
     [<span key="o" className="h-3 w-3 rounded-full border-2 border-ovulation bg-ovulation/30" />, /*i18n*/ 'Ovulation'],
     [<span key="fw" className="h-1.5 w-1.5 rounded-full bg-ovulation" />, /*i18n*/ 'Fertile'],
     [<span key="l" className="h-3 w-3 rounded-full" style={{ background: PHASES.luteal.tint, border: `1px solid ${PHASES.luteal.color}` }} />, /*i18n*/ 'Luteal'],
-    [<Heart key="h" size={11} className="fill-rose text-rose" />, /*i18n*/ 'Sex'],
+    [<Heart key="h" size={11} className="fill-rose text-rose" />, /*i18n*/ 'Intercourse'],
+    [<span key="or" className="text-[10px]">👅</span>, /*i18n*/ 'Oral'],
   ];
   return (
     <div className="no-scrollbar mt-3 flex gap-3 overflow-x-auto px-1 text-[11px] text-ink-3">

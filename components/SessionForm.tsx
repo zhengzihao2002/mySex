@@ -5,8 +5,11 @@ import { useState } from 'react';
 import { Flame, MapPin, Minus, Navigation, Plus } from 'lucide-react';
 import { HEAT, PROTECTION, TAGS } from '@/lib/content';
 import { FormError } from './FormError';
+import { KindPicker } from './KindPicker';
+import type { SessionKind } from '@/lib/types';
 
 export type SessionFormValues = {
+  kind: SessionKind;
   startedAt: string; // ISO
   durationMin: number;
   breakMin: number;
@@ -56,6 +59,7 @@ export function SessionForm({
 }) {
   const { t, f } = useT();
   const [v, setV] = useState<SessionFormValues>({
+    kind: initial?.kind ?? 'intercourse',
     startedAt: initial?.startedAt ?? new Date(Date.now() - 30 * 60_000).toISOString(),
     durationMin: initial?.durationMin ?? 15,
     breakMin: initial?.breakMin ?? 0,
@@ -79,6 +83,8 @@ export function SessionForm({
         onSubmit(v);
       }}
     >
+      <KindPicker value={v.kind} onChange={(k) => set('kind', k)} />
+
       {mode !== 'finish' && (
         <div className="grid grid-cols-1 gap-3">
           <div>

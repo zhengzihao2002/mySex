@@ -10,13 +10,14 @@ import { FormError } from '@/components/FormError';
 import { ScoreReveal, type RevealTimes } from '@/components/ScoreBadge';
 import { getGps, SessionForm, Toggle, type SessionFormValues } from '@/components/SessionForm';
 import { Sheet } from '@/components/Sheet';
+import { KIND_META, KindPicker } from '@/components/KindPicker';
 import { useRun } from '@/components/useRun';
 import { placeSuggestions, scoreSessions } from '@/lib/clientScore';
 import { formatClock, formatDuration, prettyDate } from '@/lib/dates';
 import { dayInTz, timeInTz } from '@/lib/tz';
 import { useTz } from '@/components/TzProvider';
 import type { Score } from '@/lib/score';
-import type { SexSession } from '@/lib/types';
+import type { SessionKind, SexSession } from '@/lib/types';
 
 /** Elapsed seconds of a session, derived only from server timestamps — survives app quits. */
 function elapsedSec(s: Pick<SexSession, 'startedAt' | 'pausedAt' | 'pausedSec'>, now: number) {
@@ -101,6 +102,7 @@ function IdleTimer({
 }) {
   const { t, f } = useT();
   const [place, setPlace] = useState('');
+  const [kind, setKind] = useState<SessionKind>('intercourse');
   const [useLocation, setUseLocation] = useState(true);
   const [useGps, setUseGps] = useState(false);
   const [pastOpen, setPastOpen] = useState(false);
@@ -115,6 +117,7 @@ function IdleTimer({
     const gps = useLocation && useGps ? await getGps() : null;
     onStart({
       id: 'pending',
+      kind,
       createdBy: '',
       status: 'active',
       startedAt: new Date().toISOString(),
@@ -139,7 +142,7 @@ function IdleTimer({
       updatedAt: new Date().toISOString(),
       breaks: [],
     });
-    const ok = await start.run(() => startSession({ place: place || null, useLocation, gps }));
+    const ok = await start.run(() => startSession({ kind, place: place || null, useLocation, gps }));
     if (!ok) onStartFailed();
   };
 
@@ -147,6 +150,7 @@ function IdleTimer({
     <div className="flex flex-col items-center pt-4">
       <p className="text-xs font-semibold tracking-[0.3em] text-ink-3 uppercase">{t('Live timer')}</p>
       <h1 className="font-display mt-1 text-3xl font-bold">{t('Ready when you are')}</h1>
+      <KindPicker value={kind} onChange={setKind} className="mt-4 w-full max-w-xs" />
 
       <button onClick={begin} disabled={start.pending} className="group relative my-10 flex h-56 w-56 items-center justify-center" aria-label="Start timer">
         <span className="absolute inset-0 rounded-full bg-rose/30 [animation:ripple_2.4s_ease-out_infinite]" />
@@ -213,6 +217,7 @@ function IdleTimer({
 export function toPayload(v: SessionFormValues, gps: { latitude: number; longitude: number } | null = null) {
   return {
     startedAt: v.startedAt,
+    kind: v.kind,
     durationMin: v.durationMin,
     breakMin: v.breakMin,
     place: v.place || null,
@@ -351,7 +356,7 @@ function LiveTimer({
         </Link>
         <div className="flex items-center gap-2 rounded-full bg-surface-2/70 px-3 py-1.5 text-xs font-semibold tracking-widest uppercase backdrop-blur">
           <span className={`h-2 w-2 rounded-full ${paused ? 'bg-luteal' : 'animate-pulse bg-rose'}`} />
-          {pendingStart ? t('Starting') : paused ? t('Paused') : t('Live')}
+          {KIND_META[session.kind].emoji} {pendingStart ? t('Starting') : paused ? t('Paused') : t('Live')}
         </div>
         <div className="flex gap-2">
           <button onClick={() => setDim(true)} className="rounded-full bg-surface-2/70 p-2.5 text-ink-2 backdrop-blur" aria-label="Discreet mode">
@@ -552,12 +557,13 @@ function LiveTimer({
         <SessionForm
           mode="finish"
           places={places}
-          initial={{ place: session.place ?? '' }}
+          initial={{ place: session.place ?? '', kind: session.kind }}
           submitLabel={t('Save & see our score')}
           error={finish.error}
           pending={finish.pending}
           onSubmit={async (v) => {
             const values = {
+              kind: v.kind,
               place: v.place || null,
               rating: v.rating,
               protection: v.protection,
