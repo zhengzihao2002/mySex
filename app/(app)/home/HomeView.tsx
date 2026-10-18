@@ -90,7 +90,7 @@ export function HomeView({
       <CycleCard model={model} info={info} today={today} isHer={me.sex === 'female'} herName={her.name} />
 
       <div className="grid grid-cols-4 gap-2">
-        <Quick href="/timer" icon={<Timer size={22} />} label={t('Timer')} accent />
+        <Quick href="/timer" icon={<Timer size={22} />} label={t('Timer')} />
         <Quick href="/calendar" icon={<CalendarPlus size={22} />} label={t('Log')} />
         <Quick onClick={() => setCheckIn(true)} icon={<SmilePlus size={22} />} label={t('Check-in')} />
         <Quick href="/play" icon={<Dice5 size={22} />} label={t('Play')} />
