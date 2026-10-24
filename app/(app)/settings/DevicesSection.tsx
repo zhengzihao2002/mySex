@@ -1,15 +1,13 @@
 'use client';
 import { useT } from '@/components/I18nProvider';
 
-import { useState } from 'react';
 import { MonitorSmartphone } from 'lucide-react';
 import { signOutDevice, signOutOtherDevices } from '@/app/actions';
 import { FormError } from '@/components/FormError';
 import { useTz } from '@/components/TzProvider';
 import { useRun } from '@/components/useRun';
 import { flagEmoji } from '@/lib/content';
-import type { Device, LoginEvent } from '@/lib/devices';
-import { dateTimeInTz } from '@/lib/tz';
+import type { Device } from '@/lib/devices';
 import { describeDevice } from '@/lib/ua';
 
 function place(d: { city: string | null; region: string | null; country: string | null }, unknown = 'Unknown location') {
@@ -25,11 +23,10 @@ function ago(iso: string, t: (k: string, v?: Record<string, number>) => string) 
   return t('Active {n}d ago', { n: Math.round(h / 24) });
 }
 
-export function DevicesSection({ devices, events, currentId }: { devices: Device[]; events: LoginEvent[]; currentId: string | null }) {
+export function DevicesSection({ devices, currentId }: { devices: Device[]; currentId: string | null }) {
   const { t, f } = useT();
   const { tz } = useTz();
   const { run, pending, error } = useRun();
-  const [showHistory, setShowHistory] = useState(false);
   const others = devices.filter((d) => d.deviceId !== currentId && !d.revokedAt);
 
   return (
@@ -77,29 +74,6 @@ export function DevicesSection({ devices, events, currentId }: { devices: Device
         </button>
       )}
       <FormError error={error} />
-
-      {events.length > 0 && (
-        <div>
-          <button className="text-sm font-semibold text-rose-2" onClick={() => setShowHistory((v) => !v)}>
-            {showHistory ? t('Hide recent sign-ins') : t('Show recent sign-ins')} ({events.length})
-          </button>
-          {showHistory && (
-            <div className="mt-2 divide-y divide-line/60">
-              {events.map((e) => (
-                <div key={e.id} className="py-2 text-xs">
-                  <p className="text-ink">
-                    {f.dateTimeInTz(e.at, tz)} · {t(describeDevice(e.userAgent).label)}
-                  </p>
-                  <p className="text-ink-3">
-                    {flagEmoji(e.country)} {place(e, t('Unknown location'))}
-                    {e.ip ? ` · IP ${e.ip}` : ''}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
     </section>
   );
 }
