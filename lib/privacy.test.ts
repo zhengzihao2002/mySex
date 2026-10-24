@@ -34,8 +34,16 @@ beforeEach(async () => {
   await pg.query("insert into sessions (id, couple_id, created_by, started_at) values ($1, $2, 'me', now())", [sessionId, coupleId]);
 });
 
-async function rows(table: 'devices' | 'login_events' | 'session_deletion_requests' | 'device_revocations' | 'sessions') {
-  return (await pg.query(`select * from ${table}`)).rows;
+type TestRows = {
+  devices: { device_id: string; user_id: string; signed_in_at: Date | string; ip: string | null };
+  login_events: { device_id: string | null };
+  session_deletion_requests: { status: string };
+  device_revocations: { key_hash: string; expires_at: Date | string };
+  sessions: { id: string };
+};
+
+async function rows<Table extends keyof TestRows>(table: Table): Promise<TestRows[Table][]> {
+  return (await pg.query<TestRows[Table]>(`select * from ${table}`)).rows;
 }
 
 test('logout removes device and every matching login event, preserving other devices and partner data', async () => {
