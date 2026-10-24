@@ -10,6 +10,8 @@ import { Keypad, usePin } from '@/components/PinLock';
 import { Sheet } from '@/components/Sheet';
 import { Toggle } from '@/components/SessionForm';
 import { useRun } from '@/components/useRun';
+import { RestoreBackup } from './RestoreBackup';
+import { PrivacySettings } from '@/components/PrivacyMode';
 import { LanguageSwitch } from '@/components/LanguageSwitch';
 import { AVATARS } from '@/lib/content';
 import { prettyDate } from '@/lib/dates';
@@ -107,6 +109,7 @@ export function SettingsView({
         <LanguageSwitch />
       </section>
 
+      <PrivacySettings />
       <PinSection />
 
       {devices}
@@ -131,6 +134,7 @@ export function SettingsView({
         <a href="/api/export" className="btn-ghost w-full">
           <Download size={16} /> {t('Export our data (JSON)')}
         </a>
+        <RestoreBackup />
         <form action={signOutAction}>
           <button className="btn-ghost w-full">
             <LogOut size={16} /> {t('Sign out')}

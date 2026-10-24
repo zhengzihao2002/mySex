@@ -1,3 +1,4 @@
+import { signBackup } from '@/lib/backups';
 import { getCoupleContext, getDailyLogs, getNotes, getPeriods, getSessions, getSessionDeletionRequests } from '@/lib/data';
 
 export const dynamic = 'force-dynamic';
@@ -9,11 +10,11 @@ export async function GET() {
     getSessions(ctx.couple.id),
     getPeriods(ctx.her.userId),
     getDailyLogs(ctx),
-    getNotes(ctx.couple.id, 1000),
+    getNotes(ctx.couple.id, 20000),
     getSessionDeletionRequests(ctx),
   ]);
-  const body = JSON.stringify(
-    {
+  const payload = {
+      format: 'mysex-backup-v2', coupleId: ctx.couple.id, ownerId: ctx.me.userId,
       exportedAt: new Date().toISOString(),
       couple: { anniversary: ctx.couple.anniversary, me: ctx.me.name, partner: ctx.partner.name },
       sessions,
@@ -21,10 +22,10 @@ export async function GET() {
       checkIns: logs,
       notes,
       deletionRequests: deletionRequests.map(({ session: _session, ...receipt }) => receipt),
-    },
-    null,
-    2,
-  );
+    };
+  const secret = process.env.NEON_AUTH_COOKIE_SECRET;
+  if (!secret) throw new Error('Backup signing is not configured');
+  const body = JSON.stringify({ ...payload, signature: signBackup(payload, secret) }, null, 2);
   return new Response(body, {
     headers: {
       'Content-Type': 'application/json',

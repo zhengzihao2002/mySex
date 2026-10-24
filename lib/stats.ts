@@ -1,4 +1,4 @@
-import { toDayNum } from './dates';
+import { toDayNum } from './dates.ts';
 
 /** Monday-based week index of a YYYY-MM-DD date. */
 export function weekIndex(day: string) {

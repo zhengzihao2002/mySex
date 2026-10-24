@@ -1,5 +1,6 @@
 'use server';
 
+import { editSharedSession } from '@/lib/session-edits';
 import { randomInt, timingSafeEqual } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
@@ -13,7 +14,7 @@ import { forgetDevices, revocationHash } from '@/lib/privacy';
 import { cookies } from 'next/headers';
 import { LANG_COOKIE, parseLang } from '@/lib/i18n/core';
 import { DESIRES } from '@/lib/content';
-import { requestSessionDeletion, respondToSessionDeletion } from '@/lib/session-deletions';
+import { dismissOutcome, dismissEditNotice, withdrawDeletion, discardDraft, requestSessionDeletion, respondToSessionDeletion } from '@/lib/session-deletions';
 import type { ActionResult, AuthResult } from '@/lib/types';
 
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -351,7 +352,7 @@ export async function finishSession(id: string, input: z.input<typeof detailsSch
   if (!rows.length) {
     // Both pressed "done" at once: the partner saved first. Merge our details into theirs instead of dropping them.
     const merged = await sql`
-      update sessions set
+      with edited as (update sessions set
         place = coalesce(place, ${d.place || null}),
         rating = coalesce(rating, ${d.rating ?? null}), protection = coalesce(protection, ${d.protection ?? null}),
         his_orgasms = coalesce(his_orgasms, ${d.hisOrgasms ?? null}), her_orgasms = coalesce(her_orgasms, ${d.herOrgasms ?? null}),
@@ -362,7 +363,9 @@ export async function finishSession(id: string, input: z.input<typeof detailsSch
                      else notes || E'\n' || ${d.notes || null} end,
         updated_at = now()
       where id = ${id} and couple_id = ${ctx.couple.id} and status = 'done'
-      returning id`;
+      returning id)
+      insert into session_edit_notices(couple_id, session_id, edited_by, recipient_id)
+      select ${ctx.couple.id}, id, ${ctx.me.userId}, ${ctx.partner.userId} from edited returning id`;
     if (!merged.length) return fail('This session was discarded.');
   }
   return done();
@@ -371,10 +374,7 @@ export async function finishSession(id: string, input: z.input<typeof detailsSch
 export async function discardActiveSession(id: string, version: string): Promise<ActionResult> {
   const ctx = await couple();
   if (!z.uuid().safeParse(id).success || !z.string().datetime({ offset: true }).safeParse(version).success) return fail('Invalid input');
-  const created = await requestSessionDeletion(db(), {
-    coupleId: ctx.couple.id, userId: ctx.me.userId, partnerId: ctx.partner.userId,
-  }, id, version, true);
-  if (!created) return fail('This session changed. Refresh and request deletion again.');
+  if (!await discardDraft(db(), ctx.couple.id, id)) return fail('This recording was already saved or discarded. Refresh to see the latest version.');
   return done();
 }
 
@@ -417,24 +417,9 @@ export async function updateSession(id: string, input: z.input<typeof editSchema
   const p = editSchema.safeParse(input);
   if (!p.success) return fail('Invalid input');
   const d = p.data;
-  const dur = Math.round(d.durationMin * 60);
-  const brk = Math.round((d.breakMin ?? 0) * 60);
-  const rows = await sql`
-    update sessions set
-      kind = coalesce(${d.kind ?? null}, kind),
-      started_at = ${d.startedAt}, duration_sec = ${dur},
-      ended_at = ${d.startedAt}::timestamptz + make_interval(secs => ${dur + brk}),
-      -- Keep the individual breaks only if the break total wasn't changed by hand.
-      breaks = case when paused_sec = ${brk} then breaks else '[]'::jsonb end,
-      paused_sec = ${brk},
-      place = ${d.place || null}, rating = ${d.rating ?? null}, protection = ${d.protection ?? null},
-      his_orgasms = ${d.hisOrgasms ?? null}, her_orgasms = ${d.herOrgasms ?? null},
-      tags = ${d.tags ?? []}, notes = ${d.notes || null}, updated_at = now()
-    where id = ${id} and couple_id = ${ctx.couple.id} and status = 'done'
-      and date_trunc('milliseconds', updated_at) = date_trunc('milliseconds', ${d.version}::timestamptz)
-    returning id`;
+  const saved = await editSharedSession(db(), { coupleId:ctx.couple.id, userId:ctx.me.userId, partnerId:ctx.partner.userId }, id, d);
   // Optimistic concurrency: someone saved this session after we opened it.
-  if (!rows.length) return fail('Your partner just changed this session — close it and reopen to see their changes.');
+  if (!saved) return fail('Your partner just changed this session — close it and reopen to see their changes.');
   return done();
 }
 
@@ -461,22 +446,14 @@ export async function respondToDeletionRequest(id: string, decision: 'approved' 
 export async function cancelDeletionRequest(id: string): Promise<ActionResult> {
   const ctx = await couple();
   if (!z.uuid().safeParse(id).success) return fail('Invalid input');
-  const rows = await sql`
-    update session_deletion_requests set status = 'cancelled', decided_at = now()
-    where id = ${id} and couple_id = ${ctx.couple.id} and requested_by = ${ctx.me.userId} and status = 'pending'
-      and created_at > now() - interval '7 days'
-    returning id`;
-  if (!rows.length) return fail('This request is no longer pending or does not belong to you.');
+  if (!await withdrawDeletion(db(), ctx.couple.id, ctx.me.userId, id)) return fail('This request is no longer pending or does not belong to you.');
   return done();
 }
 
 export async function markDeletionRequestRead(id: string): Promise<ActionResult> {
   const ctx = await couple();
   if (!z.uuid().safeParse(id).success) return fail('Invalid input');
-  await sql`
-    update session_deletion_requests set requester_read_at = now()
-    where id = ${id} and couple_id = ${ctx.couple.id} and requested_by = ${ctx.me.userId}
-      and status in ('approved', 'declined', 'expired') and requester_read_at is null`;
+  await dismissOutcome(db(), ctx.couple.id, ctx.me.userId, id);
   return done();
 }
 
@@ -741,4 +718,11 @@ async function applySavedLanguage(userId: string | null) {
   const rows = await sql`select lang from profiles where user_id = ${userId}`;
   const l = parseLang(rows[0]?.lang);
   if (l) (await cookies()).set(LANG_COOKIE, l, langCookie);
+}
+
+export async function markEditNoticeRead(id: string): Promise<ActionResult> {
+  const ctx = await couple();
+  if (!z.uuid().safeParse(id).success) return fail('Invalid input');
+  await dismissEditNotice(db(), ctx.couple.id, ctx.me.userId, id);
+  return done();
 }

@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { after, before, beforeEach, test } from 'node:test';
 import { PGlite } from '@electric-sql/pglite';
 import type { NeonQueryFunction } from '@neondatabase/serverless';
-import { requestSessionDeletion, respondToSessionDeletion } from './session-deletions.ts';
+import { dismissOutcome, dismissEditNotice, withdrawDeletion, discardDraft, requestSessionDeletion, respondToSessionDeletion } from './session-deletions.ts';
 
 // Run the production SQL against isolated Postgres/WASM, never the configured Neon database.
 const pg = new PGlite();
@@ -11,13 +11,13 @@ type Statement = { text: string; values: unknown[] };
 const tag = (parts: TemplateStringsArray, ...values: unknown[]): Statement => ({
   text: parts.reduce((s, part, i) => s + (i ? `$${i}` : '') + part, ''), values,
 });
-const client = {
+const client = Object.assign(async (parts: TemplateStringsArray, ...values: unknown[]) => {
+  const q = tag(parts, ...values); return (await pg.query(q.text, q.values)).rows;
+}, {
   transaction: async (queries: (tx: typeof tag) => Statement[]) => pg.transaction(async (tx) => {
-    const results = [];
-    for (const q of queries(tag)) results.push((await tx.query(q.text, q.values)).rows);
-    return results;
+    const results = []; for (const q of queries(tag)) results.push((await tx.query(q.text, q.values)).rows); return results;
   }),
-} as unknown as NeonQueryFunction<false, false>;
+}) as unknown as NeonQueryFunction<false, false>;
 
 const coupleId = '10000000-0000-4000-8000-000000000001';
 const otherCouple = '10000000-0000-4000-8000-000000000002';
@@ -35,7 +35,7 @@ before(async () => {
 });
 after(async () => pg.close());
 beforeEach(async () => {
-  await pg.exec('truncate profiles, couples, sessions, session_deletion_requests cascade');
+  await pg.exec('truncate profiles, couples, sessions, session_deletion_requests, deleted_session_markers cascade');
   for (const [user, sex] of [['him', 'male'], ['her', 'female'], ['other-him', 'male'], ['other-her', 'female']]) {
     await pg.query('insert into profiles (user_id, name, sex, invite_code) values ($1, $1, $2, $1)', [user, sex]);
   }
@@ -50,13 +50,13 @@ beforeEach(async () => {
 
 async function requests() {
   return (await pg.query<{ id: string; status: string; requester_read_at: string | null }>(
-    'select * from session_deletion_requests order by created_at, id')).rows;
+    `select id,status,requester_read_at from session_deletion_requests union all select id,status,null::timestamptz from session_deletion_outcomes`)).rows;
 }
 async function exists() {
   return (await pg.query('select id from sessions where id = $1', [sessionId])).rows.length === 1;
 }
-async function request(who = him, activeOnly = false) {
-  assert.equal(await requestSessionDeletion(client, who, sessionId, version, activeOnly), true);
+async function request(who = him) {
+  assert.equal(await requestSessionDeletion(client, who, sessionId, version), true);
   return (await requests()).find((r) => r.status === 'pending')!.id;
 }
 
@@ -126,21 +126,15 @@ test('a fresh request retires outdated pending consent without creating duplicat
   assert.equal(await exists(), true);
 });
 
-test('discard also requires mutual agreement and cannot target a finished record', async () => {
-  assert.equal(await requestSessionDeletion(client, him, sessionId, version, true), false);
+test('unfinished recordings discard immediately without requests; saved and other-couple records are protected', async () => {
+  assert.equal(await discardDraft(client, coupleId, sessionId), false);
   await pg.query("update sessions set status = 'active' where id = $1", [sessionId]);
-  const id = await request(him, true);
-  assert.equal(await exists(), true);
-  assert.equal(await respondToSessionDeletion(client, her, id, 'approved'), 'approved');
+  assert.equal(await discardDraft(client, otherCouple, sessionId), false);
+  assert.equal(await requestSessionDeletion(client, him, sessionId, version), false);
+  assert.equal(await discardDraft(client, coupleId, sessionId), true);
   assert.equal(await exists(), false);
-});
-
-test('finishing a live timer invalidates an earlier discard request', async () => {
-  await pg.query("update sessions set status = 'active' where id = $1", [sessionId]);
-  const id = await request(him, true);
-  await pg.query("update sessions set status = 'done', updated_at = $1 where id = $2", [newVersion, sessionId]);
-  assert.equal(await respondToSessionDeletion(client, her, id, 'approved'), 'expired');
-  assert.equal(await exists(), true);
+  assert.equal((await requests()).length, 0);
+  assert.equal(await discardDraft(client, coupleId, sessionId), false);
 });
 
 test('unpairing blocks responses from a stale context; reconnecting restores the request', async () => {
@@ -168,13 +162,54 @@ test('a failed deletion rolls back the approval and leaves the request pending',
   }
 });
 
-test('seven-day-old pending requests cannot approve deletion, even before scheduled cleanup', async () => {
+test('pending requests no longer expire after seven days', async () => {
   const id = await request();
-  await pg.query("update session_deletion_requests set created_at = now() - interval '7 days' where id = $1", [id]);
-  assert.equal(await respondToSessionDeletion(client, her, id, 'approved'), null);
+  await pg.query("update session_deletion_requests set created_at = now() - interval '30 days' where id = $1", [id]);
+  assert.equal(await respondToSessionDeletion(client, her, id, 'approved'), 'approved');
+  assert.equal(await exists(), false);
+  assert.equal((await pg.query('select * from session_deletion_requests')).rows.length, 0);
+});
+
+test('handled requests disappear immediately; only the recipient can delete the unread outcome', async () => {
+  const id = await request();
+  assert.equal(await respondToSessionDeletion(client, her, id, 'declined'), 'declined');
+  assert.equal((await pg.query('select * from session_deletion_requests')).rows.length, 0);
+  await dismissOutcome(client, coupleId, 'her', id);
+  assert.equal((await requests()).length, 1);
+  await dismissOutcome(client, otherCouple, 'him', id);
+  assert.equal((await requests()).length, 1);
+  await dismissOutcome(client, coupleId, 'him', id);
+  assert.equal((await requests()).length, 0);
   assert.equal(await exists(), true);
-  assert.equal(await requestSessionDeletion(client, him, sessionId, version), true);
-  const current = await requests();
-  assert.equal(current.length, 1);
-  assert.notEqual(current[0].id, id);
+});
+
+test('withdrawal deletes the request and leaves a reply for the partner, then reading deletes the reply', async () => {
+  const id = await request();
+  assert.equal(await withdrawDeletion(client, coupleId, 'her', id), false);
+  assert.equal(await withdrawDeletion(client, coupleId, 'him', id), true);
+  assert.equal((await pg.query('select * from session_deletion_requests')).rows.length, 0);
+  await dismissOutcome(client, coupleId, 'him', id);
+  assert.equal((await requests()).length, 1);
+  await dismissOutcome(client, coupleId, 'her', id);
+  assert.equal((await requests()).length, 0);
+});
+
+test('reading an edit notice deletes it physically and is scoped to its recipient', async () => {
+  const notice = (await pg.query<{id:string}>(`insert into session_edit_notices(couple_id,session_id,edited_by,recipient_id)
+    values ($1,$2,'him','her') returning id`, [coupleId,sessionId])).rows[0];
+  await dismissEditNotice(client,coupleId,'him',notice.id);
+  assert.equal((await pg.query('select * from session_edit_notices')).rows.length,1);
+  await dismissEditNotice(client,coupleId,'her',notice.id);
+  assert.equal((await pg.query('select * from session_edit_notices')).rows.length,0);
+});
+
+test('approved deletion leaves only an opaque restore-blocking hash after the reply is read', async () => {
+  const id = await request();
+  await respondToSessionDeletion(client,her,id,'approved');
+  await dismissOutcome(client,coupleId,'him',id);
+  assert.equal((await requests()).length,0);
+  const rows = (await pg.query<{key_hash:string}>('select * from deleted_session_markers')).rows;
+  assert.equal(rows.length,1);
+  assert.deepEqual(Object.keys(rows[0]),['key_hash']);
+  assert.match(rows[0].key_hash,/^[0-9a-f]{64}$/);
 });

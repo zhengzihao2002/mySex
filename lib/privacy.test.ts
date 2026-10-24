@@ -105,20 +105,12 @@ test('foreground touches preserve sign-in time and do not add login events', asy
   assert.equal((await rows('login_events')).length, 1);
 });
 
-test('cleanup physically removes every request status at seven days, keeps younger items and shared sessions', async () => {
-  for (const status of ['pending', 'approved', 'declined', 'cancelled', 'expired']) {
-    for (const old of [true, false]) {
-      // Pending receipts need distinct session IDs because only one pending request per session is allowed.
-      await pg.query(`insert into session_deletion_requests
-        (couple_id, session_id, requested_by, recipient_id, session_version, session_started_at, session_kind, status, created_at)
-        values ($1, gen_random_uuid(), 'me', 'partner', now(), now(), 'intercourse', $2,
-          now() - case when $3 then interval '7 days' else interval '6 days 23 hours' end)`, [coupleId, status, old]);
-    }
-  }
+test('maintenance keeps pending inbox requests, including older than seven days', async () => {
+  await pg.query(`insert into session_deletion_requests
+    (couple_id,session_id,requested_by,recipient_id,session_version,session_started_at,session_kind,created_at)
+    values ($1,$2,'me','partner',now(),now(),'intercourse',now()-interval '30 days')`, [coupleId,sessionId]);
   await cleanupExpiredData(client);
-  assert.equal((await rows('session_deletion_requests')).length, 5);
-  assert.deepEqual((await rows('session_deletion_requests')).map((r) => r.status).sort(), ['approved', 'cancelled', 'declined', 'expired', 'pending']);
-  assert.equal((await rows('sessions')).length, 1);
+  assert.equal((await rows('session_deletion_requests')).length,1);
 });
 
 test('cleanup removes expired anonymous markers and throttles repeated database sweeps', async () => {
@@ -144,4 +136,15 @@ test('deployment migration scrubs existing signed-out devices and orphan IP hist
   assert.deepEqual((await rows('login_events')).map((r) => r.device_id), ['active-phone']);
   assert.equal(await isDeviceRevoked(client, 'revoked-phone', 'old-session'), true);
   assert.equal(await isDeviceRevoked(client, 'active-phone', 'active-session'), false);
+});
+
+test('deployment migrates unread outcomes, removes handled requests and read notices, and is idempotent', async () => {
+  for (const status of ['approved','declined','cancelled','expired']) {
+    await pg.query(`insert into session_deletion_requests
+      (couple_id,session_id,requested_by,recipient_id,session_version,session_started_at,session_kind,status)
+      values ($1,$2,'me','partner',now(),now(),'intercourse',$3)`, [coupleId,sessionId,status]);
+  }
+  await pg.exec(schema); await pg.exec(schema);
+  assert.equal((await rows('session_deletion_requests')).length,0);
+  assert.equal((await pg.query('select * from session_deletion_outcomes')).rows.length,3);
 });

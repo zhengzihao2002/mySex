@@ -183,6 +183,43 @@ create table if not exists app_maintenance (
   last_run timestamptz not null
 );
 
+-- Inbox notices contain references only, never a copy of the intimate details.
+create table if not exists session_edit_notices (
+  id uuid primary key default gen_random_uuid(),
+  couple_id uuid not null references couples(id) on delete cascade,
+  session_id uuid not null references sessions(id) on delete cascade,
+  edited_by text not null references profiles(user_id) on delete cascade,
+  recipient_id text not null references profiles(user_id) on delete cascade,
+  created_at timestamptz not null default now(),
+  read_at timestamptz
+);
+create index if not exists session_edit_notices_recipient on session_edit_notices(couple_id, recipient_id, created_at);
+create index if not exists session_edit_notices_expiry on session_edit_notices(created_at);
+-- A hash alone prevents backups from resurrecting mutually deleted records after receipts expire.
+create table if not exists deleted_session_markers (key_hash text primary key);
+insert into deleted_session_markers(key_hash)
+select encode(sha256(convert_to(couple_id::text || ':' || session_id::text, 'UTF8')), 'hex')
+from session_deletion_requests where status = 'approved' on conflict do nothing;
+create table if not exists session_deletion_outcomes (
+  id uuid primary key,
+  couple_id uuid not null references couples(id) on delete cascade,
+  session_id uuid not null,
+  requested_by text not null references profiles(user_id) on delete cascade,
+  recipient_id text not null references profiles(user_id) on delete cascade,
+  session_started_at timestamptz not null,
+  session_kind text not null check (session_kind in ('intercourse','oral')),
+  status text not null check (status in ('approved','declined','cancelled','expired')),
+  created_at timestamptz not null default now()
+);
+create index if not exists deletion_outcomes_recipient on session_deletion_outcomes(couple_id, recipient_id);
+-- Preserve unread legacy results, remove handled requests and already-read notices immediately.
+insert into session_deletion_outcomes(id,couple_id,session_id,requested_by,recipient_id,session_started_at,session_kind,status,created_at)
+select id,couple_id,session_id,requested_by,requested_by,session_started_at,session_kind,status,coalesce(decided_at,created_at)
+from session_deletion_requests where status in ('approved','declined','expired') and requester_read_at is null
+on conflict do nothing;
+delete from session_deletion_requests where status <> 'pending';
+delete from session_edit_notices where read_at is not null;
+
 -- Remove previously retained signed-out devices and their IP/login details on deployment.
 with targets as materialized (
   select device_id, auth_session_hash from devices where revoked_at is not null for update
@@ -197,4 +234,3 @@ with targets as materialized (
     select 1 from devices d where d.device_id = e.device_id and d.user_id = e.user_id and d.revoked_at is null)
 )
 delete from devices where device_id in (select device_id from targets);
-delete from session_deletion_requests where created_at <= now() - interval '7 days';

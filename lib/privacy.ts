@@ -83,8 +83,6 @@ export async function cleanupExpiredData(client: Client) {
       on conflict (name) do update set last_run = excluded.last_run
       where app_maintenance.last_run <= now() - interval '1 hour'
       returning name
-    ), requests_deleted as (
-      delete from session_deletion_requests where created_at <= now() - interval '7 days' and exists (select 1 from claimed)
     )
     delete from device_revocations where expires_at <= now() and exists (select 1 from claimed)`;
 }

@@ -15,7 +15,7 @@ import { flagEmoji, PHASES, PROTECTION } from '@/lib/content';
 import { buildCycleModel, dayInfo, findCycle, phaseSpans, upcomingCycles, type CycleDefaults, type Phase } from '@/lib/cycle';
 import { diffDays, formatDuration, MONTHS, prettyDate, prettyRange, relativeDays, WEEKDAYS } from '@/lib/dates';
 import { dayInTz, hourInTz } from '@/lib/tz';
-import type { DailyLog, Period, SessionKind, SexSession } from '@/lib/types';
+import type { DailyLog, LoveNote, Period, SessionKind, SexSession } from '@/lib/types';
 
 type Tab = 'cycle' | 'sex' | 'history' | 'places';
 const PHASE_ORDER: Phase[] = ['menstrual', 'follicular', 'ovulation', 'luteal'];
@@ -24,6 +24,8 @@ export function InsightsView(props: {
   periods: Period[];
   sessions: SexSession[];
   herLogs: DailyLog[];
+  logs: DailyLog[];
+  notes: LoveNote[];
   isHer: boolean;
   herName: string;
   hisName: string;
@@ -216,17 +218,18 @@ function CycleTab({ periods, sessions, herLogs, isHer, herName, defaults }: Para
 
 // ─────────────────────────────── sex ───────────────────────────────
 
-function SexTab({ sessions: allSessions, herName, hisName }: Parameters<typeof InsightsView>[0]) {
+function SexTab({ sessions: allSessions, herName, hisName, logs, notes }: Parameters<typeof InsightsView>[0]) {
   const { t } = useT();
   const { tz, today } = useTz();
   const [kind, setKind] = useState<'all' | SessionKind>('all');
   const sessions = useMemo(() => (kind === 'all' ? allSessions : allSessions.filter((s) => s.kind === kind)), [allSessions, kind]);
   // Achievements are always about everything, regardless of the filter.
   const allScores = useMemo(() => scoreSessions(allSessions, tz), [allSessions, tz]);
-  const badges = useMemo(() => achievements(allSessions, allScores, tz, today), [allSessions, allScores, tz, today]);
+  const badges = useMemo(() => achievements(allSessions, allScores, tz, today, { logs, notes }), [allSessions, allScores, tz, today, logs, notes]);
 
   return (
     <div className="space-y-4">
+      <ConnectionInsights sessions={sessions} logs={logs} />
       {allSessions.length > 0 && <KindFilter value={kind} onChange={setKind} />}
       {!allSessions.length ? (
         <div className="card text-center text-sm text-ink-2">{t('Nothing logged yet. Hit the ❤️ button and start the clock 😏')}</div>
@@ -239,6 +242,7 @@ function SexTab({ sessions: allSessions, herName, hisName }: Parameters<typeof I
       )}
       <section className="card">
         <h3 className="mb-1 font-semibold">{t('Achievements')}</h3>
+        <p className="mb-2 text-xs text-ink-3">{t('A collection of your story, not a to-do list. There is no deadline or ideal pace.')}</p>
         <p className="text-xs text-ink-3">{t('{a} of {b} unlocked', { a: badges.filter((b) => b.unlocked).length, b: badges.length })}</p>
         <BadgeGrid badges={badges} />
       </section>
@@ -367,18 +371,40 @@ function SexStats({ sessions, kind, allSessions, scores, herName, hisName }: { s
 }
 
 function BadgeGrid({ badges }: { badges: ReturnType<typeof achievements> }) {
-  const { t, f } = useT();
-  return (
-    <div className="mt-3 grid grid-cols-4 gap-2">
-      {badges.map((b) => (
-        <div key={b.key} className={`flex flex-col items-center rounded-2xl p-2 text-center ${b.unlocked ? 'bg-rose/10' : 'opacity-35 grayscale'}`} title={t(b.desc)}>
-          <span className="text-2xl">{b.emoji}</span>
-          <span className="mt-1 text-[10px] leading-tight font-semibold">{t(b.title)}</span>
-          <span className="text-[9px] leading-tight text-ink-3">{t(b.desc)}</span>
-        </div>
-      ))}
+  const { t } = useT();
+  const [filter, setFilter] = useState<'all' | 'unlocked' | 'remaining'>('all');
+  const [search, setSearch] = useState('');
+  const visible = badges.filter(b => (filter === 'all' || (filter === 'unlocked' ? b.unlocked : !b.unlocked)) &&
+    `${t(b.title)} ${t(b.desc)}`.toLowerCase().includes(search.toLowerCase()));
+  return <div className="mt-3 space-y-3">
+    <input className="input" value={search} onChange={e => setSearch(e.target.value)} placeholder={t('Search achievements')} aria-label={t('Search achievements')} />
+    <div className="flex gap-2">{(['all','unlocked','remaining'] as const).map(k => <button key={k} className={`chip ${filter === k ? 'chip-on' : ''}`} onClick={() => setFilter(k)}>{t(k === 'all' ? 'All' : k === 'unlocked' ? 'Unlocked' : 'Still to discover')}</button>)}</div>
+    <div className="grid grid-cols-3 gap-2">{visible.map(b => <div key={b.key} className={`flex flex-col items-center rounded-2xl p-3 text-center ${b.unlocked ? 'bg-rose/10' : 'bg-surface-2 text-ink-3'}`}>
+      <span className={`text-2xl ${b.unlocked ? '' : 'grayscale'}`}>{b.emoji}</span><span className="mt-1 text-xs font-semibold">{t(b.title)}</span>
+      <span className="mt-1 text-[10px] text-ink-3">{t(b.desc)}</span><span className="mt-1 text-[10px]">{b.unlocked ? t('Unlocked') : t('Still to discover')}</span>
+    </div>)}</div>
+    {!visible.length && <p className="text-sm text-ink-3">{t('No matching achievements.')}</p>}
+  </div>;
+}
+
+function ConnectionInsights({ sessions, logs }: { sessions: SexSession[]; logs: DailyLog[] }) {
+  const { t } = useT();
+  const rated = sessions.filter(s => s.rating != null);
+  const average = rated.length ? (rated.reduce((n,s) => n + s.rating!, 0) / rated.length).toFixed(1) : null;
+  const reflective = sessions.filter(s => s.notes?.trim()).length;
+  const loved = logs.filter(l => l.mood === 'loved').length;
+  return <section className="card space-y-3">
+    <h3 className="font-semibold">{t('Connection, in your own words')}</h3>
+    <p className="text-sm text-ink-2">{t('Comfort, consent and enjoyment matter more than frequency, duration, scores or orgasm counts. Your numbers describe moments, not the quality of your relationship.')}</p>
+    <div className="grid grid-cols-2 gap-2 text-sm">
+      <div className="rounded-xl bg-surface-2 p-3"><b>{average ?? '–'}</b><p className="text-xs text-ink-3">{t('Average personal rating · {n} rated sessions', { n:rated.length })}</p></div>
+      <div className="rounded-xl bg-surface-2 p-3"><b>{reflective}</b><p className="text-xs text-ink-3">{t('Memories with your own notes')}</p></div>
     </div>
-  );
+    {logs.length > 0 && <p className="text-xs text-ink-3">{t('“Loved” appeared in {n} of {total} shared check-ins. These are individual entries, not a measure of both partners’ feelings.', { n:loved, total:logs.length })}</p>}
+    <details className="text-sm"><summary className="cursor-pointer text-rose-2">{t('Something to talk about together')}</summary><ul className="mt-2 list-disc space-y-2 pl-5 text-ink-2">
+      <li>{t('What helped you feel comfortable and close?')}</li><li>{t('Is there anything you would like more of, less of, or to pause?')}</li><li>{t('What would feel good for both of us next time, including rest or cuddles?')}</li>
+    </ul></details>
+  </section>;
 }
 
 function Highlight({ title, s, score, tz }: { title: string; s: SexSession; score?: Score; tz: string }) {

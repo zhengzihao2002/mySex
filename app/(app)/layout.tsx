@@ -1,4 +1,5 @@
-import { getActiveSession, getUnreadCount, getDeletionInboxCount, getViewer, requireCouple } from '@/lib/data';
+import { getActiveSession, getUnreadCount, getInboxSnapshot, getViewer, requireCouple } from '@/lib/data';
+import { PrivacyMode } from '@/components/PrivacyMode';
 import { InboxProvider } from '@/components/InboxLink';
 import { TabBar } from '@/components/TabBar';
 import { PinLock } from '@/components/PinLock';
@@ -18,21 +19,21 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     getUnreadCount(ctx.couple.id, ctx.me.userId),
     getActiveSession(ctx.couple.id),
     touchDevice(ctx.me.userId, viewer?.sessionId ?? null),
-    getDeletionInboxCount(ctx.couple.id, ctx.me.userId),
+    getInboxSnapshot(ctx.couple.id, ctx.me.userId),
   ]);
   // This device was signed out remotely from Settings → Devices.
   if (device.revoked) redirect('/auth/revoked');
   return (
     <TzProvider tz={tz} today={today}>
-    <PinLock>
+    <PrivacyMode><PinLock>
       <RefreshOnFocus />
-      <InboxProvider count={inboxCount}>
+      <InboxProvider initial={inboxCount}>
       <div className="mx-auto min-h-dvh max-w-lg px-4 pt-safe pb-[calc(env(safe-area-inset-bottom)+96px)]">
         {children}
       </div>
       <TabBar unread={unread} live={!!active} />
       </InboxProvider>
-    </PinLock>
+    </PinLock></PrivacyMode>
     </TzProvider>
   );
 }

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Check, ChevronLeft, Inbox, RefreshCw } from 'lucide-react';
-import { cancelDeletionRequest, markDeletionRequestRead, respondToDeletionRequest } from '@/app/actions';
+import { markEditNoticeRead, cancelDeletionRequest, markDeletionRequestRead, respondToDeletionRequest } from '@/app/actions';
 import { FormError } from '@/components/FormError';
 import { useT } from '@/components/I18nProvider';
 import { KIND_META } from '@/components/KindPicker';
@@ -12,10 +12,10 @@ import { Sheet } from '@/components/Sheet';
 import { useTz } from '@/components/TzProvider';
 import { useRun } from '@/components/useRun';
 import { dayInTz } from '@/lib/tz';
-import type { SessionDeletionRequest } from '@/lib/types';
+import type { SessionDeletionRequest, SessionEditNotice } from '@/lib/types';
 
-export function InboxView({ requests, meId, partnerName }: {
-  requests: SessionDeletionRequest[]; meId: string; partnerName: string;
+export function InboxView({ requests, notices, meId, partnerName }: {
+  requests: SessionDeletionRequest[]; notices: SessionEditNotice[]; meId: string; partnerName: string;
 }) {
   const { t } = useT();
   const router = useRouter();
@@ -33,18 +33,19 @@ export function InboxView({ requests, meId, partnerName }: {
         </button>
       </header>
       <p className="text-sm text-ink-2">{t('Shared sessions are deleted only when both of you agree. Declining keeps the record and notifies the requester.')}</p>
-      <p className="text-xs text-ink-3">{t('All requests and replies expire 7 days after the request was sent. Expiring an unanswered request keeps the session.')}</p>
-      {!requests.length && (
+      <p className="text-xs text-ink-3">{t('Handled requests are deleted immediately. Unread replies and edit notices stay until you mark them read, then are deleted from the database.')}</p>
+      {!requests.length && !notices.length && (
         <div className="card py-10 text-center text-ink-3">
           <Inbox className="mx-auto mb-3" size={30} />
           <p className="font-semibold text-ink">{t('Your inbox is empty')}</p>
           <p className="mt-1 text-sm">{t('Deletion requests and your partner’s replies will appear here.')}</p>
         </div>
       )}
+      {notices.length > 0 && <section className="space-y-3"><h2 className="px-1 text-sm font-semibold text-ink-2">{t('Shared record updates')}</h2>{notices.map(n => <EditNotice key={n.id} notice={n} partnerName={partnerName} />)}</section>}
       {[
         { title: t('Needs your agreement'), items: incoming },
         { title: t('Waiting for your partner'), items: outgoing },
-        { title: t('Request history'), items: history },
+        { title: t('Unread replies'), items: history },
       ].filter((group) => group.items.length).map((group) => (
         <section key={group.title} className="space-y-3">
           <h2 className="px-1 text-sm font-semibold text-ink-2">{group.title} · {group.items.length}</h2>
@@ -63,7 +64,7 @@ function RequestCard({ request: r, meId, partnerName }: {
   const { run, pending, error } = useRun();
   const [confirmApproval, setConfirmApproval] = useState(false);
   const mine = r.requestedBy === meId;
-  const unread = mine && ['approved', 'declined', 'expired'].includes(r.status) && !r.requesterReadAt;
+  const unread = r.status !== 'pending';
   const s = r.session;
   const status = {
     pending: mine ? t('Request sent. The session is kept until your partner agrees.') : t('{name} requests deletion of this session.', { name: partnerName }),
@@ -80,7 +81,7 @@ function RequestCard({ request: r, meId, partnerName }: {
           <h3 className="font-semibold">
             {t(KIND_META[r.sessionKind].label)} · {f.prettyDate(dayInTz(r.sessionStartedAt, tz), { year: true })}
           </h3>
-          <p className="text-xs text-ink-3">{f.timeInTz(r.sessionStartedAt, tz)} · {t('Requested {date}', { date: f.dateTimeInTz(r.createdAt, tz) })}</p>
+          <p className="text-xs text-ink-3">{f.timeInTz(r.sessionStartedAt, tz)} · {f.dateTimeInTz(r.createdAt, tz)}</p>
         </div>
         {unread && <span className="rounded-full bg-rose/20 px-2 py-1 text-xs font-semibold text-rose-2">{t('New')}</span>}
       </div>
@@ -125,4 +126,23 @@ function RequestCard({ request: r, meId, partnerName }: {
       </Sheet>
     </article>
   );
+}
+
+function EditNotice({ notice: n, partnerName }: { notice: SessionEditNotice; partnerName: string }) {
+  const { t, f } = useT();
+  const { tz } = useTz();
+  const { run, pending, error } = useRun();
+  return <article className={`card space-y-3 ${!n.readAt ? 'border-rose/60' : ''}`}>
+    <p className="font-semibold">{t('{name} updated a shared session.', { name: partnerName })} {!n.readAt && <span className="text-xs text-rose-2">{t('New')}</span>}</p>
+    <p className="text-xs text-ink-3">{f.dateTimeInTz(n.createdAt, tz)}</p>
+    <details className="rounded-2xl bg-surface-2 p-3 text-sm"><summary className="cursor-pointer">{t('Review current session')}</summary>
+      <div className="mt-2 space-y-2"><p>{t(KIND_META[n.session.kind].label)} · {f.dateTimeInTz(n.session.startedAt, tz)}</p>
+      <p>{f.formatDuration(n.session.durationSec ?? 0)}</p><p>{n.session.place}</p>
+      {n.session.rating && <p>{'🔥'.repeat(n.session.rating)}</p>}
+      <p>{t('Her orgasms 💦')}: {n.session.herOrgasms ?? '–'} · {t('His orgasms 🍆')}: {n.session.hisOrgasms ?? '–'}</p>
+      <p>{n.session.tags.map(tag => t(tag)).join(' · ')}</p><p className="whitespace-pre-wrap break-words">{n.session.notes}</p></div>
+    </details>
+    {!n.readAt && <button className="btn-ghost w-full" disabled={pending} onClick={() => run(() => markEditNoticeRead(n.id))}>{t('Mark read')}</button>}
+    <FormError error={error} />
+  </article>;
 }

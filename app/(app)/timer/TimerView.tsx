@@ -7,7 +7,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, EyeOff, History, MapPin, Navigation, Pause, Play, Trash2 } from 'lucide-react';
 import { discardActiveSession, finishSession, logPastSession, setPaused, startSession } from '@/app/actions';
 import { FormError } from '@/components/FormError';
-import { InboxLink } from '@/components/InboxLink';
 import { ScoreReveal, type RevealTimes } from '@/components/ScoreBadge';
 import { getGps, SessionForm, Toggle, type SessionFormValues } from '@/components/SessionForm';
 import { Sheet } from '@/components/Sheet';
@@ -360,7 +359,6 @@ function LiveTimer({
           {KIND_META[session.kind].emoji} {pendingStart ? t('Starting') : paused ? t('Paused') : t('Live')}
         </div>
         <div className="flex gap-2">
-          <InboxLink />
           <button onClick={() => setDim(true)} className="rounded-full bg-surface-2/70 p-2.5 text-ink-2 backdrop-blur" aria-label="Discreet mode">
             <EyeOff size={18} />
           </button>
@@ -525,8 +523,8 @@ function LiveTimer({
         </button>
       )}
 
-      <Sheet open={confirmDiscard} onClose={() => setConfirmDiscard(false)} title={t('Request to discard this session?')}>
-        <p className="mb-4 text-sm text-ink-2">{t('Discarding also needs your partner’s agreement. The timer stays available until they approve. Pause it before requesting deletion if you want the clock to stop.')}</p>
+      <Sheet open={confirmDiscard} onClose={() => setConfirmDiscard(false)} title={t('Discard this unfinished recording?')}>
+        <p className="mb-4 text-sm text-ink-2">{t('This removes the unfinished timer immediately. No saved session or partner request is created.')}</p>
         <FormError error={act.error} />
         <div className="grid grid-cols-2 gap-3">
           <button className="btn-ghost" onClick={() => setConfirmDiscard(false)}>
@@ -538,11 +536,11 @@ function LiveTimer({
             onClick={async () => {
               if (await act.run(() => discardActiveSession(session.id, session.updatedAt))) {
                 setConfirmDiscard(false);
-                router.push('/inbox');
+                router.push('/timer');
               }
             }}
           >
-            {t('Send request')}
+            {t('Discard recording')}
           </button>
         </div>
       </Sheet>
