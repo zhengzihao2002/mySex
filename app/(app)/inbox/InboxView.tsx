@@ -33,6 +33,7 @@ export function InboxView({ requests, meId, partnerName }: {
         </button>
       </header>
       <p className="text-sm text-ink-2">{t('Shared sessions are deleted only when both of you agree. Declining keeps the record and notifies the requester.')}</p>
+      <p className="text-xs text-ink-3">{t('All requests and replies expire 7 days after the request was sent. Expiring an unanswered request keeps the session.')}</p>
       {!requests.length && (
         <div className="card py-10 text-center text-ink-3">
           <Inbox className="mx-auto mb-3" size={30} />

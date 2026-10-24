@@ -1,6 +1,9 @@
 // Simplified Chinese. Keys are the English UI text (see lib/i18n/core.ts).
 // Run `node scripts/check-i18n.mjs --missing` to find untranslated keys.
 export const zh: Record<string, string> = {
+  "Could not revoke this account session. Try again.": "无法注销这个账户会话，请重试。",
+  "Could not revoke the other account sessions. Try again.": "无法注销其他账户会话，请重试。",
+  "All requests and replies expire 7 days after the request was sent. Expiring an unanswered request keeps the session.": "所有申请和回复会在申请发出 7 天后到期并删除。未回复的申请到期时，性爱记录仍会保留。",
   "Inbox": "收件箱",
   "Refresh inbox": "刷新收件箱",
   "Inbox · {n} awaiting attention": "收件箱 · {n} 项待处理",

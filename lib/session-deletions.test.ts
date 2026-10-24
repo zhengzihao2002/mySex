@@ -167,3 +167,14 @@ test('a failed deletion rolls back the approval and leaves the request pending',
     await pg.exec('drop trigger reject_test_deletion on sessions; drop function reject_test_deletion()');
   }
 });
+
+test('seven-day-old pending requests cannot approve deletion, even before scheduled cleanup', async () => {
+  const id = await request();
+  await pg.query("update session_deletion_requests set created_at = now() - interval '7 days' where id = $1", [id]);
+  assert.equal(await respondToSessionDeletion(client, her, id, 'approved'), null);
+  assert.equal(await exists(), true);
+  assert.equal(await requestSessionDeletion(client, him, sessionId, version), true);
+  const current = await requests();
+  assert.equal(current.length, 1);
+  assert.notEqual(current[0].id, id);
+});

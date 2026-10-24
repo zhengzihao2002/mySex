@@ -2,7 +2,9 @@ import 'server-only';
 import { cache } from 'react';
 import { redirect } from 'next/navigation';
 import { getAuth } from './auth/server';
-import { sql } from './db';
+import { db, sql } from './db';
+import { currentDeviceId } from './devices';
+import { cleanupExpiredData, isDeviceRevoked } from './privacy';
 import type { Couple, CoupleContext, DailyLog, LoveNote, Period, Profile, SexSession, SessionDeletionRequest } from './types';
 
 type Row = Record<string, any>;
@@ -59,9 +61,13 @@ export const getViewer = cache(async () => {
   const { data } = await getAuth().getSession();
   const user = data?.user;
   if (!user) return null;
+  const sessionId = data?.session?.id ?? null;
+  if (await isDeviceRevoked(db(), await currentDeviceId(), sessionId)) redirect('/auth/revoked');
+  await cleanupExpiredData(db());
   const rows = await sql`select * from profiles where user_id = ${user.id}`;
   return {
     user: { id: user.id, email: user.email, name: user.name },
+    sessionId,
     profile: rows[0] ? toProfile(rows[0]) : null,
   };
 });
@@ -114,7 +120,8 @@ export async function requireCouple(): Promise<CoupleContext> {
 export async function getSessions(coupleId: string): Promise<SexSession[]> {
   const rows = await sql`
     select s.*, (select jsonb_build_object('id', r.id, 'requestedBy', r.requested_by)
-      from session_deletion_requests r where r.session_id = s.id and r.couple_id = s.couple_id and r.status = 'pending') as deletion_request
+      from session_deletion_requests r where r.session_id = s.id and r.couple_id = s.couple_id and r.status = 'pending'
+        and r.created_at > now() - interval '7 days') as deletion_request
     from sessions s where s.couple_id = ${coupleId} order by s.started_at desc`;
   return rows.map(toSession);
 }
@@ -125,6 +132,7 @@ export async function getSessionDeletionRequests(ctx: CoupleContext): Promise<Se
     from session_deletion_requests r
     left join sessions s on s.id = r.session_id and s.couple_id = r.couple_id
     where r.couple_id = ${ctx.couple.id} and (r.requested_by = ${ctx.me.userId} or r.recipient_id = ${ctx.me.userId})
+      and r.created_at > now() - interval '7 days'
     order by r.created_at desc`;
   return rows.map((r) => ({
     id: r.id, sessionId: r.session_id, requestedBy: r.requested_by, recipientId: r.recipient_id,
@@ -137,7 +145,7 @@ export async function getSessionDeletionRequests(ctx: CoupleContext): Promise<Se
 export async function getDeletionInboxCount(coupleId: string, userId: string): Promise<number> {
   const rows = await sql`
     select count(*)::int as n from session_deletion_requests
-    where couple_id = ${coupleId} and (
+    where couple_id = ${coupleId} and created_at > now() - interval '7 days' and (
       (recipient_id = ${userId} and status = 'pending') or
       (requested_by = ${userId} and status in ('approved', 'declined', 'expired') and requester_read_at is null))`;
   return rows[0]?.n ?? 0;

@@ -1,8 +1,10 @@
 import 'server-only';
 import { randomUUID } from 'node:crypto';
 import { cookies, headers } from 'next/headers';
-import { sql } from './db';
+import { db, sql } from './db';
 import { getRequestGeo } from './geo';
+import { getAuth } from './auth/server';
+import { forgetDevices, isDeviceRevoked, rememberDevice, revocationHash } from './privacy';
 
 export const DEVICE_COOKIE = 'mysex_device';
 const TOUCH_EVERY_MIN = 10;
@@ -19,38 +21,20 @@ export async function currentDeviceId() {
   return (await cookies()).get(DEVICE_COOKIE)?.value ?? null;
 }
 
-/** Server actions only: returns this browser's device id, creating the cookie if needed. */
-async function ensureDeviceId() {
-  const jar = await cookies();
-  let id = jar.get(DEVICE_COOKIE)?.value;
-  if (!id) {
-    id = randomUUID();
-    jar.set(DEVICE_COOKIE, id, deviceCookieOptions);
-  }
-  return id;
-}
-
 /** Call after a successful sign-in: remembers the device and logs where it signed in from. */
 export async function recordLogin(userId: string | null | undefined) {
   if (!userId) return;
   try {
-    const deviceId = await ensureDeviceId();
+    const previousId = await currentDeviceId();
+    if (previousId) await forgetDevices(db(), userId, previousId);
+    const deviceId = randomUUID();
+    (await cookies()).set(DEVICE_COOKIE, deviceId, deviceCookieOptions);
+    const { data } = await getAuth().getSession();
     const ua = (await headers()).get('user-agent');
     const g = await getRequestGeo();
-    await sql`
-      insert into devices (device_id, user_id, user_agent, ip, city, region, country, signed_in_at, last_seen, revoked_at)
-      select ${deviceId}, ${userId}, ${ua}, ${g.ip}, ${g.city}, ${g.region}, ${g.country}, now(), now(), null
-      where exists (select 1 from profiles where user_id = ${userId})
-      on conflict (device_id) do update set
-        user_id = excluded.user_id, user_agent = excluded.user_agent, ip = excluded.ip, city = excluded.city,
-        region = excluded.region, country = excluded.country, signed_in_at = now(), last_seen = now(), revoked_at = null`;
-    await sql`
-      insert into login_events (user_id, device_id, user_agent, ip, city, region, country)
-      select ${userId}, ${deviceId}, ${ua}, ${g.ip}, ${g.city}, ${g.region}, ${g.country}
-      where exists (select 1 from profiles where user_id = ${userId})`;
-    await sql`
-      delete from login_events where user_id = ${userId} and id not in (
-        select id from login_events where user_id = ${userId} order by at desc limit 50)`;
+    await rememberDevice(db(), userId, deviceId, data?.session?.id ?? null, {
+      userAgent: ua, ip: g.ip, city: g.city, region: g.region, country: g.country,
+    }, true);
   } catch (e) {
     console.error('[devices] recordLogin failed', e);
   }
@@ -60,26 +44,24 @@ export async function recordLogin(userId: string | null | undefined) {
  * Called from the signed-in layout. Keeps "last active" fresh (at most every 10 minutes,
  * to spare the free-tier database) and reports whether this device was signed out remotely.
  */
-export async function touchDevice(userId: string): Promise<{ revoked: boolean }> {
+export async function touchDevice(userId: string, sessionId: string | null = null): Promise<{ revoked: boolean }> {
   const deviceId = await currentDeviceId();
   if (!deviceId) return { revoked: false };
+  if (await isDeviceRevoked(db(), deviceId, sessionId)) return { revoked: true };
   const rows = await sql`
-    select user_id, revoked_at, last_seen < now() - make_interval(mins => ${TOUCH_EVERY_MIN}) as stale
+    select user_id, revoked_at, auth_session_hash, last_seen < now() - make_interval(mins => ${TOUCH_EVERY_MIN}) as stale
     from devices where device_id = ${deviceId}`;
   const row = rows[0];
   if (row && row.user_id === userId && row.revoked_at) return { revoked: true };
-  if (row && row.user_id === userId && !row.stale) return { revoked: false };
+  const sessionHash = sessionId ? revocationHash('session', sessionId) : null;
+  if (row && row.user_id === userId && !row.stale && row.auth_session_hash === sessionHash) return { revoked: false };
 
   const ua = (await headers()).get('user-agent');
   const g = await getRequestGeo();
-  await sql`
-    insert into devices (device_id, user_id, user_agent, ip, city, region, country)
-    values (${deviceId}, ${userId}, ${ua}, ${g.ip}, ${g.city}, ${g.region}, ${g.country})
-    on conflict (device_id) do update set
-      user_id = excluded.user_id, user_agent = excluded.user_agent, ip = excluded.ip, city = excluded.city,
-      region = excluded.region, country = excluded.country, last_seen = now(),
-      revoked_at = case when devices.user_id = excluded.user_id then devices.revoked_at else null end`;
-  return { revoked: false };
+  const saved = await rememberDevice(db(), userId, deviceId, sessionId, {
+    userAgent: ua, ip: g.ip, city: g.city, region: g.region, country: g.country,
+  });
+  return { revoked: !saved };
 }
 
 export type Device = {

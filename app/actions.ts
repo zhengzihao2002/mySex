@@ -8,7 +8,8 @@ import { getAuth } from '@/lib/auth/server';
 import { getCoupleContext, getViewer, hasCoupleHistory } from '@/lib/data';
 import { db, sql } from '@/lib/db';
 import { getRequestGeo } from '@/lib/geo';
-import { currentDeviceId, recordLogin } from '@/lib/devices';
+import { currentDeviceId, DEVICE_COOKIE, recordLogin } from '@/lib/devices';
+import { forgetDevices, revocationHash } from '@/lib/privacy';
 import { cookies } from 'next/headers';
 import { LANG_COOKIE, parseLang } from '@/lib/i18n/core';
 import { DESIRES } from '@/lib/content';
@@ -153,8 +154,10 @@ export async function resendEmailCode(email: string): Promise<ActionResult> {
 
 export async function signOutAction() {
   const deviceId = await currentDeviceId();
-  if (deviceId) await sql`update devices set revoked_at = now() where device_id = ${deviceId}`;
+  const { data } = await getAuth().getSession();
+  if (deviceId && data?.user) await forgetDevices(db(), data.user.id, deviceId);
   await getAuth().signOut();
+  (await cookies()).delete(DEVICE_COOKIE);
   redirect('/auth/sign-in');
 }
 
@@ -461,6 +464,7 @@ export async function cancelDeletionRequest(id: string): Promise<ActionResult> {
   const rows = await sql`
     update session_deletion_requests set status = 'cancelled', decided_at = now()
     where id = ${id} and couple_id = ${ctx.couple.id} and requested_by = ${ctx.me.userId} and status = 'pending'
+      and created_at > now() - interval '7 days'
     returning id`;
   if (!rows.length) return fail('This request is no longer pending or does not belong to you.');
   return done();
@@ -685,7 +689,18 @@ export async function signOutDevice(deviceId: string): Promise<ActionResult> {
   const viewer = await getViewer();
   if (!viewer) return fail('Not signed in.');
   if (deviceId === (await currentDeviceId())) return fail('Use “Sign out” for this device.');
-  await sql`update devices set revoked_at = now() where device_id = ${deviceId} and user_id = ${viewer.user.id}`;
+  const targets = await sql`select auth_session_hash from devices where device_id = ${deviceId} and user_id = ${viewer.user.id}`;
+  const sessionHash = targets[0]?.auth_session_hash;
+  if (sessionHash) {
+    const sessions = await getAuth().listSessions();
+    if (sessions.error) return fail('Could not revoke this account session. Try again.');
+    const session = sessions.data?.find((s) => revocationHash('session', s.id) === sessionHash);
+    if (session) {
+      const result = await getAuth().revokeSession({ token: session.token });
+      if (result.error) return fail('Could not revoke this account session. Try again.');
+    }
+  }
+  await forgetDevices(db(), viewer.user.id, deviceId);
   return done();
 }
 
@@ -693,15 +708,15 @@ export async function signOutOtherDevices(): Promise<ActionResult> {
   const viewer = await getViewer();
   if (!viewer) return fail('Not signed in.');
   const current = await currentDeviceId();
-  await sql`
-    update devices set revoked_at = now()
-    where user_id = ${viewer.user.id} and revoked_at is null and device_id is distinct from ${current}`;
   try {
     // Also kill every other Neon Auth session, in case a device lost its cookie.
-    await getAuth().revokeOtherSessions();
+    const result = await getAuth().revokeOtherSessions();
+    if (result.error) return fail('Could not revoke the other account sessions. Try again.');
   } catch (e) {
     console.error('[devices] revokeOtherSessions failed', e);
+    return fail('Could not revoke the other account sessions. Try again.');
   }
+  await forgetDevices(db(), viewer.user.id, current, true);
   return done();
 }
 

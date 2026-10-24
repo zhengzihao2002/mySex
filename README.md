@@ -14,6 +14,8 @@ A private, **18+**, invite-only sex & cycle tracker for one couple, built to liv
 - **Play**: sex dice, a dare deck, and a private **Yes / No / Maybe** list. Only mutual matches are ever revealed; your partner never sees your answers.
 - **Privacy**: an optional 4-digit passcode lock on each device, JSON export, and unpair. Re-pairing the same two people restores your history.
 - **Mutual session deletion**: deleting a shared intercourse/oral record, including discarding a live timer, sends a request to the partner’s **Inbox**. Nothing is removed until the other partner explicitly agrees. Declining keeps the record and gives the requester an unread inbox notification; approvals and outdated requests also generate notifications. Requests can be withdrawn. Edits, pauses, or finishing a session invalidate the requested version, so it cannot be deleted using old consent. Unpairing preserves active records as well as completed history. Periods, check-ins, notes, and private preferences keep their existing controls.
+- **Inbox reminders and retention**: Inbox sits beside Settings on Home, with a red dot for incoming requests and unread replies. It also stays accessible from the live timer. All request statuses, including pending, expire **7 days after creation**; an expired request cannot delete a shared session. A daily Vercel cron at 05:00 UTC physically purges expired inbox rows even when the app is closed; foreground activity also sweeps at most hourly. Hidden/expired requests are excluded immediately from inboxes, badges, session controls, and exports. Inactive databases may retain expired rows until the next daily sweep.
+- **Device privacy**: signing out or forcing a device out physically deletes its `devices` row and every associated `login_events` row. Signing out all other devices also clears orphaned history while preserving this device’s history. Matching Neon Auth sessions are revoked where tracked. Only anonymous SHA-256 revocation hashes remain (no user ID, IP, location, or device description), for up to the 400-day device-cookie lifetime; these prevent an old browser/session from recreating IP records. A fresh sign-in rotates the device cookie. Deployment also cleans previously retained signed-out devices and orphaned login history. IP/location pins attached to shared sex-session records retain their existing behavior.
 - **Orgasm counts**: both partners can record 0–20 orgasms. Orgasm and ejaculation are distinct, and either partner may have multiple orgasms; one is not a biological maximum for men. Existing counts and scoring are preserved.
 - **No uploads**: everything is short text and numbers, sized for Neon's free tier. There's no background polling; the app refreshes when it comes back to the foreground, so Neon compute can scale to zero.
 
@@ -38,6 +40,7 @@ Next.js 16 (App Router, server actions) · React 19 · Tailwind CSS 4 · **Neon 
    | `NEON_AUTH_BASE_URL` | The Auth URL from Neon Console → Auth → Configuration |
    | `NEON_AUTH_COOKIE_SECRET` | 32+ random characters: `openssl rand -base64 32` |
    | `SIGNUP_ACCESS_CODE` | Optional. Overrides the default `zzh_zj_99` |
+   | `CRON_SECRET` | Optional. Vercel sends this as a bearer token to authenticate scheduled retention cleanup. Without it, the endpoint only accepts the Vercel cron user-agent and performs a fixed, hourly-gated TTL sweep with no user input or user data in its response. |
 
 3. Push. Every deploy runs `scripts/migrate.mjs` before `next build`, which applies the idempotent `db/schema.sql`. No manual migrations are needed.
 4. On each iPhone, open the site in Safari, tap **Share → Add to Home Screen**, sign up with the access code, and pair.
@@ -49,7 +52,7 @@ cp .env.example .env.local   # fill in the values
 npm install
 npm run db:migrate           # needs DATABASE_URL in the environment
 npm run dev
-npm test                     # cycle, scoring, and isolated Postgres deletion tests
+npm test                     # cycle, scoring, and isolated Postgres deletion/privacy tests
 npm run lint                 # TypeScript type check
 ```
 
@@ -68,6 +71,7 @@ lib/
   score.ts              mySex Score
   data.ts               queries; db.ts Neon client; geo.ts IP geolocation
   session-deletions.ts  transactional requests and partner decisions
+  privacy.ts            inbox retention and device-history deletion/revocation
 db/schema.sql           schema (applied on every build)
 proxy.ts                session refresh + route protection
 ```

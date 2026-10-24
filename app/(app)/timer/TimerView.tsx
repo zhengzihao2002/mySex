@@ -4,9 +4,10 @@ import { useT } from '@/components/I18nProvider';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronDown, EyeOff, History, Inbox, MapPin, Navigation, Pause, Play, Trash2 } from 'lucide-react';
+import { ChevronDown, EyeOff, History, MapPin, Navigation, Pause, Play, Trash2 } from 'lucide-react';
 import { discardActiveSession, finishSession, logPastSession, setPaused, startSession } from '@/app/actions';
 import { FormError } from '@/components/FormError';
+import { InboxLink } from '@/components/InboxLink';
 import { ScoreReveal, type RevealTimes } from '@/components/ScoreBadge';
 import { getGps, SessionForm, Toggle, type SessionFormValues } from '@/components/SessionForm';
 import { Sheet } from '@/components/Sheet';
@@ -359,10 +360,7 @@ function LiveTimer({
           {KIND_META[session.kind].emoji} {pendingStart ? t('Starting') : paused ? t('Paused') : t('Live')}
         </div>
         <div className="flex gap-2">
-          <Link href="/inbox" className="relative rounded-full bg-surface-2/70 p-2.5 text-ink-2 backdrop-blur" aria-label={t('Inbox')}>
-            <Inbox size={18} />
-            {session.deletionRequest && <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-rose" />}
-          </Link>
+          <InboxLink />
           <button onClick={() => setDim(true)} className="rounded-full bg-surface-2/70 p-2.5 text-ink-2 backdrop-blur" aria-label="Discreet mode">
             <EyeOff size={18} />
           </button>

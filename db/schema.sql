@@ -168,3 +168,33 @@ create table if not exists session_deletion_requests (
 );
 create unique index if not exists session_deletion_one_pending on session_deletion_requests (session_id) where status = 'pending';
 create index if not exists session_deletion_couple_created on session_deletion_requests (couple_id, created_at desc);
+
+-- Anonymous revocation markers prevent signed-out sessions from recreating deleted device rows.
+alter table devices add column if not exists auth_session_hash text;
+create table if not exists device_revocations (
+  key_hash text primary key,
+  expires_at timestamptz not null
+);
+create index if not exists device_revocations_expiry on device_revocations (expires_at);
+create index if not exists login_events_user_device on login_events (user_id, device_id);
+create index if not exists session_deletion_created on session_deletion_requests (created_at);
+create table if not exists app_maintenance (
+  name text primary key,
+  last_run timestamptz not null
+);
+
+-- Remove previously retained signed-out devices and their IP/login details on deployment.
+with targets as materialized (
+  select device_id, auth_session_hash from devices where revoked_at is not null for update
+), marked as (
+  insert into device_revocations (key_hash, expires_at)
+  select encode(sha256(convert_to('device:' || device_id, 'UTF8')), 'hex'), now() + interval '400 days' from targets
+  union
+  select auth_session_hash, now() + interval '400 days' from targets where auth_session_hash is not null
+  on conflict (key_hash) do nothing
+), events_deleted as (
+  delete from login_events e where not exists (
+    select 1 from devices d where d.device_id = e.device_id and d.user_id = e.user_id and d.revoked_at is null)
+)
+delete from devices where device_id in (select device_id from targets);
+delete from session_deletion_requests where created_at <= now() - interval '7 days';

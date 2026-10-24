@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { CalendarPlus, Dice5, Flame, Settings, SmilePlus, Timer } from 'lucide-react';
 import { sendNote, setAnniversary } from '@/app/actions';
 import { FormError } from '@/components/FormError';
+import { InboxLink } from '@/components/InboxLink';
 import { Sheet } from '@/components/Sheet';
 import { CheckInSheet } from '@/components/CheckInSheet';
 import { ScoreBadge } from '@/components/ScoreBadge';
@@ -66,16 +67,16 @@ export function HomeView({
   return (
     <div className="space-y-4 pt-2">
       <header className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           <div className="flex -space-x-3">
             <span className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-bg bg-surface-2 text-2xl">{me.avatar}</span>
             <span className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-bg bg-surface-2 text-2xl">{partner.avatar}</span>
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-sm text-ink-3">
               {greeting} {me.name}
             </p>
-            <p className="font-semibold">
+            <p className="font-semibold break-words">
               {t('You & {name}', { name: partner.name })} ·{' '}
               <button className="text-rose-2 underline decoration-dotted underline-offset-4" onClick={() => setTogetherOpen(true)}>
                 {f.plural(daysTogether, t('{n} day', { n: daysTogether.toLocaleString() }), t('{n} days', { n: daysTogether.toLocaleString() }))}
@@ -83,9 +84,12 @@ export function HomeView({
             </p>
           </div>
         </div>
-        <Link href="/settings" className="rounded-full bg-surface-2 p-2.5 text-ink-2" aria-label="Settings">
-          <Settings size={20} />
-        </Link>
+        <div className="ml-2 flex shrink-0 items-center gap-2">
+          <InboxLink />
+          <Link href="/settings" className="rounded-full bg-surface-2 p-2.5 text-ink-2" aria-label="Settings">
+            <Settings size={20} />
+          </Link>
+        </div>
       </header>
 
       {active && <LiveBanner session={active} />}
