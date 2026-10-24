@@ -56,6 +56,22 @@ export type SexSession = {
   notes: string | null;
   updatedAt: string;
   breaks: Break[];
+  deletionRequest?: { id: string; requestedBy: string } | null;
+};
+
+export type SessionDeletionRequest = {
+  id: string;
+  sessionId: string;
+  requestedBy: string;
+  recipientId: string;
+  status: 'pending' | 'approved' | 'declined' | 'cancelled' | 'expired';
+  sessionStartedAt: string;
+  sessionKind: SessionKind;
+  createdAt: string;
+  decidedAt: string | null;
+  requesterReadAt: string | null;
+  changed: boolean;
+  session: SexSession | null;
 };
 
 export type Break = { start: string; end: string | null };

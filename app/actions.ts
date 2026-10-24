@@ -12,6 +12,7 @@ import { currentDeviceId, recordLogin } from '@/lib/devices';
 import { cookies } from 'next/headers';
 import { LANG_COOKIE, parseLang } from '@/lib/i18n/core';
 import { DESIRES } from '@/lib/content';
+import { requestSessionDeletion, respondToSessionDeletion } from '@/lib/session-deletions';
 import type { ActionResult, AuthResult } from '@/lib/types';
 
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -245,7 +246,7 @@ export async function unpair(): Promise<ActionResult> {
   // Nothing is deleted: re-pairing the same two people reuses this couple and restores everything.
   await sql`update profiles set couple_id = null where couple_id = ${ctx.couple.id}`;
   await sql`update couples set unpaired_at = now() where id = ${ctx.couple.id}`;
-  await sql`delete from sessions where couple_id = ${ctx.couple.id} and status = 'active'`;
+  // Keep the live record too: unpairing must not bypass mutual deletion approval.
   revalidatePath('/', 'layout');
   redirect('/pair');
 }
@@ -364,9 +365,13 @@ export async function finishSession(id: string, input: z.input<typeof detailsSch
   return done();
 }
 
-export async function discardActiveSession(id: string): Promise<ActionResult> {
+export async function discardActiveSession(id: string, version: string): Promise<ActionResult> {
   const ctx = await couple();
-  await sql`delete from sessions where id = ${id} and couple_id = ${ctx.couple.id} and status = 'active'`;
+  if (!z.uuid().safeParse(id).success || !z.string().datetime({ offset: true }).safeParse(version).success) return fail('Invalid input');
+  const created = await requestSessionDeletion(db(), {
+    coupleId: ctx.couple.id, userId: ctx.me.userId, partnerId: ctx.partner.userId,
+  }, id, version, true);
+  if (!created) return fail('This session changed. Refresh and request deletion again.');
   return done();
 }
 
@@ -430,9 +435,44 @@ export async function updateSession(id: string, input: z.input<typeof editSchema
   return done();
 }
 
-export async function deleteSession(id: string): Promise<ActionResult> {
+export async function deleteSession(id: string, version: string): Promise<ActionResult> {
   const ctx = await couple();
-  await sql`delete from sessions where id = ${id} and couple_id = ${ctx.couple.id}`;
+  if (!z.uuid().safeParse(id).success || !z.string().datetime({ offset: true }).safeParse(version).success) return fail('Invalid input');
+  const created = await requestSessionDeletion(db(), {
+    coupleId: ctx.couple.id, userId: ctx.me.userId, partnerId: ctx.partner.userId,
+  }, id, version);
+  if (!created) return fail('This session changed. Refresh and request deletion again.');
+  return done();
+}
+
+export async function respondToDeletionRequest(id: string, decision: 'approved' | 'declined'): Promise<ActionResult> {
+  const ctx = await couple();
+  if (!z.uuid().safeParse(id).success || !['approved', 'declined'].includes(decision)) return fail('Invalid input');
+  const status = await respondToSessionDeletion(db(), {
+    coupleId: ctx.couple.id, userId: ctx.me.userId, partnerId: ctx.partner.userId,
+  }, id, decision);
+  if (!status) return fail('This request is no longer pending or is not addressed to you.');
+  return done();
+}
+
+export async function cancelDeletionRequest(id: string): Promise<ActionResult> {
+  const ctx = await couple();
+  if (!z.uuid().safeParse(id).success) return fail('Invalid input');
+  const rows = await sql`
+    update session_deletion_requests set status = 'cancelled', decided_at = now()
+    where id = ${id} and couple_id = ${ctx.couple.id} and requested_by = ${ctx.me.userId} and status = 'pending'
+    returning id`;
+  if (!rows.length) return fail('This request is no longer pending or does not belong to you.');
+  return done();
+}
+
+export async function markDeletionRequestRead(id: string): Promise<ActionResult> {
+  const ctx = await couple();
+  if (!z.uuid().safeParse(id).success) return fail('Invalid input');
+  await sql`
+    update session_deletion_requests set requester_read_at = now()
+    where id = ${id} and couple_id = ${ctx.couple.id} and requested_by = ${ctx.me.userId}
+      and status in ('approved', 'declined', 'expired') and requester_read_at is null`;
   return done();
 }
 

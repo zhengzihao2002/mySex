@@ -163,6 +163,7 @@ export function SessionForm({
         <Stepper label={t('Her orgasms 💦')} value={v.herOrgasms} onChange={(n) => set('herOrgasms', n)} />
         <Stepper label={t('His orgasms 🍆')} value={v.hisOrgasms} onChange={(n) => set('hisOrgasms', n)} />
       </div>
+      <p className="-mt-3 text-xs text-ink-3">{t('Count orgasms, not ejaculations. Either partner may have more than one; there is no target to reach.')}</p>
 
       <div>
         <label className="label">{t('Protection')}</label>

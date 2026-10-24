@@ -13,6 +13,8 @@ A private, **18+**, invite-only sex & cycle tracker for one couple, built to liv
 - **Dirty notes**: love notes, "tonight I want…" wishes and teases.
 - **Play**: sex dice, a dare deck, and a private **Yes / No / Maybe** list. Only mutual matches are ever revealed; your partner never sees your answers.
 - **Privacy**: an optional 4-digit passcode lock on each device, JSON export, and unpair. Re-pairing the same two people restores your history.
+- **Mutual session deletion**: deleting a shared intercourse/oral record, including discarding a live timer, sends a request to the partner’s **Inbox**. Nothing is removed until the other partner explicitly agrees. Declining keeps the record and gives the requester an unread inbox notification; approvals and outdated requests also generate notifications. Requests can be withdrawn. Edits, pauses, or finishing a session invalidate the requested version, so it cannot be deleted using old consent. Unpairing preserves active records as well as completed history. Periods, check-ins, notes, and private preferences keep their existing controls.
+- **Orgasm counts**: both partners can record 0–20 orgasms. Orgasm and ejaculation are distinct, and either partner may have multiple orgasms; one is not a biological maximum for men. Existing counts and scoring are preserved.
 - **No uploads**: everything is short text and numbers, sized for Neon's free tier. There's no background polling; the app refreshes when it comes back to the foreground, so Neon compute can scale to zero.
 
 ## Access control
@@ -47,7 +49,7 @@ cp .env.example .env.local   # fill in the values
 npm install
 npm run db:migrate           # needs DATABASE_URL in the environment
 npm run dev
-npm test                     # cycle-prediction + scoring unit tests
+npm test                     # cycle, scoring, and isolated Postgres deletion tests
 npm run lint                 # TypeScript type check
 ```
 
@@ -58,13 +60,14 @@ app/
   actions.ts            all server actions (auth, pairing, sessions, periods, notes…)
   auth/                 sign-in / sign-up (access code + 18+ consent)
   onboarding/, pair/    pick sex → pair with invite code
-  (app)/                signed-in & paired area: home, calendar, timer, insights, notes, play, settings
+  (app)/                signed-in & paired area: home, calendar, timer, insights, notes, play, settings, inbox
   api/auth/[...path]    Neon Auth proxy (sign-up blocked)
   api/export            JSON export
 lib/
   cycle.ts              cycle model: stats, predictions, phases, fertile window
   score.ts              mySex Score
   data.ts               queries; db.ts Neon client; geo.ts IP geolocation
+  session-deletions.ts  transactional requests and partner decisions
 db/schema.sql           schema (applied on every build)
 proxy.ts                session refresh + route protection
 ```

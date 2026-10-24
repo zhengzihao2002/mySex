@@ -147,3 +147,24 @@ create table if not exists login_events (
   at         timestamptz not null default now()
 );
 create index if not exists login_events_user_at on login_events (user_id, at desc);
+
+-- A request is the first partner's consent; only the named recipient can give the second.
+-- session_id deliberately has no FK: the small request receipt survives an approved deletion.
+-- No session notes, location, or other intimate details are copied into these receipts.
+create table if not exists session_deletion_requests (
+  id                 uuid primary key default gen_random_uuid(),
+  couple_id          uuid not null references couples(id) on delete cascade,
+  session_id         uuid not null,
+  requested_by       text not null references profiles(user_id) on delete cascade,
+  recipient_id       text not null references profiles(user_id) on delete cascade,
+  session_version    timestamptz not null,
+  session_started_at timestamptz not null,
+  session_kind       text not null check (session_kind in ('intercourse', 'oral')),
+  status             text not null default 'pending' check (status in ('pending', 'approved', 'declined', 'cancelled', 'expired')),
+  created_at         timestamptz not null default now(),
+  decided_at         timestamptz,
+  requester_read_at  timestamptz,
+  check (requested_by <> recipient_id)
+);
+create unique index if not exists session_deletion_one_pending on session_deletion_requests (session_id) where status = 'pending';
+create index if not exists session_deletion_couple_created on session_deletion_requests (couple_id, created_at desc);

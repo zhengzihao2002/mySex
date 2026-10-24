@@ -1,4 +1,5 @@
-import { getActiveSession, getUnreadCount, requireCouple } from '@/lib/data';
+import { getActiveSession, getUnreadCount, getDeletionInboxCount, requireCouple } from '@/lib/data';
+import { InboxLink } from '@/components/InboxLink';
 import { TabBar } from '@/components/TabBar';
 import { PinLock } from '@/components/PinLock';
 import { RefreshOnFocus } from '@/components/RefreshOnFocus';
@@ -11,11 +12,12 @@ export const dynamic = 'force-dynamic';
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const ctx = await requireCouple();
-  const [{ tz, today }, unread, active, device] = await Promise.all([
+  const [{ tz, today }, unread, active, device, inboxCount] = await Promise.all([
     getToday(),
     getUnreadCount(ctx.couple.id, ctx.me.userId),
     getActiveSession(ctx.couple.id),
     touchDevice(ctx.me.userId),
+    getDeletionInboxCount(ctx.couple.id, ctx.me.userId),
   ]);
   // This device was signed out remotely from Settings → Devices.
   if (device.revoked) redirect('/auth/revoked');
@@ -23,7 +25,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <TzProvider tz={tz} today={today}>
     <PinLock>
       <RefreshOnFocus />
-      <div className="mx-auto min-h-dvh max-w-lg px-4 pt-safe pb-[calc(env(safe-area-inset-bottom)+96px)]">{children}</div>
+      <div className="mx-auto min-h-dvh max-w-lg px-4 pt-safe pb-[calc(env(safe-area-inset-bottom)+96px)]">
+        <InboxLink count={inboxCount} />
+        {children}
+      </div>
       <TabBar unread={unread} live={!!active} />
     </PinLock>
     </TzProvider>

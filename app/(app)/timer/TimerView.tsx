@@ -4,7 +4,7 @@ import { useT } from '@/components/I18nProvider';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronDown, EyeOff, History, MapPin, Navigation, Pause, Play, Trash2 } from 'lucide-react';
+import { ChevronDown, EyeOff, History, Inbox, MapPin, Navigation, Pause, Play, Trash2 } from 'lucide-react';
 import { discardActiveSession, finishSession, logPastSession, setPaused, startSession } from '@/app/actions';
 import { FormError } from '@/components/FormError';
 import { ScoreReveal, type RevealTimes } from '@/components/ScoreBadge';
@@ -359,6 +359,10 @@ function LiveTimer({
           {KIND_META[session.kind].emoji} {pendingStart ? t('Starting') : paused ? t('Paused') : t('Live')}
         </div>
         <div className="flex gap-2">
+          <Link href="/inbox" className="relative rounded-full bg-surface-2/70 p-2.5 text-ink-2 backdrop-blur" aria-label={t('Inbox')}>
+            <Inbox size={18} />
+            {session.deletionRequest && <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-rose" />}
+          </Link>
           <button onClick={() => setDim(true)} className="rounded-full bg-surface-2/70 p-2.5 text-ink-2 backdrop-blur" aria-label="Discreet mode">
             <EyeOff size={18} />
           </button>
@@ -523,8 +527,9 @@ function LiveTimer({
         </button>
       )}
 
-      <Sheet open={confirmDiscard} onClose={() => setConfirmDiscard(false)} title={t('Discard this session?')}>
-        <p className="mb-4 text-sm text-ink-2">{t('The timer stops and nothing is saved. Use this for false starts and interruptions 🙈')}</p>
+      <Sheet open={confirmDiscard} onClose={() => setConfirmDiscard(false)} title={t('Request to discard this session?')}>
+        <p className="mb-4 text-sm text-ink-2">{t('Discarding also needs your partner’s agreement. The timer stays available until they approve. Pause it before requesting deletion if you want the clock to stop.')}</p>
+        <FormError error={act.error} />
         <div className="grid grid-cols-2 gap-3">
           <button className="btn-ghost" onClick={() => setConfirmDiscard(false)}>
             {t('Keep going')}
@@ -533,13 +538,13 @@ function LiveTimer({
             className="btn bg-menstrual text-white"
             disabled={act.pending}
             onClick={async () => {
-              if (await act.run(() => discardActiveSession(session.id))) {
+              if (await act.run(() => discardActiveSession(session.id, session.updatedAt))) {
                 setConfirmDiscard(false);
-                router.refresh();
+                router.push('/inbox');
               }
             }}
           >
-            {t('Discard')}
+            {t('Send request')}
           </button>
         </div>
       </Sheet>

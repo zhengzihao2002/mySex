@@ -2,6 +2,8 @@
 import { useT } from './I18nProvider';
 
 import { useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { MapPin, Trash2 } from 'lucide-react';
 import { deleteSession, updateSession } from '@/app/actions';
 import { flagEmoji, HEAT, PROTECTION } from '@/lib/content';
@@ -16,6 +18,7 @@ import { SessionTimes } from './SessionTimes';
 import { Sheet } from './Sheet';
 import { useTz } from './TzProvider';
 import { useRun } from './useRun';
+import { FormError } from './FormError';
 
 export function SessionCard({
   s,
@@ -32,6 +35,7 @@ export function SessionCard({
 }) {
   const { t, f } = useT();
   const { tz } = useTz();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const { run, pending, error } = useRun();
@@ -62,6 +66,7 @@ export function SessionCard({
             {s.hisOrgasms ? ` · ${t('him')} ×${s.hisOrgasms}` : ''}
           </p>
           {s.tags.length > 0 && <p className="mt-0.5 truncate text-xs text-ink-2">{s.tags.map((x) => t(x)).join(' · ')}</p>}
+          {s.deletionRequest && <p className="mt-1 text-xs text-luteal">{t('Deletion awaiting agreement')}</p>}
         </div>
       </button>
 
@@ -131,13 +136,18 @@ export function SessionCard({
             }}
           />
         )}
-        <button className="btn mt-3 w-full text-menstrual" onClick={() => setConfirm(true)}>
-          <Trash2 size={16} /> {t('Delete session')}
-        </button>
+        {s.deletionRequest ? (
+          <Link href="/inbox" className="btn-ghost mt-3 w-full">{t('View deletion request in Inbox')}</Link>
+        ) : (
+          <button className="btn mt-3 w-full text-menstrual" disabled={pending} onClick={() => setConfirm(true)}>
+            <Trash2 size={16} /> {t('Request session deletion')}
+          </button>
+        )}
       </Sheet>
 
-      <Sheet open={confirm} onClose={() => setConfirm(false)} title={t('Delete for both of you?')}>
-        <p className="mb-4 text-sm text-ink-2">{t('This removes it from both your and your partner’s history. Can’t be undone.')}</p>
+      <Sheet open={confirm} onClose={() => setConfirm(false)} title={t('Request deletion for both of you?')}>
+        <p className="mb-4 text-sm text-ink-2">{t('Your partner will receive a request in their inbox. The session stays in both histories unless they agree. If they decline, you will be notified.')}</p>
+        <FormError error={error} />
         <div className="grid grid-cols-2 gap-3">
           <button className="btn-ghost" onClick={() => setConfirm(false)}>
             {t('Keep')}
@@ -146,13 +156,14 @@ export function SessionCard({
             className="btn bg-menstrual text-white"
             disabled={pending}
             onClick={async () => {
-              if (await run(() => deleteSession(s.id))) {
+              if (await run(() => deleteSession(s.id, s.updatedAt))) {
                 setConfirm(false);
                 setOpen(false);
+                router.push('/inbox');
               }
             }}
           >
-            {t('Delete')}
+            {t('Send request')}
           </button>
         </div>
       </Sheet>

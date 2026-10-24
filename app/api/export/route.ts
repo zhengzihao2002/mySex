@@ -1,15 +1,16 @@
-import { getCoupleContext, getDailyLogs, getNotes, getPeriods, getSessions } from '@/lib/data';
+import { getCoupleContext, getDailyLogs, getNotes, getPeriods, getSessions, getSessionDeletionRequests } from '@/lib/data';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   const ctx = await getCoupleContext();
   if (!ctx) return Response.json({ error: 'Not paired' }, { status: 401 });
-  const [sessions, periods, logs, notes] = await Promise.all([
+  const [sessions, periods, logs, notes, deletionRequests] = await Promise.all([
     getSessions(ctx.couple.id),
     getPeriods(ctx.her.userId),
     getDailyLogs(ctx),
     getNotes(ctx.couple.id, 1000),
+    getSessionDeletionRequests(ctx),
   ]);
   const body = JSON.stringify(
     {
@@ -19,6 +20,7 @@ export async function GET() {
       periods,
       checkIns: logs,
       notes,
+      deletionRequests: deletionRequests.map(({ session: _session, ...receipt }) => receipt),
     },
     null,
     2,

@@ -3,7 +3,7 @@ import { cache } from 'react';
 import { redirect } from 'next/navigation';
 import { getAuth } from './auth/server';
 import { sql } from './db';
-import type { Couple, CoupleContext, DailyLog, LoveNote, Period, Profile, SexSession } from './types';
+import type { Couple, CoupleContext, DailyLog, LoveNote, Period, Profile, SexSession, SessionDeletionRequest } from './types';
 
 type Row = Record<string, any>;
 
@@ -50,6 +50,7 @@ export function toSession(r: Row): SexSession {
     notes: r.notes,
     updatedAt: iso(r.updated_at) ?? iso(r.created_at)!,
     breaks: Array.isArray(r.breaks) ? r.breaks : [],
+    deletionRequest: r.deletion_request ?? null,
   };
 }
 
@@ -111,8 +112,35 @@ export async function requireCouple(): Promise<CoupleContext> {
 }
 
 export async function getSessions(coupleId: string): Promise<SexSession[]> {
-  const rows = await sql`select * from sessions where couple_id = ${coupleId} order by started_at desc`;
+  const rows = await sql`
+    select s.*, (select jsonb_build_object('id', r.id, 'requestedBy', r.requested_by)
+      from session_deletion_requests r where r.session_id = s.id and r.couple_id = s.couple_id and r.status = 'pending') as deletion_request
+    from sessions s where s.couple_id = ${coupleId} order by s.started_at desc`;
   return rows.map(toSession);
+}
+
+export async function getSessionDeletionRequests(ctx: CoupleContext): Promise<SessionDeletionRequest[]> {
+  const rows = await sql`
+    select r.*, to_jsonb(s.*) as session, (s.updated_at is distinct from r.session_version) as changed
+    from session_deletion_requests r
+    left join sessions s on s.id = r.session_id and s.couple_id = r.couple_id
+    where r.couple_id = ${ctx.couple.id} and (r.requested_by = ${ctx.me.userId} or r.recipient_id = ${ctx.me.userId})
+    order by r.created_at desc`;
+  return rows.map((r) => ({
+    id: r.id, sessionId: r.session_id, requestedBy: r.requested_by, recipientId: r.recipient_id,
+    status: r.status, sessionStartedAt: iso(r.session_started_at)!, sessionKind: r.session_kind,
+    createdAt: iso(r.created_at)!, decidedAt: iso(r.decided_at), requesterReadAt: iso(r.requester_read_at),
+    changed: r.changed, session: r.session ? toSession(r.session) : null,
+  }));
+}
+
+export async function getDeletionInboxCount(coupleId: string, userId: string): Promise<number> {
+  const rows = await sql`
+    select count(*)::int as n from session_deletion_requests
+    where couple_id = ${coupleId} and (
+      (recipient_id = ${userId} and status = 'pending') or
+      (requested_by = ${userId} and status in ('approved', 'declined', 'expired') and requester_read_at is null))`;
+  return rows[0]?.n ?? 0;
 }
 
 export async function getActiveSession(coupleId: string): Promise<SexSession | null> {
