@@ -7,7 +7,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, EyeOff, History, MapPin, Navigation, Pause, Play, Trash2 } from 'lucide-react';
 import { discardActiveSession, finishSession, logPastSession, setPaused, startSession } from '@/app/actions';
 import { useRecordingLocation } from '@/components/useRecordingLocation';
-import { LocationPin } from '@/components/LocationPin';
 import { FormError } from '@/components/FormError';
 import { ScoreReveal, type RevealTimes } from '@/components/ScoreBadge';
 import { getGps, SessionForm, Toggle, type SessionFormValues } from '@/components/SessionForm';
@@ -481,7 +480,6 @@ function LiveTimer({
           )}
         </div>
 
-        <LocationPin location={session} />
 
         <div className="mt-4 w-full max-w-[300px]">
           <div className="mb-1 flex justify-between text-[11px] text-ink-3">
