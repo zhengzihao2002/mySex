@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, EyeOff, History, MapPin, Navigation, Pause, Play, Trash2 } from 'lucide-react';
 import { discardActiveSession, finishSession, logPastSession, setPaused, startSession } from '@/app/actions';
+import { useRecordingLocation } from '@/components/useRecordingLocation';
+import { LocationPin } from '@/components/LocationPin';
 import { FormError } from '@/components/FormError';
 import { ScoreReveal, type RevealTimes } from '@/components/ScoreBadge';
 import { getGps, SessionForm, Toggle, type SessionFormValues } from '@/components/SessionForm';
@@ -103,8 +105,7 @@ function IdleTimer({
   const { t, f } = useT();
   const [place, setPlace] = useState('');
   const [kind, setKind] = useState<SessionKind>('intercourse');
-  const [useLocation, setUseLocation] = useState(true);
-  const [useGps, setUseGps] = useState(false);
+  const { useLocation, setUseLocation, useGps, setUseGps, ready: locationReady } = useRecordingLocation();
   const [pastOpen, setPastOpen] = useState(false);
   const start = useRun();
   const past = useRun();
@@ -114,35 +115,37 @@ function IdleTimer({
 
   const begin = async () => {
     if (navigator.vibrate) navigator.vibrate(30);
-    const gps = useLocation && useGps ? await getGps() : null;
-    onStart({
-      id: 'pending',
-      kind,
-      createdBy: '',
-      status: 'active',
-      startedAt: new Date().toISOString(),
-      endedAt: null,
-      pausedAt: null,
-      pausedSec: 0,
-      durationSec: null,
-      ip: null,
-      city: null,
-      region: null,
-      country: null,
-      latitude: null,
-      longitude: null,
-      geoSource: null,
-      place: place || null,
-      rating: null,
-      protection: null,
-      hisOrgasms: null,
-      herOrgasms: null,
-      tags: [],
-      notes: null,
-      updatedAt: new Date().toISOString(),
-      breaks: [],
+    const ok = await start.run(async () => {
+      const gps = useLocation && useGps ? await getGps() : null;
+      onStart({
+        id: 'pending',
+        kind,
+        createdBy: '',
+        status: 'active',
+        startedAt: new Date().toISOString(),
+        endedAt: null,
+        pausedAt: null,
+        pausedSec: 0,
+        durationSec: null,
+        ip: null,
+        city: null,
+        region: null,
+        country: null,
+        latitude: gps?.latitude ?? null,
+        longitude: gps?.longitude ?? null,
+        geoSource: gps ? 'gps' : null,
+        place: place || null,
+        rating: null,
+        protection: null,
+        hisOrgasms: null,
+        herOrgasms: null,
+        tags: [],
+        notes: null,
+        updatedAt: new Date().toISOString(),
+        breaks: [],
+      });
+      return startSession({ kind, place: place || null, useLocation, gps });
     });
-    const ok = await start.run(() => startSession({ kind, place: place || null, useLocation, gps }));
     if (!ok) onStartFailed();
   };
 
@@ -152,7 +155,7 @@ function IdleTimer({
       <h1 className="font-display mt-1 text-3xl font-bold">{t('Ready when you are')}</h1>
       <KindPicker value={kind} onChange={setKind} className="mt-4 w-full max-w-xs" />
 
-      <button onClick={begin} disabled={start.pending} className="group relative my-10 flex h-56 w-56 items-center justify-center" aria-label="Start timer">
+      <button onClick={begin} disabled={start.pending || !locationReady} className="group relative my-10 flex h-56 w-56 items-center justify-center" aria-label="Start timer">
         <span className="absolute inset-0 rounded-full bg-rose/30 [animation:ripple_2.4s_ease-out_infinite]" />
         <span className="absolute inset-0 rounded-full bg-ovulation/25 [animation:ripple_2.4s_ease-out_1.2s_infinite]" />
         <span className="absolute inset-3 rounded-full bg-gradient-to-br from-rose via-plum to-ovulation shadow-[0_0_80px_rgba(255,61,127,0.45)] transition group-active:scale-95" />
@@ -160,7 +163,7 @@ function IdleTimer({
           <svg viewBox="0 0 24 24" className="h-14 w-14 animate-beat fill-white">
             <path d="M12 21s-7.5-4.6-10-9.2C.4 8.6 2.3 4.5 6.2 4.5c2.2 0 3.8 1.3 4.6 2.6.2.3.6.3.8 0 .8-1.3 2.4-2.6 4.6-2.6 3.9 0 5.8 4.1 4.2 7.3C19.5 16.4 12 21 12 21z" />
           </svg>
-          <span className="mt-2 text-lg font-bold tracking-wide">{t('Start the clock')}</span>
+          <span className="mt-2 text-lg font-bold tracking-wide">{start.pending ? t('Starting…') : t('Start the clock')}</span>
         </span>
       </button>
 
@@ -179,8 +182,9 @@ function IdleTimer({
         </div>
         <Toggle on={useLocation} onChange={setUseLocation} icon={<MapPin size={16} />} title={t('Record location')} sub={t('Saves your IP & city so you can see where you did it')} />
         {useLocation && (
-          <Toggle on={useGps} onChange={setUseGps} icon={<Navigation size={16} />} title={t('Precise GPS pin')} sub={t('More exact than IP — asks for permission')} />
+          <Toggle on={useGps} onChange={setUseGps} icon={<Navigation size={16} />} title={t('Precise GPS pin')} sub={t('Requests a fresh device position when you start. Requires location permission.')} />
         )}
+        <p className="text-xs text-ink-3">{t('Location choices are remembered in this browser. To avoid repeated permission prompts, allow ongoing location access in browser settings if available.')}</p>
         <FormError error={start.error} />
 
         <button onClick={() => setPastOpen(true)} className="btn-ghost w-full">
@@ -204,8 +208,10 @@ function IdleTimer({
           error={past.error}
           pending={past.pending}
           onSubmit={async (v) => {
-            const gps = v.useLocation && v.useGps ? await getGps() : null;
-            const ok = await past.run(() => logPastSession(toPayload(v, gps)));
+            const ok = await past.run(async () => {
+              const gps = v.useLocation && v.useGps ? await getGps() : null;
+              return logPastSession(toPayload(v, gps));
+            });
             if (ok) setPastOpen(false);
           }}
         />
@@ -475,6 +481,8 @@ function LiveTimer({
             </>
           )}
         </div>
+
+        <LocationPin location={session} />
 
         <div className="mt-4 w-full max-w-[300px]">
           <div className="mb-1 flex justify-between text-[11px] text-ink-3">

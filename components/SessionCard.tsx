@@ -18,6 +18,7 @@ import { SessionTimes } from './SessionTimes';
 import { Sheet } from './Sheet';
 import { useTz } from './TzProvider';
 import { useRun } from './useRun';
+import { LocationPin } from './LocationPin';
 import { FormError } from './FormError';
 
 export function SessionCard({
@@ -81,13 +82,10 @@ export function SessionCard({
               <MapPin size={12} />
               {[s.city, s.region, s.country].filter(Boolean).join(', ') || t('Unknown city')}
               {s.ip ? ` · IP ${s.ip}` : ''}
-              {s.latitude != null && s.longitude != null && (
-                <a className="ml-auto text-rose-2" href={`https://maps.apple.com/?ll=${s.latitude},${s.longitude}&q=Here`} target="_blank" rel="noreferrer">
-                  {t('Open map')}
-                </a>
-              )}
+
             </p>
           )}
+          <LocationPin location={s} />
           {score && (
             <p>
               {t('Score')} {score.total}/100 · {score.emoji} {t(score.grade)}

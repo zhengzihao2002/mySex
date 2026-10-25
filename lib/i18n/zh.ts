@@ -1,6 +1,17 @@
 // Simplified Chinese. Keys are the English UI text (see lib/i18n/core.ts).
 // Run `node scripts/check-i18n.mjs --missing` to find untranslated keys.
 export const zh: Record<string, string> = {
+  "Location choices are remembered in this browser. To avoid repeated permission prompts, allow ongoing location access in browser settings if available.": "定位选项会保存在此浏览器中。如需避免重复授权提示，可在浏览器设置中选择持续允许定位（若可用）。",
+  "GPS is unavailable in this browser. Turn off precise GPS to use IP location.": "此浏览器无法使用 GPS。关闭精确 GPS 可使用 IP 定位。",
+  "Could not get a valid GPS position. Try again or turn off precise GPS to use IP location.": "无法获取有效的 GPS 位置，请重试，或关闭精确 GPS 使用 IP 定位。",
+  "Location permission is blocked. Allow location access in your browser and device settings, or turn off precise GPS to use IP location.": "定位权限被阻止。请在浏览器和设备设置中允许定位，或关闭精确 GPS 使用 IP 定位。",
+  "GPS timed out. Try again near a window or turn off precise GPS to use IP location.": "GPS 定位超时。请靠近窗户后重试，或关闭精确 GPS 使用 IP 定位。",
+  "Could not get a GPS position. Check device location services, try again, or turn off precise GPS to use IP location.": "无法获取 GPS 位置。请检查设备定位服务并重试，或关闭精确 GPS 使用 IP 定位。",
+  "Requests a fresh device position when you start. Requires location permission.": "开始时获取设备的最新位置，需要允许定位权限。",
+  "Device GPS pin": "设备 GPS 定位",
+  "Approximate IP pin": "IP 大致定位",
+  "The city label comes from your network; the map uses your device coordinates.": "城市名称来自网络定位；地图使用设备获取的坐标。",
+  "Starting…": "正在开始…",
   "Handled requests are deleted immediately. Unread replies and edit notices stay until you mark them read, then are deleted from the database.": "已处理的申请会立即删除。未读回复和修改通知会保留至标记已读，随后从数据库中删除。",
   "Shared record updates": "共享记录更新",
   "Unread replies": "未读回复",

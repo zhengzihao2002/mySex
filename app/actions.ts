@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { getAuth } from '@/lib/auth/server';
 import { getCoupleContext, getViewer, hasCoupleHistory } from '@/lib/data';
 import { db, sql } from '@/lib/db';
+import { sessionLocation } from '@/lib/session-location';
 import { getRequestGeo } from '@/lib/geo';
 import { currentDeviceId, DEVICE_COOKIE, recordLogin } from '@/lib/devices';
 import { forgetDevices, revocationHash } from '@/lib/privacy';
@@ -263,14 +264,8 @@ const coords = z
   .optional();
 
 async function locationFields(useLocation: boolean, gps?: { latitude: number; longitude: number } | null) {
-  if (!useLocation) return { ip: null, city: null, region: null, country: null, latitude: null, longitude: null, source: null };
-  const geo = await getRequestGeo();
-  return {
-    ...geo,
-    latitude: gps?.latitude ?? geo.latitude,
-    longitude: gps?.longitude ?? geo.longitude,
-    source: gps ? 'gps' : 'ip',
-  };
+  const empty = { ip: null, city: null, region: null, country: null, latitude: null, longitude: null };
+  return sessionLocation(useLocation ? await getRequestGeo() : empty, useLocation, gps);
 }
 
 const kindSchema = z.enum(['intercourse', 'oral']);
