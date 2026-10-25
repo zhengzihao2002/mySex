@@ -2,6 +2,7 @@ import 'server-only';
 import { cache } from 'react';
 import { redirect } from 'next/navigation';
 import { getAuth } from './auth/server';
+import { getGpsArea } from './gps-area';
 import { db, sql } from './db';
 import { currentDeviceId } from './devices';
 import { cleanupExpiredData, isDeviceRevoked } from './privacy';
@@ -37,12 +38,13 @@ export function toSession(r: Row): SexSession {
     pausedSec: Number(r.paused_sec ?? 0),
     durationSec: r.duration_sec,
     ip: r.ip,
-    city: r.city,
-    region: r.region,
-    country: r.country,
+    city: r.geo_source === 'gps' && !r.gps_named_at ? null : r.city,
+    region: r.geo_source === 'gps' && !r.gps_named_at ? null : r.region,
+    country: r.geo_source === 'gps' && !r.gps_named_at ? null : r.country,
     latitude: r.latitude,
     longitude: r.longitude,
     geoSource: r.geo_source,
+    gpsNamedAt: iso(r.gps_named_at),
     place: r.place,
     rating: r.rating,
     protection: r.protection,
@@ -122,6 +124,17 @@ export async function getSessions(coupleId: string): Promise<SexSession[]> {
     select s.*, (select jsonb_build_object('id', r.id, 'requestedBy', r.requested_by)
       from session_deletion_requests r where r.session_id = s.id and r.couple_id = s.couple_id and r.status = 'pending') as deletion_request
     from sessions s where s.couple_id = ${coupleId} order by s.started_at desc`;
+  // Repair one legacy/missing GPS name per view; a global gate limits external requests.
+  const unnamed = rows.find(r => r.geo_source === 'gps' && !r.gps_named_at && r.latitude != null && r.longitude != null);
+  if (unnamed) {
+    const area = await getGpsArea(db(), { latitude:unnamed.latitude, longitude:unnamed.longitude });
+    if (area) {
+      const updated = await sql`update sessions set city=${area.city},region=${area.region},country=${area.country},gps_named_at=now()
+        where id=${unnamed.id} and couple_id=${coupleId} and geo_source='gps' and gps_named_at is null
+          and latitude=${unnamed.latitude} and longitude=${unnamed.longitude} returning *`;
+      if (updated[0]) Object.assign(unnamed, updated[0]);
+    }
+  }
   return rows.map(toSession);
 }
 

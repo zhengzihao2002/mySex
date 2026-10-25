@@ -28,7 +28,7 @@ test('permission denial, timeout, unavailable GPS and invalid coordinates reject
 });
 test('saving uses GPS pin instead of network pin; IP-only and disabled recording retain their behavior',()=> {
   const network={ip:'192.0.2.1',city:'Network city',region:null,country:'US',latitude:40,longitude:-70};
-  assert.deepEqual(sessionLocation(network,true,{latitude:0,longitude:0}),{...network,latitude:0,longitude:0,source:'gps'});
+  assert.deepEqual(sessionLocation(network,true,{latitude:0,longitude:0}),{...network,city:null,region:null,country:null,latitude:0,longitude:0,source:'gps'});
   assert.deepEqual(sessionLocation(network,true),{...network,source:'ip'});
   assert.deepEqual(sessionLocation(network,false,{latitude:0,longitude:0}),{ip:null,city:null,region:null,country:null,latitude:null,longitude:null,source:null});
 });

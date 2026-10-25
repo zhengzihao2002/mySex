@@ -103,3 +103,10 @@ test('a failure inserting the notice rolls the edit back',async()=> {
   await assert.rejects(editSharedSession(client,{...who,partnerId:'missing'},sessionId,{startedAt:version,durationMin:12,version:v,notes:'Should roll back'}));
   assert.equal((await pg.query<{notes:string}>('select notes from sessions')).rows[0].notes,'A memory');
 });
+
+test('backup restore preserves verified GPS area names and their source timestamp',async()=> {
+  const b=backup();b.sessions[0]={...b.sessions[0],geoSource:'gps',gpsNamedAt:version,city:'Neighbourhood, Town',region:'State',country:'US'};
+  await restoreBackup(client,b,who,true);
+  const row=(await pg.query<{city:string;gps_named_at:Date}>('select city,gps_named_at from sessions')).rows[0];
+  assert.equal(row.city,'Neighbourhood, Town');assert.equal(row.gps_named_at.toISOString(),version);
+});

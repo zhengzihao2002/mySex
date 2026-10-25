@@ -60,7 +60,7 @@ export function SessionCard({
                 {flagEmoji(s.country)} {where}
               </>
             ) : (
-              t('Somewhere secret')
+              s.geoSource === 'gps' ? t('GPS location') : t('Somewhere secret')
             )}
             {protection ? ` · ${protection.emoji} ${t(protection.label)}` : ''}
             {s.herOrgasms ? ` · ${t('her')} ×${s.herOrgasms}` : ''}

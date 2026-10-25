@@ -1,6 +1,9 @@
 // Simplified Chinese. Keys are the English UI text (see lib/i18n/core.ts).
 // Run `node scripts/check-i18n.mjs --missing` to find untranslated keys.
 export const zh: Record<string, string> = {
+  "Uses your device position. Coordinates are sent to OpenStreetMap to find the area name.": "使用设备位置，并将坐标发送至 OpenStreetMap 以查询区域名称。",
+  "GPS area names © OpenStreetMap contributors.": "GPS 区域名称 © OpenStreetMap 贡献者。",
+  "GPS location": "GPS 位置",
   "Location choices are remembered in this browser. To avoid repeated permission prompts, allow ongoing location access in browser settings if available.": "定位选项会保存在此浏览器中。如需避免重复授权提示，可在浏览器设置中选择持续允许定位（若可用）。",
   "GPS is unavailable in this browser. Turn off precise GPS to use IP location.": "此浏览器无法使用 GPS。关闭精确 GPS 可使用 IP 定位。",
   "Could not get a valid GPS position. Try again or turn off precise GPS to use IP location.": "无法获取有效的 GPS 位置，请重试，或关闭精确 GPS 使用 IP 定位。",

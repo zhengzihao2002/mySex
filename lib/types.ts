@@ -47,6 +47,7 @@ export type SexSession = {
   latitude: number | null;
   longitude: number | null;
   geoSource: 'ip' | 'gps' | null;
+  gpsNamedAt?: string | null;
   place: string | null;
   rating: number | null;
   protection: string | null;

@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { getAuth } from '@/lib/auth/server';
 import { getCoupleContext, getViewer, hasCoupleHistory } from '@/lib/data';
 import { db, sql } from '@/lib/db';
+import { getGpsArea } from '@/lib/gps-area';
 import { sessionLocation } from '@/lib/session-location';
 import { getRequestGeo } from '@/lib/geo';
 import { currentDeviceId, DEVICE_COOKIE, recordLogin } from '@/lib/devices';
@@ -265,7 +266,8 @@ const coords = z
 
 async function locationFields(useLocation: boolean, gps?: { latitude: number; longitude: number } | null) {
   const empty = { ip: null, city: null, region: null, country: null, latitude: null, longitude: null };
-  return sessionLocation(useLocation ? await getRequestGeo() : empty, useLocation, gps);
+  const [geo, area] = await Promise.all([useLocation ? getRequestGeo() : empty, useLocation && gps ? getGpsArea(db(), gps) : null]);
+  return { ...sessionLocation(geo, useLocation, gps, area), gpsNamedAt: area ? new Date().toISOString() : null };
 }
 
 const kindSchema = z.enum(['intercourse', 'oral']);
@@ -284,9 +286,9 @@ export async function startSession(input: z.input<typeof startSchema>): Promise<
   const loc = await locationFields(p.data.useLocation, p.data.gps);
   try {
     await sql`
-      insert into sessions (couple_id, created_by, status, started_at, kind, ip, city, region, country, latitude, longitude, geo_source, place)
+      insert into sessions (couple_id, created_by, status, started_at, kind, ip, city, region, country, latitude, longitude, geo_source, gps_named_at, place)
       values (${ctx.couple.id}, ${ctx.me.userId}, 'active', now(), ${p.data.kind ?? 'intercourse'}, ${loc.ip}, ${loc.city}, ${loc.region}, ${loc.country},
-              ${loc.latitude}, ${loc.longitude}, ${loc.source}, ${p.data.place || null})`;
+              ${loc.latitude}, ${loc.longitude}, ${loc.source}, ${loc.gpsNamedAt}, ${p.data.place || null})`;
   } catch (e) {
     // One active session per couple (unique index): if the partner beat us to it, we simply join theirs.
     if (!isUniqueViolation(e)) throw e;
@@ -392,9 +394,9 @@ export async function logPastSession(input: z.input<typeof pastSchema>): Promise
   const brk = Math.round((d.breakMin ?? 0) * 60);
   await sql`
     insert into sessions (couple_id, created_by, status, kind, started_at, ended_at, duration_sec, paused_sec,
-      ip, city, region, country, latitude, longitude, geo_source, place, rating, protection, his_orgasms, her_orgasms, tags, notes)
+      ip, city, region, country, latitude, longitude, geo_source, gps_named_at, place, rating, protection, his_orgasms, her_orgasms, tags, notes)
     values (${ctx.couple.id}, ${ctx.me.userId}, 'done', ${d.kind ?? 'intercourse'}, ${d.startedAt}, ${d.startedAt}::timestamptz + make_interval(secs => ${dur + brk}), ${dur}, ${brk},
-      ${loc.ip}, ${loc.city}, ${loc.region}, ${loc.country}, ${loc.latitude}, ${loc.longitude}, ${loc.source},
+      ${loc.ip}, ${loc.city}, ${loc.region}, ${loc.country}, ${loc.latitude}, ${loc.longitude}, ${loc.source}, ${loc.gpsNamedAt},
       ${d.place || null}, ${d.rating ?? null}, ${d.protection ?? null}, ${d.hisOrgasms ?? null}, ${d.herOrgasms ?? null},
       ${d.tags ?? []}, ${d.notes || null})`;
   return done();

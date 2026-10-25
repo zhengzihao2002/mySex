@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { after, before, beforeEach, test } from 'node:test';
 import { PGlite } from '@electric-sql/pglite';
 import type { NeonQueryFunction } from '@neondatabase/serverless';
+import { getGpsArea } from './gps-area.ts';
 import { cleanupExpiredData, forgetDevices, isDeviceRevoked, rememberDevice, revocationHash } from './privacy.ts';
 
 const pg = new PGlite();
@@ -147,4 +148,16 @@ test('deployment migrates unread outcomes, removes handled requests and read not
   await pg.exec(schema); await pg.exec(schema);
   assert.equal((await rows('session_deletion_requests')).length,0);
   assert.equal((await pg.query('select * from session_deletion_outcomes')).rows.length,3);
+});
+
+test('GPS naming gate enforces a shared one-request-per-second limit in Postgres',async()=> {
+  const original=globalThis.fetch;let calls=0;
+  globalThis.fetch=async()=>{calls++;return Response.json({address:{city:'Test city'}})};
+  try {
+    await getGpsArea(client,{latitude:0,longitude:0});
+    await getGpsArea(client,{latitude:1,longitude:1});
+    assert.equal(calls,1);
+    await pg.exec("update app_maintenance set last_run=clock_timestamp()-interval '2 seconds' where name='gps-area-lookup'");
+    await getGpsArea(client,{latitude:1,longitude:1});assert.equal(calls,2);
+  } finally {globalThis.fetch=original}
 });

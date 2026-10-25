@@ -59,6 +59,8 @@ create table if not exists sessions (
   notes        text,
   created_at   timestamptz not null default now()
 );
+-- GPS-derived names are separate from legacy network names.
+alter table sessions add column if not exists gps_named_at timestamptz;
 -- Version stamp for optimistic concurrency when both partners edit the same session.
 alter table sessions add column if not exists updated_at timestamptz not null default now();
 -- Every pause during a live session: [{"start": ts, "end": ts|null}]. paused_sec is their total.

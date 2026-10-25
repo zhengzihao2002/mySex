@@ -10,7 +10,7 @@ const session = z.object({
   startedAt: timestamp, endedAt: timestamp.nullable(), pausedAt: timestamp.nullable(),
   pausedSec: z.number().int().nonnegative(), durationSec: z.number().int().nonnegative().nullable(),
   ip: text, city: text, region: text, country: text, latitude: z.number().min(-90).max(90).nullable(),
-  longitude: z.number().min(-180).max(180).nullable(), geoSource: z.enum(['ip', 'gps']).nullable(),
+  longitude: z.number().min(-180).max(180).nullable(), geoSource: z.enum(['ip', 'gps']).nullable(), gpsNamedAt: timestamp.nullable().optional(),
   place: text, rating: z.number().int().min(1).max(5).nullable(), protection: text,
   hisOrgasms: z.number().int().min(0).max(20).nullable(), herOrgasms: z.number().int().min(0).max(20).nullable(),
   tags: z.array(z.string().max(30)).max(20), notes: text, updatedAt: timestamp,
@@ -52,7 +52,7 @@ export async function restoreBackup(client: NeonQueryFunction<false, false>, b: 
     id: s.id, couple_id: who.coupleId, created_by: s.createdBy, status: 'done', kind: s.kind,
     started_at: s.startedAt, ended_at: s.endedAt, paused_sec: s.pausedSec, duration_sec: s.durationSec,
     ip: s.ip, city: s.city, region: s.region, country: s.country, latitude: s.latitude, longitude: s.longitude,
-    geo_source: s.geoSource, place: s.place, rating: s.rating, protection: s.protection,
+    geo_source: s.geoSource, gps_named_at: s.gpsNamedAt ?? null, place: s.place, rating: s.rating, protection: s.protection,
     his_orgasms: s.hisOrgasms, her_orgasms: s.herOrgasms, tags: s.tags, notes: s.notes, breaks: s.breaks,
   }));
   const periods = who.isHer ? b.periods : [];
@@ -70,8 +70,8 @@ export async function restoreBackup(client: NeonQueryFunction<false, false>, b: 
       where exists(select 1 from allowed) and not exists(select 1 from sessions x where x.id = s.id)
       and not exists(select 1 from deleted_session_markers m where m.key_hash = encode(sha256(convert_to(${who.coupleId} || ':' || s.id::text, 'UTF8')), 'hex'))
     ), added as (
-      insert into sessions(id,couple_id,created_by,status,kind,started_at,ended_at,paused_sec,duration_sec,ip,city,region,country,latitude,longitude,geo_source,place,rating,protection,his_orgasms,her_orgasms,tags,notes,breaks)
-      select id,couple_id,created_by,status,kind,started_at,ended_at,paused_sec,duration_sec,ip,city,region,country,latitude,longitude,geo_source,place,rating,protection,his_orgasms,her_orgasms,tags,notes,breaks
+      insert into sessions(id,couple_id,created_by,status,kind,started_at,ended_at,paused_sec,duration_sec,ip,city,region,country,latitude,longitude,geo_source,gps_named_at,place,rating,protection,his_orgasms,her_orgasms,tags,notes,breaks)
+      select id,couple_id,created_by,status,kind,started_at,ended_at,paused_sec,duration_sec,ip,city,region,country,latitude,longitude,geo_source,gps_named_at,place,rating,protection,his_orgasms,her_orgasms,tags,notes,breaks
       from candidates where ${apply} on conflict do nothing returning id
     ) select case when ${apply} then (select count(*) from added) else (select count(*) from candidates) end as n`,
     tx`with candidates as (

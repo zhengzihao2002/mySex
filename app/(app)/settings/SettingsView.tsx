@@ -11,7 +11,6 @@ import { Sheet } from '@/components/Sheet';
 import { Toggle } from '@/components/SessionForm';
 import { useRun } from '@/components/useRun';
 import { RestoreBackup } from './RestoreBackup';
-import { PrivacySettings } from '@/components/PrivacyMode';
 import { LanguageSwitch } from '@/components/LanguageSwitch';
 import { AVATARS } from '@/lib/content';
 import { prettyDate } from '@/lib/dates';
@@ -109,7 +108,6 @@ export function SettingsView({
         <LanguageSwitch />
       </section>
 
-      <PrivacySettings />
       <PinSection />
 
       {devices}
