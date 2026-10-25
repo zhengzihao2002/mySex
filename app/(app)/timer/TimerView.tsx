@@ -182,9 +182,8 @@ function IdleTimer({
         </div>
         <Toggle on={useLocation} onChange={setUseLocation} icon={<MapPin size={16} />} title={t('Record location')} sub={t('Saves your IP & city so you can see where you did it')} />
         {useLocation && (
-          <Toggle on={useGps} onChange={setUseGps} icon={<Navigation size={16} />} title={t('Precise GPS pin')} sub={t('Uses your device position. Coordinates are sent to OpenStreetMap to find the area name.')} />
+          <Toggle on={useGps} onChange={setUseGps} icon={<Navigation size={16} />} title={t('Precise GPS pin')} sub={t('Asks for location permission')} />
         )}
-        <p className="text-xs text-ink-3">{t('Location choices are remembered in this browser. To avoid repeated permission prompts, allow ongoing location access in browser settings if available.')}</p>
         <FormError error={start.error} />
 
         <button onClick={() => setPastOpen(true)} className="btn-ghost w-full">

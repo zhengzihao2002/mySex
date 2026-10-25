@@ -142,6 +142,9 @@ export function SettingsView({
           <HeartCrack size={16} /> {t('Unpair')}
         </button>
       </section>
+      <p className="text-center text-[10px] text-ink-3">
+        <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">{t('GPS area names © OpenStreetMap contributors.')}</a>
+      </p>
 
       <p className="px-2 pb-4 text-center text-[11px] leading-relaxed text-ink-3">
         {t('mySex is for consenting adults 18+. Cycle and fertility predictions are estimates, not medical advice or contraception. Your data is stored in your own Neon database and shared only with your partner.')}

@@ -216,7 +216,7 @@ export function SessionForm({
             sub={t('Pin this session to your current location (IP)')}
           />
           {v.useLocation && (
-            <Toggle on={v.useGps} onChange={(on) => set('useGps', on)} icon={<Navigation size={16} />} title={t('Use precise GPS')} sub={t('Uses your device position. Coordinates are sent to OpenStreetMap to find the area name.')} />
+            <Toggle on={v.useGps} onChange={(on) => set('useGps', on)} icon={<Navigation size={16} />} title={t('Use precise GPS')} sub={t('Asks for location permission')} />
           )}
         </div>
       )}
