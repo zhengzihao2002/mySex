@@ -48,7 +48,7 @@ if (want('--missing')) {
   const keys = new Set();
   for (const m of zhSrc.matchAll(/^\s*(['"`])((?:\\.|(?!\1).)*)\1\s*:/gm)) keys.add(m[2].replace(/\\(['"`\\])/g, '$1'));
   const used = new Set();
-  const scan = [...files, 'app/actions.ts', 'lib/content.ts', 'lib/achievements.ts', 'lib/score.ts', 'lib/cycle.ts'];
+  const scan = [...files, 'app/actions.ts', 'lib/content.ts', 'lib/achievements.ts', 'lib/story-achievements.ts', 'lib/score.ts', 'lib/cycle.ts'];
   for (const f of scan) {
     const src = readFileSync(f, 'utf8');
     for (const m of src.matchAll(/\bt\(\s*(['"`])((?:\\.|(?!\1).)*)\1/g)) used.add(m[2].replace(/\\(['"`\\])/g, '$1'));

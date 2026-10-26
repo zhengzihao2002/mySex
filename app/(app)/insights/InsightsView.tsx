@@ -372,13 +372,13 @@ function SexStats({ sessions, kind, allSessions, scores, herName, hisName }: { s
 
 function BadgeGrid({ badges }: { badges: ReturnType<typeof achievements> }) {
   const { t } = useT();
-  const [filter, setFilter] = useState<'all' | 'unlocked' | 'remaining'>('all');
+  const [filter, setFilter] = useState<'all' | 'stories' | 'unlocked' | 'remaining'>('all');
   const [search, setSearch] = useState('');
-  const visible = badges.filter(b => (filter === 'all' || (filter === 'unlocked' ? b.unlocked : !b.unlocked)) &&
+  const visible = badges.filter(b => (filter === 'all' || (filter === 'stories' ? b.collection === 'stories' : filter === 'unlocked' ? b.unlocked : !b.unlocked)) &&
     `${t(b.title)} ${t(b.desc)}`.toLowerCase().includes(search.toLowerCase()));
   return <div className="mt-3 space-y-3">
     <input className="input" value={search} onChange={e => setSearch(e.target.value)} placeholder={t('Search achievements')} aria-label={t('Search achievements')} />
-    <div className="flex gap-2">{(['all','unlocked','remaining'] as const).map(k => <button key={k} className={`chip ${filter === k ? 'chip-on' : ''}`} onClick={() => setFilter(k)}>{t(k === 'all' ? 'All' : k === 'unlocked' ? 'Unlocked' : 'Still to discover')}</button>)}</div>
+    <div className="flex flex-wrap gap-2">{(['all','stories','unlocked','remaining'] as const).map(k => <button key={k} className={`chip ${filter === k ? 'chip-on' : ''}`} onClick={() => setFilter(k)}>{t(k === 'all' ? 'All' : k === 'stories' ? 'Stories & surprises' : k === 'unlocked' ? 'Unlocked' : 'Still to discover')}</button>)}</div>
     <div className="grid grid-cols-3 gap-2">{visible.map(b => <div key={b.key} className={`flex flex-col items-center rounded-2xl p-3 text-center ${b.unlocked ? 'bg-rose/10' : 'bg-surface-2 text-ink-3'}`}>
       <span className={`text-2xl ${b.unlocked ? '' : 'grayscale'}`}>{b.emoji}</span><span className="mt-1 text-xs font-semibold">{t(b.title)}</span>
       <span className="mt-1 text-[10px] text-ink-3">{t(b.desc)}</span><span className="mt-1 text-[10px]">{b.unlocked ? t('Unlocked') : t('Still to discover')}</span>

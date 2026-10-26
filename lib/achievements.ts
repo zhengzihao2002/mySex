@@ -1,9 +1,10 @@
+import { storyAchievements } from './story-achievements.ts';
 import type { Score } from './score';
 import { longestDailyStreak, weeklyStreak } from './stats.ts';
 import { dayInTz, hourInTz } from './tz.ts';
 import type { SexSession, DailyLog, LoveNote } from './types';
 
-export type Achievement = { key: string; emoji: string; title: string; desc: string; unlocked: boolean };
+export type Achievement = { key: string; emoji: string; title: string; desc: string; unlocked: boolean; collection?: 'stories' };
 
 export function achievements(input: SexSession[], scores: Map<string, Score>, tz: string, today: string, activity: { logs: DailyLog[]; notes: LoveNote[] } = { logs: [], notes: [] }): Achievement[] {
   const sessions = input.filter(s => s.status === 'done');
@@ -108,5 +109,5 @@ export function achievements(input: SexSession[], scores: Map<string, Score>, tz
   add('notes-50', '💌', /*i18n*/ 'Our letterbox', /*i18n*/ '50 notes in your shared collection', activity.notes.length >= 50);
   add('notes-100', '💌', /*i18n*/ 'A hundred little notes', /*i18n*/ '100 notes in your shared collection', activity.notes.length >= 100);
   // i18n:end
-  return list;
+  return [...storyAchievements(sessions, tz, activity), ...list];
 }
