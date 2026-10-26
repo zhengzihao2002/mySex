@@ -1,6 +1,6 @@
 'use server';
 
-import { editSharedSession } from '@/lib/session-edits';
+import { dismissEditOutcome, requestSessionEdit, respondToSessionEdit, withdrawSessionEdit } from '@/lib/session-edit-requests';
 import { randomInt, timingSafeEqual } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
@@ -414,9 +414,13 @@ export async function updateSession(id: string, input: z.input<typeof editSchema
   const p = editSchema.safeParse(input);
   if (!p.success) return fail('Invalid input');
   const d = p.data;
-  const saved = await editSharedSession(db(), { coupleId:ctx.couple.id, userId:ctx.me.userId, partnerId:ctx.partner.userId }, id, d);
-  // Optimistic concurrency: someone saved this session after we opened it.
-  if (!saved) return fail('Your partner just changed this session — close it and reopen to see their changes.');
+  const sent = await requestSessionEdit(db(), { coupleId: ctx.couple.id, userId: ctx.me.userId, partnerId: ctx.partner.userId }, id, d.version, d);
+  if (!sent) {
+    const theirs = await sql`select 1 from session_edit_requests where session_id = ${id} and couple_id = ${ctx.couple.id} and requested_by = ${ctx.partner.userId}`;
+    return fail(theirs.length
+      ? 'Your partner already proposed a change to this session. Answer it in the Inbox first.'
+      : 'Your partner just changed this session — close it and reopen to see their changes.');
+  }
   return done();
 }
 
@@ -444,6 +448,28 @@ export async function cancelDeletionRequest(id: string): Promise<ActionResult> {
   const ctx = await couple();
   if (!z.uuid().safeParse(id).success) return fail('Invalid input');
   if (!await withdrawDeletion(db(), ctx.couple.id, ctx.me.userId, id)) return fail('This request is no longer pending or does not belong to you.');
+  return done();
+}
+
+export async function respondToEditRequest(id: string, decision: 'approved' | 'declined'): Promise<ActionResult> {
+  const ctx = await couple();
+  if (!z.uuid().safeParse(id).success || !['approved', 'declined'].includes(decision)) return fail('Invalid input');
+  const status = await respondToSessionEdit(db(), { coupleId: ctx.couple.id, userId: ctx.me.userId, partnerId: ctx.partner.userId }, id, decision);
+  if (!status) return fail('This request is no longer pending or is not addressed to you.');
+  return done();
+}
+
+export async function cancelEditRequest(id: string): Promise<ActionResult> {
+  const ctx = await couple();
+  if (!z.uuid().safeParse(id).success) return fail('Invalid input');
+  if (!await withdrawSessionEdit(db(), ctx.couple.id, ctx.me.userId, id)) return fail('This request is no longer pending or does not belong to you.');
+  return done();
+}
+
+export async function markEditOutcomeRead(id: string): Promise<ActionResult> {
+  const ctx = await couple();
+  if (!z.uuid().safeParse(id).success) return fail('Invalid input');
+  await dismissEditOutcome(db(), ctx.couple.id, ctx.me.userId, id);
   return done();
 }
 

@@ -58,6 +58,7 @@ export type SexSession = {
   updatedAt: string;
   breaks: Break[];
   deletionRequest?: { id: string; requestedBy: string } | null;
+  editRequest?: { id: string; requestedBy: string } | null;
 };
 
 export type SessionDeletionRequest = {
@@ -106,3 +107,14 @@ export type ActionResult = { ok: true } | { ok: false; error: string };
 export type AuthResult = ActionResult | { ok: false; error?: string; verify: string };
 
 export type SessionEditNotice = { id: string; createdAt: string; readAt: string | null; session: SexSession };
+
+/** A proposed change to a shared session. `proposed` is null for the requester's answered (unread) outcomes. */
+export type SessionEditRequest = {
+  id: string; sessionId: string; requestedBy: string; recipientId: string;
+  status: 'pending' | 'approved' | 'declined' | 'cancelled' | 'expired';
+  createdAt: string; session: SexSession;
+  proposed: {
+    kind: SessionKind | null; startedAt: string; durationMin: number; breakMin: number; place: string | null; rating: number | null;
+    protection: string | null; hisOrgasms: number | null; herOrgasms: number | null; tags: string[]; notes: string | null;
+  } | null;
+};

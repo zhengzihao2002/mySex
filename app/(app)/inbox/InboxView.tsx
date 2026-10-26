@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Check, ChevronLeft, Inbox, RefreshCw } from 'lucide-react';
-import { markEditNoticeRead, cancelDeletionRequest, markDeletionRequestRead, respondToDeletionRequest } from '@/app/actions';
+import { markEditNoticeRead, cancelEditRequest, markEditOutcomeRead, respondToEditRequest, cancelDeletionRequest, markDeletionRequestRead, respondToDeletionRequest } from '@/app/actions';
 import { FormError } from '@/components/FormError';
 import { useT } from '@/components/I18nProvider';
 import { KIND_META } from '@/components/KindPicker';
@@ -12,10 +12,11 @@ import { Sheet } from '@/components/Sheet';
 import { useTz } from '@/components/TzProvider';
 import { useRun } from '@/components/useRun';
 import { dayInTz } from '@/lib/tz';
-import type { SessionDeletionRequest, SessionEditNotice } from '@/lib/types';
+import { PROTECTION } from '@/lib/content';
+import type { SessionDeletionRequest, SessionEditNotice, SessionEditRequest } from '@/lib/types';
 
-export function InboxView({ requests, notices, meId, partnerName }: {
-  requests: SessionDeletionRequest[]; notices: SessionEditNotice[]; meId: string; partnerName: string;
+export function InboxView({ requests, notices, edits, meId, partnerName }: {
+  requests: SessionDeletionRequest[]; notices: SessionEditNotice[]; edits: SessionEditRequest[]; meId: string; partnerName: string;
 }) {
   const { t } = useT();
   const router = useRouter();
@@ -32,15 +33,16 @@ export function InboxView({ requests, notices, meId, partnerName }: {
           <RefreshCw size={18} className={refreshing ? 'animate-spin' : ''} />
         </button>
       </header>
-      <p className="text-sm text-ink-2">{t('Shared sessions are deleted only when both of you agree. Declining keeps the record and notifies the requester.')}</p>
+      <p className="text-sm text-ink-2">{t('Shared sessions are changed or deleted only when both of you agree. Declining keeps the record as it is and notifies the requester.')}</p>
       <p className="text-xs text-ink-3">{t('Handled requests are deleted immediately. Unread replies and edit notices stay until you mark them read, then are deleted from the database.')}</p>
-      {!requests.length && !notices.length && (
+      {!requests.length && !notices.length && !edits.length && (
         <div className="card py-10 text-center text-ink-3">
           <Inbox className="mx-auto mb-3" size={30} />
           <p className="font-semibold text-ink">{t('Your inbox is empty')}</p>
           <p className="mt-1 text-sm">{t('Deletion requests and your partner’s replies will appear here.')}</p>
         </div>
       )}
+      {edits.length > 0 && <section className="space-y-3"><h2 className="px-1 text-sm font-semibold text-ink-2">{t('Edit requests')} · {edits.length}</h2>{edits.map(e => <EditRequestCard key={e.id} edit={e} meId={meId} partnerName={partnerName} />)}</section>}
       {notices.length > 0 && <section className="space-y-3"><h2 className="px-1 text-sm font-semibold text-ink-2">{t('Shared record updates')}</h2>{notices.map(n => <EditNotice key={n.id} notice={n} partnerName={partnerName} />)}</section>}
       {[
         { title: t('Needs your agreement'), items: incoming },
@@ -145,4 +147,69 @@ function EditNotice({ notice: n, partnerName }: { notice: SessionEditNotice; par
     {!n.readAt && <button className="btn-ghost w-full" disabled={pending} onClick={() => run(() => markEditNoticeRead(n.id))}>{t('Mark read')}</button>}
     <FormError error={error} />
   </article>;
+}
+
+function EditRequestCard({ edit: e, meId, partnerName }: { edit: SessionEditRequest; meId: string; partnerName: string }) {
+  const { t, f } = useT();
+  const { tz } = useTz();
+  const { run, pending, error } = useRun();
+  const mine = e.requestedBy === meId;
+  const answered = e.status !== 'pending';
+  const s = e.session;
+  const p = e.proposed;
+  const dash = '–';
+  const min = (sec: number) => f.formatDuration(Math.round(sec));
+  const protectionLabel = (k: string | null) => { const x = PROTECTION.find((q) => q.key === k); return x ? `${x.emoji} ${t(x.label)}` : dash; };
+  const rows: [string, string, string][] = p ? [
+    [t('Type'), t(KIND_META[s.kind].label), t(KIND_META[p.kind ?? s.kind].label)],
+    [t('When'), f.dateTimeInTz(s.startedAt, tz), f.dateTimeInTz(p.startedAt, tz)],
+    [t('Active time'), min(s.durationSec ?? 0), min(p.durationMin * 60)],
+    [t('Breaks'), min(s.pausedSec ?? 0), min(p.breakMin * 60)],
+    [t('Where'), s.place || dash, p.place || dash],
+    [t('Heat'), s.rating ? '🔥'.repeat(s.rating) : dash, p.rating ? '🔥'.repeat(p.rating) : dash],
+    [t('Protection'), protectionLabel(s.protection), protectionLabel(p.protection)],
+    [t('Her orgasms 💦'), String(s.herOrgasms ?? dash), String(p.herOrgasms ?? dash)],
+    [t('His orgasms 🍆'), String(s.hisOrgasms ?? dash), String(p.hisOrgasms ?? dash)],
+    [t('What went down'), s.tags.map((x) => t(x)).join(', ') || dash, p.tags.map((x) => t(x)).join(', ') || dash],
+    [t('Dirty details'), s.notes || dash, p.notes || dash],
+  ].filter((r): r is [string, string, string] => r[1] !== r[2]) : [];
+  const status = {
+    pending: mine ? t('Change sent. The session stays as it is until your partner agrees.') : t('{name} wants to change this session.', { name: partnerName }),
+    approved: t('{name} agreed. The change was applied.', { name: partnerName }),
+    declined: t('{name} declined your change. The session was kept as it was.', { name: partnerName }),
+    cancelled: t('The change was withdrawn.'),
+    expired: t('The session changed after the request. Nothing was applied. Send the change again.'),
+  }[e.status];
+  return (
+    <article className={`card space-y-3 ${answered || !mine ? 'border-rose/60' : ''}`}>
+      <div className="flex items-start gap-2">
+        <span className="text-xl">{KIND_META[s.kind].emoji}</span>
+        <div className="min-w-0 flex-1">
+          <h3 className="font-semibold">{t(KIND_META[s.kind].label)} · {f.prettyDate(dayInTz(s.startedAt, tz), { year: true })}</h3>
+          <p className="text-xs text-ink-3">{f.dateTimeInTz(e.createdAt, tz)}</p>
+        </div>
+      </div>
+      <p className="text-sm text-ink-2" role={answered ? 'status' : undefined}>{status}</p>
+      {p && (
+        <div className="space-y-2 rounded-2xl bg-surface-2 p-3 text-sm">
+          {rows.length ? rows.map(([label, from, to]) => (
+            <div key={label}>
+              <p className="text-xs text-ink-3">{label}</p>
+              <p className="break-words whitespace-pre-wrap"><span className="text-ink-3 line-through">{from}</span> → <b>{to}</b></p>
+            </div>
+          )) : <p className="text-ink-3">{t('No visible differences.')}</p>}
+        </div>
+      )}
+      {!answered && (mine ? (
+        <button className="btn-ghost w-full" disabled={pending} onClick={() => run(() => cancelEditRequest(e.id))}>{t('Withdraw change')}</button>
+      ) : (
+        <div className="grid grid-cols-2 gap-2">
+          <button className="btn-ghost" disabled={pending} onClick={() => run(() => respondToEditRequest(e.id, 'declined'))}>{t('Decline & keep')}</button>
+          <button className="btn-primary" disabled={pending} onClick={() => run(() => respondToEditRequest(e.id, 'approved'))}>{t('Agree to change')}</button>
+        </div>
+      ))}
+      {answered && <button className="btn-ghost w-full" disabled={pending} onClick={() => run(() => markEditOutcomeRead(e.id))}><Check size={16} /> {t('Mark read')}</button>}
+      <FormError error={error} />
+    </article>
+  );
 }

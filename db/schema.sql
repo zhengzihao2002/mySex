@@ -236,3 +236,32 @@ with targets as materialized (
     select 1 from devices d where d.device_id = e.device_id and d.user_id = e.user_id and d.revoked_at is null)
 )
 delete from devices where device_id in (select device_id from targets);
+
+-- Editing a shared session needs both partners' agreement: the edit is parked here until the other
+-- partner approves it, and the row is deleted as soon as it is answered. One pending edit per session.
+create table if not exists session_edit_requests (
+  id              uuid primary key default gen_random_uuid(),
+  couple_id       uuid not null references couples(id) on delete cascade,
+  session_id      uuid not null references sessions(id) on delete cascade,
+  requested_by    text not null references profiles(user_id) on delete cascade,
+  recipient_id    text not null references profiles(user_id) on delete cascade,
+  session_version timestamptz not null,
+  proposed        jsonb not null,
+  created_at      timestamptz not null default now(),
+  check (requested_by <> recipient_id)
+);
+create unique index if not exists session_edit_request_one on session_edit_requests (session_id);
+create index if not exists session_edit_requests_couple on session_edit_requests (couple_id, created_at desc);
+-- The requester's unread answer (approved / declined / withdrawn / outdated). References only, no details.
+create table if not exists session_edit_outcomes (
+  id                 uuid primary key default gen_random_uuid(),
+  couple_id          uuid not null references couples(id) on delete cascade,
+  session_id         uuid not null,
+  requested_by       text not null references profiles(user_id) on delete cascade,
+  recipient_id       text not null references profiles(user_id) on delete cascade,
+  session_started_at timestamptz not null,
+  session_kind       text not null check (session_kind in ('intercourse','oral')),
+  status             text not null check (status in ('approved','declined','cancelled','expired')),
+  created_at         timestamptz not null default now()
+);
+create index if not exists session_edit_outcomes_recipient on session_edit_outcomes (couple_id, recipient_id);

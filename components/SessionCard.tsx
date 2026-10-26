@@ -68,6 +68,7 @@ export function SessionCard({
           </p>
           {s.tags.length > 0 && <p className="mt-0.5 truncate text-xs text-ink-2">{s.tags.map((x) => t(x)).join(' · ')}</p>}
           {s.deletionRequest && <p className="mt-1 text-xs text-luteal">{t('Deletion awaiting agreement')}</p>}
+          {s.editRequest && <p className="mt-1 text-xs text-luteal">{t('Edit awaiting agreement')}</p>}
         </div>
       </button>
 
@@ -93,7 +94,10 @@ export function SessionCard({
             </p>
           )}
         </div>
-        {open && (
+        {s.editRequest && (
+          <Link href="/inbox" className="btn-ghost mb-4 w-full">{t('A change to this session is waiting for agreement — open Inbox')}</Link>
+        )}
+        {open && !s.editRequest && (
           <SessionForm
             mode="edit"
             places={places}
@@ -110,7 +114,7 @@ export function SessionCard({
               tags: s.tags,
               notes: s.notes ?? '',
             }}
-            submitLabel={t('Save changes')}
+            submitLabel={t('Send change for approval')}
             error={error}
             pending={pending}
             onSubmit={async (v) => {
