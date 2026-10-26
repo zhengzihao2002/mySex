@@ -92,16 +92,7 @@ export function SessionForm({
           <div>
             <label className="label">{t('Active time · {n} min', { n: v.durationMin })}</label>
             <div className="flex items-center gap-2">
-              <input
-                type="number"
-                inputMode="decimal"
-                min={0}
-                max={1440}
-                step="any"
-                className="input w-24 text-center"
-                value={v.durationMin}
-                onChange={(e) => set('durationMin', Math.max(0, Number(e.target.value) || 0))}
-              />
+              <NumInput className="input w-24 text-center" value={v.durationMin} onChange={(n) => set('durationMin', n)} />
               <div className="no-scrollbar flex gap-1.5 overflow-x-auto">
                 {[3, 5, 10, 15, 20, 30, 45, 60, 90].map((m) => (
                   <button type="button" key={m} onClick={() => set('durationMin', m)} className={`chip shrink-0 ${v.durationMin === m ? 'chip-on' : ''}`}>
@@ -113,16 +104,7 @@ export function SessionForm({
           </div>
           <div>
             <label className="label">{t('Breaks · {n} min', { n: v.breakMin })}</label>
-            <input
-              type="number"
-              inputMode="decimal"
-              min={0}
-              max={1440}
-              step="any"
-              className="input w-24 text-center"
-              value={v.breakMin}
-              onChange={(e) => set('breakMin', Math.max(0, Number(e.target.value) || 0))}
-            />
+            <NumInput className="input w-24 text-center" value={v.breakMin} onChange={(n) => set('breakMin', n)} />
             <p className="mt-1 text-xs text-ink-3">{t('Total time = {n} min', { n: v.durationMin + v.breakMin })}</p>
           </div>
         </div>
@@ -286,5 +268,28 @@ export function Toggle({
         <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all ${on ? 'left-[22px]' : 'left-0.5'}`} />
       </span>
     </button>
+  );
+}
+
+/** Decimal minutes field that keeps what you type: no stray leading zero, and it can be emptied while typing. */
+function NumInput({ value, onChange, className }: { value: number; onChange: (n: number) => void; className: string }) {
+  const [text, setText] = useState(String(value));
+  // Presets (the 15/30/60 chips) change the value from outside.
+  if (Number(text || 0) !== value) setText(String(value));
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      className={className}
+      value={text}
+      onFocus={(e) => e.currentTarget.select()}
+      onChange={(e) => {
+        const raw = e.target.value.replace(',', '.');
+        if (!/^\d*\.?\d*$/.test(raw)) return;
+        setText(raw.replace(/^0+(?=\d)/, ''));
+        onChange(Math.min(1440, Math.max(0, Number(raw) || 0)));
+      }}
+      onBlur={() => setText(String(value))}
+    />
   );
 }
