@@ -2,6 +2,7 @@
 
 import { dismissEditOutcome, requestSessionEdit, respondToSessionEdit, withdrawSessionEdit } from '@/lib/session-edit-requests';
 import {storeSessionFeeling} from '@/lib/session-feelings';
+import {isUnverified} from '@/lib/auth-errors';
 import { randomInt, timingSafeEqual } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
@@ -101,10 +102,6 @@ export async function signUpAction(_: unknown, form: FormData): Promise<AuthResu
   if (!(data as { token?: string | null } | null)?.token) return { ok: false, verify: email };
   await recordLogin(userId);
   redirect('/onboarding');
-}
-
-function isUnverified(error: { message?: string; status?: number; code?: string }) {
-  return error.code === 'EMAIL_NOT_VERIFIED' || error.status === 403 || /verif/i.test(error.message ?? '');
 }
 
 export async function signInAction(_: unknown, form: FormData): Promise<AuthResult> {

@@ -69,6 +69,8 @@ npm run dev
 Open http://localhost:3000. The migration script now loads `.env.local`, just as Next.js does. If port 3000 is occupied, use `npm run dev -- --port 3001`. For a production preview, run `npm run build` before `npm start`; `npm start` alone needs an existing successful build. If a command still fails, the terminal error is needed to identify the specific problem.
 
 
+If authentication reports **Invalid origin**, open `http://localhost:3000` rather than the Network/IP URL printed by Next.js. In the Neon Console, choose the same project/branch as `NEON_AUTH_BASE_URL`, then **Auth → Configuration → Domains**. Check that localhost connections are enabled; add the exact origin if using an IP or another hostname. The Neon CLI can enable the branch setting with `neon neon-auth domain allow-localhost enable`. See https://neon.com/docs/auth/guides/configure-domains. An origin error does not mean an email was sent or that verification is required.
+
 ## Layout
 
 ```
