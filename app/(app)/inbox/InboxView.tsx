@@ -166,15 +166,11 @@ function EditRequestCard({ edit: e, meId, partnerName }: { edit: SessionEditRequ
     [t('Active time'), min(s.durationSec ?? 0), min(p.durationMin * 60)],
     [t('Breaks'), min(s.pausedSec ?? 0), min(p.breakMin * 60)],
     [t('Where'), s.place || dash, p.place || dash],
-    [t('Heat'), s.rating ? '🔥'.repeat(s.rating) : dash, p.rating ? '🔥'.repeat(p.rating) : dash],
     [t('Protection'), protectionLabel(s.protection), protectionLabel(p.protection)],
-    [t('Her orgasms 💦'), String(s.herOrgasms ?? dash), String(p.herOrgasms ?? dash)],
-    [t('His orgasms 🍆'), String(s.hisOrgasms ?? dash), String(p.hisOrgasms ?? dash)],
     [t('What went down'), s.tags.map((x) => t(x)).join(', ') || dash, p.tags.map((x) => t(x)).join(', ') || dash],
-    [t('Dirty details'), s.notes || dash, p.notes || dash],
   ].filter((r): r is [string, string, string] => r[1] !== r[2]) : [];
   const status = {
-    pending: mine ? t('Change sent. The session stays as it is until your partner agrees.') : t('{name} wants to change this session.', { name: partnerName }),
+    pending: mine ? t('Personal entries are saved. Shared changes wait for your partner’s agreement.') : t('{name} wants to change this session.', { name: partnerName }),
     approved: t('{name} agreed. The change was applied.', { name: partnerName }),
     declined: t('{name} declined your change. The session was kept as it was.', { name: partnerName }),
     cancelled: t('The change was withdrawn.'),

@@ -1,6 +1,7 @@
 // Simplified Chinese. Keys are the English UI text (see lib/i18n/core.ts).
 // Run `node scripts/check-i18n.mjs --missing` to find untranslated keys.
 export const zh: Record<string, string> = {
+  "Personal entries are saved. Shared changes wait for your partner’s agreement.": "个人内容已保存。共享内容的修改等待伴侣同意。",
   "Her": "她",
   "Him": "他",
   "Average heat": "平均热度",
