@@ -3,6 +3,7 @@
 import { dismissEditOutcome, requestSessionEdit, respondToSessionEdit, withdrawSessionEdit } from '@/lib/session-edit-requests';
 import {storeSessionFeeling} from '@/lib/session-feelings';
 import {isUnverified} from '@/lib/auth-errors';
+import {initializeExperiences,submitSessionChanges} from '@/lib/session-experiences';
 import { randomInt, timingSafeEqual } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
@@ -284,9 +285,9 @@ export async function startSession(input: z.input<typeof startSchema>): Promise<
   const loc = await locationFields(p.data.useLocation, p.data.gps);
   try {
     await sql`
-      insert into sessions (couple_id, created_by, status, started_at, kind, ip, city, region, country, latitude, longitude, geo_source, gps_named_at, place)
+      insert into sessions (couple_id, created_by, status, started_at, kind, ip, city, region, country, latitude, longitude, geo_source, gps_named_at, place, experiences_initialized)
       values (${ctx.couple.id}, ${ctx.me.userId}, 'active', now(), ${p.data.kind ?? 'intercourse'}, ${loc.ip}, ${loc.city}, ${loc.region}, ${loc.country},
-              ${loc.latitude}, ${loc.longitude}, ${loc.source}, ${loc.gpsNamedAt}, ${p.data.place || null})`;
+              ${loc.latitude}, ${loc.longitude}, ${loc.source}, ${loc.gpsNamedAt}, ${p.data.place || null}, false)`;
   } catch (e) {
     // One active session per couple (unique index): if the partner beat us to it, we simply join theirs.
     if (!isUniqueViolation(e)) throw e;
@@ -314,6 +315,10 @@ export async function setPaused(id: string, paused: boolean): Promise<ActionResu
 }
 
 const detailsSchema = z.object({
+  hisRating:z.number().int().min(1).max(5).nullable().default(null),
+  herRating:z.number().int().min(1).max(5).nullable().default(null),
+  hisNotes:z.string().trim().max(1000).default(''),
+  herNotes:z.string().trim().max(1000).default(''),
   kind: kindSchema.optional(),
   place: z.string().trim().max(60).nullable().optional(),
   rating: z.number().int().min(1).max(5).nullable().optional(),
@@ -344,20 +349,8 @@ export async function finishSession(id: string, input: z.input<typeof detailsSch
       tags = ${d.tags ?? []}, updated_at = now()
     where id = ${id} and couple_id = ${ctx.couple.id} and status = 'active'
     returning id`;
-  if (!rows.length) {
-    // Both pressed "done" at once: the partner saved first. Merge our details into theirs instead of dropping them.
-    const merged = await sql`
-      with edited as (update sessions set
-        place = coalesce(place, ${d.place || null}),
-        protection = coalesce(protection, ${d.protection ?? null}),
-        his_orgasms = case when ${ctx.me.sex === 'male'} then coalesce(his_orgasms, ${d.hisOrgasms ?? null}) else his_orgasms end, her_orgasms = case when ${ctx.me.sex === 'female'} then coalesce(her_orgasms, ${d.herOrgasms ?? null}) else her_orgasms end,
-        tags = array(select distinct unnest(tags || ${d.tags ?? []}::text[])),
-        updated_at = now()
-      where id = ${id} and couple_id = ${ctx.couple.id} and status = 'done'
-      returning id)
-      insert into session_edit_notices(couple_id, session_id, edited_by, recipient_id)
-      select ${ctx.couple.id}, id, ${ctx.me.userId}, ${ctx.partner.userId} from edited returning id`;
-    if (!merged.length) return fail('This session was discarded.');
+  if (!await initializeExperiences(db(),{coupleId:ctx.couple.id,userId:ctx.me.userId},id,{...d,hisOrgasms:d.hisOrgasms??null,herOrgasms:d.herOrgasms??null})) {
+    if(!rows.length)return fail('This session was already saved. Open it to edit your own experience.');
   }
   return done();
 }
@@ -386,13 +379,15 @@ export async function logPastSession(input: z.input<typeof pastSchema>): Promise
   const loc = await locationFields(d.useLocation, d.gps);
   const dur = Math.round(d.durationMin * 60);
   const brk = Math.round((d.breakMin ?? 0) * 60);
-  await sql`
+  const created=await sql`
     insert into sessions (couple_id, created_by, status, kind, started_at, ended_at, duration_sec, paused_sec,
-      ip, city, region, country, latitude, longitude, geo_source, gps_named_at, place, rating, protection, his_orgasms, her_orgasms, tags, notes)
+      ip, city, region, country, latitude, longitude, geo_source, gps_named_at, place, rating, protection, his_orgasms, her_orgasms, tags, notes, experiences_initialized)
     values (${ctx.couple.id}, ${ctx.me.userId}, 'done', ${d.kind ?? 'intercourse'}, ${d.startedAt}, ${d.startedAt}::timestamptz + make_interval(secs => ${dur + brk}), ${dur}, ${brk},
       ${loc.ip}, ${loc.city}, ${loc.region}, ${loc.country}, ${loc.latitude}, ${loc.longitude}, ${loc.source}, ${loc.gpsNamedAt},
       ${d.place || null}, null, ${d.protection ?? null}, ${ctx.me.sex === 'male' ? d.hisOrgasms ?? null : null}, ${ctx.me.sex === 'female' ? d.herOrgasms ?? null : null},
-      ${d.tags ?? []}, null)`;
+      ${d.tags ?? []}, null, false) returning id`;
+
+  await initializeExperiences(db(),{coupleId:ctx.couple.id,userId:ctx.me.userId},created[0].id,{...d,hisOrgasms:d.hisOrgasms??null,herOrgasms:d.herOrgasms??null});
   return done();
 }
 
@@ -403,24 +398,13 @@ const editSchema = detailsSchema.extend({
   version: z.string().datetime({ offset: true }),
 });
 
-export async function updateSession(id: string, input: z.input<typeof editSchema>): Promise<ActionResult> {
-  const ctx = await couple();
-  const p = editSchema.safeParse(input);
-  if (!p.success) return fail('Invalid input');
-  const d = p.data;
-  const existing=await sql`select rating,notes,his_orgasms,her_orgasms from sessions where id=${id} and couple_id=${ctx.couple.id}`;
-  if(!existing[0])return fail('This session is no longer available.');
-  d.rating=existing[0].rating==null?null:Number(existing[0].rating);d.notes=existing[0].notes;
-  d.hisOrgasms=existing[0].his_orgasms;d.herOrgasms=existing[0].her_orgasms;
-
-  const sent = await requestSessionEdit(db(), { coupleId: ctx.couple.id, userId: ctx.me.userId, partnerId: ctx.partner.userId }, id, d.version, d);
-  if (!sent) {
-    const theirs = await sql`select 1 from session_edit_requests where session_id = ${id} and couple_id = ${ctx.couple.id} and requested_by = ${ctx.partner.userId}`;
-    return fail(theirs.length
-      ? 'Your partner already proposed a change to this session. Answer it in the Inbox first.'
-      : 'Your partner just changed this session — close it and reopen to see their changes.');
-  }
-  return done();
+export async function updateSession(id:string,input:z.input<typeof editSchema>):Promise<ActionResult>{
+ const ctx=await couple();const parsed=editSchema.safeParse(input);if(!parsed.success)return fail('Invalid input');const d=parsed.data;
+ const rows=await sql`select * from sessions where id=${id} and couple_id=${ctx.couple.id}`;const s=rows[0];if(!s)return fail('This session is no longer available.');
+ const changed=(d.kind??s.kind)!==s.kind || Date.parse(d.startedAt)!==new Date(s.started_at).getTime() || Math.round(d.durationMin*60)!==(s.duration_sec??0) || Math.round((d.breakMin??0)*60)!==s.paused_sec || (d.place||null)!==(s.place||null) || (d.protection??null)!==(s.protection||null) || JSON.stringify([...(d.tags??[])].sort())!==JSON.stringify([...(s.tags??[])].sort());
+ const proposal=changed?{kind:d.kind,startedAt:d.startedAt,durationMin:d.durationMin,breakMin:d.breakMin??0,place:d.place||null,protection:d.protection??null,tags:d.tags??[],rating:s.rating,hisOrgasms:s.his_orgasms,herOrgasms:s.her_orgasms,notes:s.notes}:null;
+ if(!await submitSessionChanges(db(),{coupleId:ctx.couple.id,userId:ctx.me.userId,partnerId:ctx.partner.userId},id,d.version,{...d,hisOrgasms:d.hisOrgasms??null,herOrgasms:d.herOrgasms??null},proposal))return fail('Your partner just changed this session — close it and reopen to see their changes.');
+ return done();
 }
 
 export async function deleteSession(id: string, version: string): Promise<ActionResult> {

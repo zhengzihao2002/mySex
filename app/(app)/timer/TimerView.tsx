@@ -211,6 +211,7 @@ function IdleTimer({
 
 export function toPayload(v: SessionFormValues, gps: { latitude: number; longitude: number } | null = null) {
   return {
+    hisRating:v.hisRating,herRating:v.herRating,hisNotes:v.hisNotes,herNotes:v.herNotes,
     startedAt: v.startedAt,
     kind: v.kind,
     durationMin: v.durationMin,
@@ -563,6 +564,7 @@ function LiveTimer({
           pending={finish.pending}
           onSubmit={async (v) => {
             const values = {
+              hisRating:v.hisRating,herRating:v.herRating,hisNotes:v.hisNotes,herNotes:v.herNotes,
               kind: v.kind,
               place: v.place || null,
               rating: v.rating,
@@ -577,7 +579,8 @@ function LiveTimer({
               setFinishOpen(false);
               const activeSec = Math.round(elapsedSec(session, Date.now()));
               const breaks = session.breaks.filter((b) => b.end);
-              onFinished(values, activeSec, { startedAt: session.startedAt, activeSec, breakSec: session.pausedSec, breaks });
+              const heat=[v.hisRating,v.herRating].filter((n):n is number=>n!=null);
+              onFinished({...values,rating:heat.length?heat.reduce((a,b)=>a+b,0)/heat.length:null}, activeSec, { startedAt: session.startedAt, activeSec, breakSec: session.pausedSec, breaks });
             } else router.refresh();
           }}
         />

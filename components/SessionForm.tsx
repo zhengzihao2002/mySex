@@ -1,6 +1,7 @@
 'use client';
 import { useT } from './I18nProvider';
 
+import {ExperienceFields} from './ExperienceFields';
 import { useState } from 'react';
 import { Flame, MapPin, Minus, Navigation, Plus } from 'lucide-react';
 import { HEAT, PROTECTION, TAGS } from '@/lib/content';
@@ -22,6 +23,7 @@ export type SessionFormValues = {
   herOrgasms: number | null;
   tags: string[];
   notes: string;
+  hisRating:number|null;herRating:number|null;hisNotes:string;herNotes:string;
 };
 
 export function toLocalInput(d: Date) {
@@ -39,6 +41,8 @@ export function SessionForm({
   onSubmit,
   error,
   pending,
+  isHer=false,
+  exactTiming,
 }: {
   mode: 'finish' | 'past' | 'edit';
   initial?: Partial<SessionFormValues>;
@@ -47,6 +51,8 @@ export function SessionForm({
   onSubmit: (v: SessionFormValues) => void;
   error?: string | null;
   pending?: boolean;
+  isHer?:boolean;
+  exactTiming?:{durationSec:number;breakSec:number};
 }) {
   const { t, f } = useT();
   const [v, setV] = useState<SessionFormValues>({
@@ -63,18 +69,20 @@ export function SessionForm({
     herOrgasms: initial?.herOrgasms ?? null,
     tags: initial?.tags ?? [],
     notes: initial?.notes ?? '',
+    hisRating:initial?.hisRating??null,herRating:initial?.herRating??null,hisNotes:initial?.hisNotes??'',herNotes:initial?.herNotes??'',
   });
   const set = <K extends keyof SessionFormValues>(k: K, val: SessionFormValues[K]) => setV((s) => ({ ...s, [k]: val }));
 
+  const base=initial;
+  const sharedChanged=mode==='edit' && !!base && (v.kind!==base.kind || Date.parse(v.startedAt)!==Date.parse(base.startedAt!) || Math.round(v.durationMin*60)!==Math.round((base.durationMin??0)*60) || Math.round(v.breakMin*60)!==Math.round((base.breakMin??0)*60) || v.place!==(base.place??'') || v.protection!==(base.protection??null) || JSON.stringify([...v.tags].sort())!==JSON.stringify([...(base.tags??[])].sort()));
   return (
     <form
       className="space-y-5"
       onSubmit={(e) => {
         e.preventDefault();
-        onSubmit(v);
+        onSubmit(mode==='edit' && exactTiming ? {...v,durationMin:v.durationMin===initial?.durationMin?exactTiming.durationSec/60:v.durationMin,breakMin:v.breakMin===initial?.breakMin?exactTiming.breakSec/60:v.breakMin}:v);
       }}
     >
-      <p className="text-xs text-ink-3">{t("Record shared session details here. After saving, each partner can add their own feelings and highlights separately.")}</p>
       <KindPicker value={v.kind} onChange={(k) => set('kind', k)} />
 
       {mode !== 'finish' && (
@@ -147,6 +155,8 @@ export function SessionForm({
         </div>
       </div>
 
+      <ExperienceFields v={v} set={patch=>setV(s=>({...s,...patch}))} mode={mode} isHer={isHer}/>
+
       <div>
         <label className="label">{t('Where')}</label>
         <input className="input" placeholder={t('Bedroom, his car, hotel in Vegas…')} value={v.place} maxLength={60} onChange={(e) => set('place', e.target.value)} />
@@ -179,7 +189,7 @@ export function SessionForm({
 
       <FormError error={error} />
       <button className="btn-primary w-full" disabled={pending}>
-        {pending ? t('Saving…') : submitLabel}
+        {pending ? t('Saving…') : mode==='edit' ? sharedChanged?t('Send change for approval'):t('Save'):submitLabel}
       </button>
     </form>
   );

@@ -32,7 +32,7 @@ const session = { id:sessionId, createdBy:'me', kind:'intercourse' as const, sta
   ip:null, city:null, region:null, country:null, latitude:null, longitude:null, geoSource:null,
   place:'Home', rating:4, protection:null, hisOrgasms:1, herOrgasms:2, tags:[], notes:'A memory', updatedAt:version, breaks:[] };
 function backup(): Backup {
-  return {format:'mysex-backup-v2',coupleId,ownerId:'me',exportedAt:version,sessions:[session],
+  return {format:'mysex-backup-v2',coupleId,ownerId:'me',exportedAt:version,sessions:[{...session}],
     periods:[{id:'30000000-0000-4000-8000-000000000001',start:'2026-01-01',end:'2026-01-05'}],
     checkIns:['me','partner'].map(userId => ({userId,date:'2026-01-01',mood:'loved',energy:3,libido:3,flow:null,symptoms:[],note:null})),
     notes:['me','partner'].map((fromUser,i) => ({id:`40000000-0000-4000-8000-00000000000${i+1}`,fromUser,body:'Hello',kind:'note',createdAt:version,readAt:null,editedAt:null}))};
@@ -150,4 +150,36 @@ test('personal heat averages preserve halves and orgasm edits affect only the au
  await storeSessionFeeling(client,who,sessionId,{...d,rating:null,orgasms:0});
  const latest=(await pg.query<{rating:string;his_orgasms:number;her_orgasms:number}>('select * from sessions')).rows[0];
  assert.equal(Number(latest.rating),3);assert.equal(latest.her_orgasms,4);assert.equal(latest.his_orgasms,0);
+});
+
+test('first save accepts both partners on one phone, only once, with averaged heat',async()=>{
+ const {initializeExperiences}=await import('./session-experiences.ts');await restoreBackup(client,backup(),who,true);
+ await pg.exec('update sessions set experiences_initialized=false');
+ const d={hisRating:4,herRating:3,hisNotes:'His note',herNotes:'Her note',hisOrgasms:1,herOrgasms:2};
+ assert.equal(await initializeExperiences(client,who,sessionId,d),true);
+ assert.equal(await initializeExperiences(client,who,sessionId,{...d,herNotes:'Cannot rewrite'}),false);
+ const rows=(await pg.query<{user_id:string;feeling:string}>('select user_id,feeling from session_feelings order by user_id')).rows;
+ assert.deepEqual(rows.map(r=>r.feeling),['His note','Her note']);
+ assert.equal(Number((await pg.query<{rating:string}>('select rating from sessions')).rows[0].rating),3.5);
+});
+test('mixed edit applies only author personal fields immediately and shared fields only after approval',async()=>{
+ const {initializeExperiences,submitSessionChanges}=await import('./session-experiences.ts');const {respondToSessionEdit}=await import('./session-edit-requests.ts');
+ await restoreBackup(client,backup(),who,true);await pg.exec('update sessions set experiences_initialized=false');
+ const d={hisRating:4,herRating:3,hisNotes:'His note',herNotes:'Her note',hisOrgasms:1,herOrgasms:2};await initializeExperiences(client,who,sessionId,d);
+ const version=(await pg.query<{updated_at:Date}>('select updated_at from sessions')).rows[0].updated_at.toISOString();
+ const proposal={kind:'intercourse',startedAt:session.startedAt,durationMin:15,breakMin:0,place:'New place',protection:null,tags:['Massage']};
+ assert.equal(await submitSessionChanges(client,who,sessionId,version,{...d,hisRating:5,hisNotes:'My edit',herNotes:'Forbidden',herRating:1,herOrgasms:20},proposal),true);
+ const s=(await pg.query<{place:string;rating:string;her_orgasms:number}>('select * from sessions')).rows[0];assert.equal(s.place,'Home');assert.equal(Number(s.rating),4);assert.equal(s.her_orgasms,2);
+ const notes=(await pg.query<{user_id:string;feeling:string}>('select * from session_feelings order by user_id')).rows;assert.deepEqual(notes.map(r=>r.feeling),['My edit','Her note']);
+ const id=(await pg.query<{id:string}>('select id from session_edit_requests')).rows[0].id;
+ assert.equal(await respondToSessionEdit(client,{...who,userId:'partner',partnerId:'me'},id,'approved'),'approved');
+ assert.equal((await pg.query<{place:string}>('select place from sessions')).rows[0].place,'New place');
+});
+test('personal-only edit creates no approval request and stale edits cannot overwrite',async()=>{
+ const {submitSessionChanges}=await import('./session-experiences.ts');await restoreBackup(client,backup(),who,true);
+ const version=(await pg.query<{updated_at:Date}>('select updated_at from sessions')).rows[0].updated_at.toISOString();
+ const d={hisRating:5,herRating:1,hisNotes:'Mine',herNotes:'Do not touch',hisOrgasms:2,herOrgasms:20};
+ assert.equal(await submitSessionChanges(client,who,sessionId,version,d,null),true);
+ assert.equal((await pg.query('select * from session_edit_requests')).rows.length,0);
+ assert.equal(await submitSessionChanges(client,who,sessionId,version,d,null),false);
 });

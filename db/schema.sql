@@ -280,3 +280,8 @@ create table if not exists session_feelings (
 
 -- Retain exact averages of the two personal heat ratings.
 alter table sessions alter column rating type numeric(3,1);
+
+-- Existing records are already finalized. New recordings explicitly open one initial two-person entry.
+alter table sessions add column if not exists experiences_initialized boolean not null default true;
+
+update sessions set experiences_initialized=false where status='active';

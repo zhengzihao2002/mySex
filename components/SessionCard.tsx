@@ -1,13 +1,12 @@
 'use client';
-import {SessionFeelings} from './SessionFeelings';
 import {SessionPersonality} from './SessionPersonality';
 import { useT } from './I18nProvider';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { MapPin, Trash2 } from 'lucide-react';
-import { deleteSession, updateSession } from '@/app/actions';
+import { getSessionFeelings, deleteSession, updateSession } from '@/app/actions';
 import { flagEmoji, HEAT, PROTECTION } from '@/lib/content';
 import { formatDuration } from '@/lib/dates';
 import type { Score } from '@/lib/score';
@@ -40,6 +39,8 @@ export function SessionCard({
   const { tz } = useTz();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [experience,setExperience]=useState<Awaited<ReturnType<typeof getSessionFeelings>>|null>(null);
+  useEffect(()=>{let active=true;if(open){setExperience(null);getSessionFeelings(s.id).then(data=>{if(active)setExperience(data)}).catch(()=>{});}return()=>{active=false}},[open,s.id]);
   const [confirm, setConfirm] = useState(false);
   const { run, pending, error } = useRun();
   const where = s.place || [s.city, s.region].filter(Boolean).join(', ');
@@ -97,15 +98,20 @@ export function SessionCard({
           )}
         </div>
         <SessionPersonality tags={s.tags} />
-        {open && <SessionFeelings sessionId={s.id} />}
         {s.editRequest && (
           <Link href="/inbox" className="btn-ghost mb-4 w-full">{t('A change to this session is waiting for agreement — open Inbox')}</Link>
         )}
-        {open && !s.editRequest && (
+        {open && experience && (
           <SessionForm
             mode="edit"
+            isHer={experience.isHer}
+            exactTiming={{durationSec:s.durationSec??0,breakSec:s.pausedSec}}
             places={places}
             initial={{
+              hisRating:experience.reviews.find(r=>experience.isHer?r.userId!==experience.meId:r.userId===experience.meId)?.rating??null,
+              herRating:experience.reviews.find(r=>experience.isHer?r.userId===experience.meId:r.userId!==experience.meId)?.rating??null,
+              hisNotes:experience.reviews.filter(r=>experience.isHer?r.userId!==experience.meId:r.userId===experience.meId).map(r=>[r.feeling,r.highlight].filter(Boolean).join('\n')).join(''),
+              herNotes:experience.reviews.filter(r=>experience.isHer?r.userId===experience.meId:r.userId!==experience.meId).map(r=>[r.feeling,r.highlight].filter(Boolean).join('\n')).join(''),
               kind: s.kind,
               startedAt: s.startedAt,
               durationMin: Math.round((s.durationSec ?? 0) / 6) / 10,
@@ -125,6 +131,7 @@ export function SessionCard({
               const ok = await run(() =>
                 updateSession(s.id, {
                   version: s.updatedAt,
+                  hisRating:v.hisRating,herRating:v.herRating,hisNotes:v.hisNotes,herNotes:v.herNotes,hisOrgasms:v.hisOrgasms,herOrgasms:v.herOrgasms,
                   kind: v.kind,
                   startedAt: v.startedAt,
                   durationMin: v.durationMin,

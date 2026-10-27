@@ -1,6 +1,10 @@
 // Simplified Chinese. Keys are the English UI text (see lib/i18n/core.ts).
 // Run `node scripts/check-i18n.mjs --missing` to find untranslated keys.
 export const zh: Record<string, string> = {
+  "Her": "她",
+  "Him": "他",
+  "Average heat": "平均热度",
+  "This session was already saved. Open it to edit your own experience.": "这条记录已保存，请打开记录修改自己的体验。",
   "Flip": "翻牌",
   "Side by side": "并肩侧卧",
   "Seated": "坐姿",
