@@ -277,3 +277,6 @@ create table if not exists session_feelings (
  updated_at timestamptz not null default now(),
  primary key(session_id,user_id)
 );
+
+-- Retain exact averages of the two personal heat ratings.
+alter table sessions alter column rating type numeric(3,1);

@@ -50,14 +50,24 @@ Next.js 16 (App Router, server actions) · React 19 · Tailwind CSS 4 · **Neon 
 
 ## Local development
 
+On macOS, use Node 22 LTS (or newer) and run commands inside this repository:
+
 ```bash
-cp .env.example .env.local   # fill in the values
-npm install
-npm run db:migrate           # needs DATABASE_URL in the environment
-npm run dev
-npm test                     # cycle, scoring, and isolated Postgres deletion/privacy tests
-npm run lint                 # TypeScript type check
+nvm install 22
+nvm use 22
+npm ci
+cp .env.example .env.local
 ```
+
+Edit `.env.local`: set your Neon `DATABASE_URL`, `NEON_AUTH_BASE_URL`, and a 32+ character `NEON_AUTH_COOKIE_SECRET` (`openssl rand -base64 32` generates one). Use a Neon development branch to keep local experiments separate from production. No secrets are committed to the repository.
+
+```bash
+npm run db:migrate
+npm run dev
+```
+
+Open http://localhost:3000. The migration script now loads `.env.local`, just as Next.js does. If port 3000 is occupied, use `npm run dev -- --port 3001`. For a production preview, run `npm run build` before `npm start`; `npm start` alone needs an existing successful build. If a command still fails, the terminal error is needed to identify the specific problem.
+
 
 ## Layout
 

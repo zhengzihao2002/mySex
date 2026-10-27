@@ -65,7 +65,7 @@ test('only the recipient can answer; approving applies the edit and notifies the
   assert.equal((await row()).his_orgasms, 3);
   assert.equal(await respondToSessionEdit(client, her, id, 'approved'), 'approved');
   const s = await row();
-  assert.equal(s.his_orgasms, 1); assert.equal(s.her_orgasms, 2); assert.equal(s.place, 'Hotel');
+  assert.equal(s.his_orgasms, 3); assert.equal(s.her_orgasms, null); assert.equal(s.place, 'Hotel');
   assert.equal(s.duration_sec, 1200); assert.equal(s.paused_sec, 300); assert.deepEqual(s.tags, ['Kissing']);
   assert.equal((await pending()).length, 0);
   const out = (await pg.query<any>('select * from session_edit_outcomes')).rows;

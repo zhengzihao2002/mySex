@@ -54,7 +54,7 @@ export function SessionCard({
             {showDate ? `${showDate} · ` : ''}
             {KIND_META[s.kind].emoji} {f.timeInTz(s.startedAt, tz)} · {f.formatDuration(s.durationSec ?? 0)}
             {s.pausedSec ? <span className="text-xs font-normal text-ink-3"> (+{t('{d} breaks', { d: f.formatDuration(s.pausedSec) })})</span> : null}
-            {s.rating ? <span className="ml-1">{'🔥'.repeat(s.rating)}</span> : null}
+            {s.rating ? <span className="ml-1">🔥 {s.rating}/5</span> : null}
           </p>
           <p className="truncate text-xs text-ink-3">
             {where ? (
@@ -92,7 +92,7 @@ export function SessionCard({
           {score && (
             <p>
               {t('Score')} {score.total}/100 · {score.emoji} {t(score.grade)}
-              {s.rating ? ` · ${t('rated')} “${t(HEAT[s.rating - 1])}”` : ''}
+              {s.rating ? ` · ${t('rated')} “${t(HEAT[Math.round(s.rating) - 1])}”` : ''}
             </p>
           )}
         </div>
@@ -130,12 +130,8 @@ export function SessionCard({
                   durationMin: v.durationMin,
                   breakMin: v.breakMin,
                   place: v.place || null,
-                  rating: v.rating,
                   protection: v.protection,
-                  hisOrgasms: v.hisOrgasms,
-                  herOrgasms: v.herOrgasms,
                   tags: v.tags,
-                  notes: v.notes || null,
                 }),
               );
               if (ok) setOpen(false);

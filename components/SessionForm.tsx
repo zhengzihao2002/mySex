@@ -112,34 +112,6 @@ export function SessionForm({
       )}
 
       <div>
-        <label className="label">{t('How hot was it?')}</label>
-        <div className="flex items-center gap-1">
-          {HEAT.map((h, i) => (
-            <button
-              type="button"
-              key={h}
-              onClick={() => set('rating', v.rating === i + 1 ? null : i + 1)}
-              className="p-1 transition active:scale-90"
-              aria-label={h}
-            >
-              <Flame
-                size={30}
-                className={v.rating && i < v.rating ? 'fill-rose text-rose' : 'text-line'}
-                strokeWidth={1.5}
-              />
-            </button>
-          ))}
-          <span className="ml-2 text-sm text-ink-2">{v.rating ? t(HEAT[v.rating - 1]) : ''}</span>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <Stepper label={t('Her orgasms 💦')} value={v.herOrgasms} onChange={(n) => set('herOrgasms', n)} />
-        <Stepper label={t('His orgasms 🍆')} value={v.hisOrgasms} onChange={(n) => set('hisOrgasms', n)} />
-      </div>
-      <p className="-mt-3 text-xs text-ink-3">{t('Count orgasms, not ejaculations. Either partner may have more than one; there is no target to reach.')}</p>
-
-      <div>
         <label className="label">{t('Protection')}</label>
         <div className="flex flex-wrap gap-2">
           {PROTECTION.map((p) => (
@@ -204,16 +176,6 @@ export function SessionForm({
         </div>
       )}
 
-      <div>
-        <label className="label">{t('Shared session notes')}</label>
-        <textarea
-          className="input min-h-20"
-          maxLength={500}
-          placeholder={t('What made it memorable…')}
-          value={v.notes}
-          onChange={(e) => set('notes', e.target.value)}
-        />
-      </div>
 
       <FormError error={error} />
       <button className="btn-primary w-full" disabled={pending}>

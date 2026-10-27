@@ -139,3 +139,15 @@ test('new personal feelings invalidate an older deletion request',async()=>{
  assert.equal(await respondToSessionDeletion(client,{...who,userId:'partner',partnerId:'me'},id,'approved'),'expired');
  assert.equal((await pg.query('select * from sessions')).rows.length,1);
 });
+
+test('personal heat averages preserve halves and orgasm edits affect only the author',async()=>{
+ const {storeSessionFeeling}=await import('./session-feelings.ts');await restoreBackup(client,backup(),who,true);
+ const d={feeling:'My note',rating:4,highlight:'',repeatChoice:null};
+ await storeSessionFeeling(client,who,sessionId,{...d,orgasms:2});
+ await storeSessionFeeling(client,{...who,userId:'partner'},sessionId,{...d,rating:3,orgasms:4});
+ const s=(await pg.query<{rating:string;his_orgasms:number;her_orgasms:number}>('select * from sessions')).rows[0];
+ assert.equal(Number(s.rating),3.5);assert.equal(s.his_orgasms,2);assert.equal(s.her_orgasms,4);
+ await storeSessionFeeling(client,who,sessionId,{...d,rating:null,orgasms:0});
+ const latest=(await pg.query<{rating:string;his_orgasms:number;her_orgasms:number}>('select * from sessions')).rows[0];
+ assert.equal(Number(latest.rating),3);assert.equal(latest.her_orgasms,4);assert.equal(latest.his_orgasms,0);
+});

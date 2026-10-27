@@ -86,7 +86,6 @@ export function TimerView({
       ) : (
         <IdleTimer places={places} done={done} onStart={(s) => setOptimistic(s)} onStartFailed={() => setOptimistic(null)} />
       )}
-      {!current && done[0] && <><SessionPersonality tags={done[0].tags}/><SessionFeelings key={done[0].id} sessionId={done[0].id}/></>}
       {reveal && <ScoreReveal score={reveal.score} times={reveal.times} onClose={() => setReveal(null)} />}
     </>
   );
@@ -106,7 +105,7 @@ function IdleTimer({
   onStartFailed: () => void;
 }) {
   const { t, f } = useT();
-  const [place, setPlace] = useState('');
+  const place = '';
   const [kind, setKind] = useState<SessionKind>('intercourse');
   const { useLocation, setUseLocation, useGps, setUseGps, ready: locationReady } = useRecordingLocation();
   const [pastOpen, setPastOpen] = useState(false);
@@ -171,18 +170,6 @@ function IdleTimer({
       </button>
 
       <div className="w-full space-y-3">
-        <div>
-          <input className="input" placeholder={t('Where? (optional) — bedroom, shower, car…')} value={place} maxLength={60} onChange={(e) => setPlace(e.target.value)} />
-          {places.length > 0 && (
-            <div className="no-scrollbar mt-2 flex gap-1.5 overflow-x-auto">
-              {places.slice(0, 10).map((p) => (
-                <button key={p} onClick={() => setPlace(p)} className={`chip shrink-0 ${place === p ? 'chip-on' : ''}`}>
-                  <MapPin size={12} /> {p}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
         <Toggle on={useLocation} onChange={setUseLocation} icon={<MapPin size={16} />} title={t('Record location')} sub={t('Saves your IP & city so you can see where you did it')} />
         {useLocation && (
           <Toggle on={useGps} onChange={setUseGps} icon={<Navigation size={16} />} title={t('Precise GPS pin')} sub={t('Asks for location permission')} />
@@ -485,6 +472,7 @@ function LiveTimer({
         </div>
 
 
+        {!pendingStart && <div className="my-4 w-full max-w-[300px]"><TimerPrompts paused={paused} kind={session.kind} /></div>}
         <div className="mt-4 w-full max-w-[300px]">
           <div className="mb-1 flex justify-between text-[11px] text-ink-3">
             <span>{t('Stamina points')}</span>
@@ -497,7 +485,6 @@ function LiveTimer({
       </main>
 
       <footer className="relative z-10 mx-auto w-full max-w-lg px-6 pb-[calc(env(safe-area-inset-bottom)+20px)]">
-        {!pendingStart && <TimerPrompts paused={paused} kind={session.kind} />}
         <FormError error={act.error} />
         <div className="flex items-center justify-center gap-5">
           <button

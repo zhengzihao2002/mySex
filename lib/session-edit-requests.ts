@@ -75,10 +75,9 @@ export async function respondToSessionEdit(client: Client, who: Participants, re
              + make_interval(secs => round((r.proposed->>'durationMin')::numeric * 60) + round((r.proposed->>'breakMin')::numeric * 60)),
            breaks = case when s.paused_sec = round((r.proposed->>'breakMin')::numeric * 60) then s.breaks else '[]'::jsonb end,
            place = nullif(r.proposed->>'place', ''),
-           rating = (r.proposed->>'rating')::int, protection = r.proposed->>'protection',
-           his_orgasms = (r.proposed->>'hisOrgasms')::int, her_orgasms = (r.proposed->>'herOrgasms')::int,
+           protection = r.proposed->>'protection',
            tags = coalesce(array(select jsonb_array_elements_text(r.proposed->'tags')), '{}'),
-           notes = nullif(r.proposed->>'notes', ''), updated_at = now()
+           updated_at = now()
          from resolved r where r.outcome = 'approved' and s.id = r.session_id and s.couple_id = ${coupleId}
          returning s.id
        ), notified as (

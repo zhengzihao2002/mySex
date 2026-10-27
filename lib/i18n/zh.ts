@@ -1,6 +1,10 @@
 // Simplified Chinese. Keys are the English UI text (see lib/i18n/core.ts).
 // Run `node scripts/check-i18n.mjs --missing` to find untranslated keys.
 export const zh: Record<string, string> = {
+  "Each partner writes one note and gives their own heat rating. The session uses the average of submitted ratings.": "双方各写一条笔记并给出自己的热度评分。记录使用已提交评分的平均值。",
+  "Your session note": "你的过程笔记",
+  "Your orgasms": "你的高潮次数",
+  "Tap to flip a position card": "点击翻开姿势卡",
   "Shared session notes": "共享的过程记录",
   "Record shared session details here. After saving, each partner can add their own feelings and highlights separately.": "在此记录共同的过程信息。保存后，双方可以分别添加自己的感受与精彩片刻。",
   "Could not load session feelings. Reopen this session to try again.": "无法加载感受，请重新打开这条记录。",

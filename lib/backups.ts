@@ -11,10 +11,10 @@ const session = z.object({
   pausedSec: z.number().int().nonnegative(), durationSec: z.number().int().nonnegative().nullable(),
   ip: text, city: text, region: text, country: text, latitude: z.number().min(-90).max(90).nullable(),
   longitude: z.number().min(-180).max(180).nullable(), geoSource: z.enum(['ip', 'gps']).nullable(), gpsNamedAt: timestamp.nullable().optional(),
-  place: text, rating: z.number().int().min(1).max(5).nullable(), protection: text,
+  place: text, rating: z.number().min(1).max(5).nullable(), protection: text,
   hisOrgasms: z.number().int().min(0).max(20).nullable(), herOrgasms: z.number().int().min(0).max(20).nullable(),
   tags: z.array(z.string().max(30)).max(20), notes: text, updatedAt: timestamp,
-  feelings: z.array(z.object({userId:z.string(),feeling:z.string().max(200),rating:z.number().int().min(1).max(5).nullable(),highlight:z.string().max(500),repeatChoice:z.enum(['yes','maybe','no']).nullable()})).optional(),
+  feelings: z.array(z.object({userId:z.string(),feeling:z.string().max(1000),rating:z.number().int().min(1).max(5).nullable(),highlight:z.string().max(500),repeatChoice:z.enum(['yes','maybe','no']).nullable()})).optional(),
   breaks: z.array(z.object({ start: timestamp, end: timestamp.nullable() })).max(10000),
 });
 const backupSchema = z.object({

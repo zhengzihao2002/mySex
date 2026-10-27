@@ -46,7 +46,7 @@ export function toSession(r: Row): SexSession {
     geoSource: r.geo_source,
     gpsNamedAt: iso(r.gps_named_at),
     place: r.place,
-    rating: r.rating,
+    rating: r.rating == null ? null : Number(r.rating),
     protection: r.protection,
     hisOrgasms: r.his_orgasms,
     herOrgasms: r.her_orgasms,

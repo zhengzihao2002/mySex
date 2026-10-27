@@ -342,9 +342,9 @@ export async function finishSession(id: string, input: z.input<typeof detailsSch
       -- The session ends where the last pause began, so an open trailing break isn't a break.
       breaks = coalesce((select jsonb_agg(b) from jsonb_array_elements(breaks) b where b->>'end' is not null), '[]'::jsonb),
       place = coalesce(${d.place || null}, place),
-      rating = ${d.rating ?? null}, protection = ${d.protection ?? null},
-      his_orgasms = ${d.hisOrgasms ?? null}, her_orgasms = ${d.herOrgasms ?? null},
-      tags = ${d.tags ?? []}, notes = ${d.notes || null}, updated_at = now()
+      protection = ${d.protection ?? null},
+      his_orgasms = case when ${ctx.me.sex === 'male'} then ${d.hisOrgasms ?? null} else his_orgasms end, her_orgasms = case when ${ctx.me.sex === 'female'} then ${d.herOrgasms ?? null} else her_orgasms end,
+      tags = ${d.tags ?? []}, updated_at = now()
     where id = ${id} and couple_id = ${ctx.couple.id} and status = 'active'
     returning id`;
   if (!rows.length) {
@@ -352,13 +352,9 @@ export async function finishSession(id: string, input: z.input<typeof detailsSch
     const merged = await sql`
       with edited as (update sessions set
         place = coalesce(place, ${d.place || null}),
-        rating = coalesce(rating, ${d.rating ?? null}), protection = coalesce(protection, ${d.protection ?? null}),
-        his_orgasms = coalesce(his_orgasms, ${d.hisOrgasms ?? null}), her_orgasms = coalesce(her_orgasms, ${d.herOrgasms ?? null}),
+        protection = coalesce(protection, ${d.protection ?? null}),
+        his_orgasms = case when ${ctx.me.sex === 'male'} then coalesce(his_orgasms, ${d.hisOrgasms ?? null}) else his_orgasms end, her_orgasms = case when ${ctx.me.sex === 'female'} then coalesce(her_orgasms, ${d.herOrgasms ?? null}) else her_orgasms end,
         tags = array(select distinct unnest(tags || ${d.tags ?? []}::text[])),
-        notes = case when ${d.notes || null}::text is null then notes
-                     when notes is null then ${d.notes || null}
-                     when position(${d.notes || ''} in notes) > 0 then notes
-                     else notes || E'\n' || ${d.notes || null} end,
         updated_at = now()
       where id = ${id} and couple_id = ${ctx.couple.id} and status = 'done'
       returning id)
@@ -398,8 +394,8 @@ export async function logPastSession(input: z.input<typeof pastSchema>): Promise
       ip, city, region, country, latitude, longitude, geo_source, gps_named_at, place, rating, protection, his_orgasms, her_orgasms, tags, notes)
     values (${ctx.couple.id}, ${ctx.me.userId}, 'done', ${d.kind ?? 'intercourse'}, ${d.startedAt}, ${d.startedAt}::timestamptz + make_interval(secs => ${dur + brk}), ${dur}, ${brk},
       ${loc.ip}, ${loc.city}, ${loc.region}, ${loc.country}, ${loc.latitude}, ${loc.longitude}, ${loc.source}, ${loc.gpsNamedAt},
-      ${d.place || null}, ${d.rating ?? null}, ${d.protection ?? null}, ${d.hisOrgasms ?? null}, ${d.herOrgasms ?? null},
-      ${d.tags ?? []}, ${d.notes || null})`;
+      ${d.place || null}, null, ${d.protection ?? null}, ${ctx.me.sex === 'male' ? d.hisOrgasms ?? null : null}, ${ctx.me.sex === 'female' ? d.herOrgasms ?? null : null},
+      ${d.tags ?? []}, null)`;
   return done();
 }
 
@@ -415,6 +411,11 @@ export async function updateSession(id: string, input: z.input<typeof editSchema
   const p = editSchema.safeParse(input);
   if (!p.success) return fail('Invalid input');
   const d = p.data;
+  const existing=await sql`select rating,notes,his_orgasms,her_orgasms from sessions where id=${id} and couple_id=${ctx.couple.id}`;
+  if(!existing[0])return fail('This session is no longer available.');
+  d.rating=existing[0].rating==null?null:Number(existing[0].rating);d.notes=existing[0].notes;
+  d.hisOrgasms=existing[0].his_orgasms;d.herOrgasms=existing[0].her_orgasms;
+
   const sent = await requestSessionEdit(db(), { coupleId: ctx.couple.id, userId: ctx.me.userId, partnerId: ctx.partner.userId }, id, d.version, d);
   if (!sent) {
     const theirs = await sql`select 1 from session_edit_requests where session_id = ${id} and couple_id = ${ctx.couple.id} and requested_by = ${ctx.partner.userId}`;
@@ -753,15 +754,16 @@ export async function markEditNoticeRead(id: string): Promise<ActionResult> {
 
 export async function getSessionFeelings(id:string) {
  const ctx=await couple();
- if(!z.uuid().safeParse(id).success)return {meId:ctx.me.userId,reviews:[]};
+ if(!z.uuid().safeParse(id).success)return {meId:ctx.me.userId,reviews:[],orgasms:null as number|null};
  const rows=await sql`select f.*,p.name from session_feelings f join sessions s on s.id=f.session_id
  join profiles p on p.user_id=f.user_id where s.id=${id} and s.couple_id=${ctx.couple.id}
  and f.user_id in (${ctx.me.userId},${ctx.partner.userId})`;
- return {meId:ctx.me.userId,reviews:rows.map(r=>({userId:r.user_id as string,name:r.name as string,feeling:r.feeling as string,rating:r.rating as number|null,highlight:r.highlight as string,repeatChoice:r.repeat_choice as 'yes'|'maybe'|'no'|null}))};
+ const own=await sql`select his_orgasms,her_orgasms from sessions where id=${id} and couple_id=${ctx.couple.id}`;
+ return {meId:ctx.me.userId,orgasms:(ctx.me.sex==='male'?own[0]?.his_orgasms:own[0]?.her_orgasms) as number|null,reviews:rows.map(r=>({userId:r.user_id as string,name:r.name as string,feeling:r.feeling as string,rating:r.rating as number|null,highlight:r.highlight as string,repeatChoice:r.repeat_choice as 'yes'|'maybe'|'no'|null}))};
 }
 export async function saveSessionFeeling(id:string,input:unknown):Promise<ActionResult>{
  const ctx=await couple();
- const p=z.object({feeling:z.string().trim().max(200),rating:z.number().int().min(1).max(5).nullable(),highlight:z.string().trim().max(500),repeatChoice:z.enum(['yes','maybe','no']).nullable()}).safeParse(input);
+ const p=z.object({feeling:z.string().trim().max(1000),rating:z.number().int().min(1).max(5).nullable(),highlight:z.string().max(500).default(''),repeatChoice:z.enum(['yes','maybe','no']).nullable().default(null),orgasms:z.number().int().min(0).max(20).nullable().optional()}).safeParse(input);
  if(!z.uuid().safeParse(id).success||!p.success)return fail('Invalid input');
  if(!await storeSessionFeeling(db(),{coupleId:ctx.couple.id,userId:ctx.me.userId},id,p.data))return fail('This session is no longer available.');
  return done();

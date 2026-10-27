@@ -2,6 +2,8 @@
 // so every Vercel deploy keeps the schema up to date. The schema is idempotent.
 import { readFile } from 'node:fs/promises';
 import { neon, neonConfig } from '@neondatabase/serverless';
+import nextEnv from '@next/env';
+nextEnv.loadEnvConfig(process.cwd());
 
 const url = process.env.DATABASE_URL;
 if (!url) {
