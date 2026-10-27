@@ -474,7 +474,7 @@ function LiveTimer({
         </div>
 
 
-        <div className="my-3 w-full max-w-[300px] shrink-0"><TimerPrompts paused={paused || pendingStart} kind={session.kind} /></div>
+        {session.kind === 'intercourse' && <div className="my-3 w-full max-w-[300px] shrink-0"><TimerPrompts paused={paused || pendingStart} kind={session.kind} /></div>}
         <div className="mt-4 w-full max-w-[300px]">
           <div className="mb-1 flex justify-between text-[11px] text-ink-3">
             <span>{t('Stamina points')}</span>
