@@ -4,7 +4,7 @@ import {TIMER_PROMPTS,nextPrompt} from '@/lib/session-play';
 import {useT} from './I18nProvider';
 export function TimerPrompts({paused,kind}:{paused:boolean;kind:'intercourse'|'oral'}){
  const {t}=useT();const [index,setIndex]=useState(-1);const [front,setFront]=useState(false);const lockedUntil=useRef(0);
- useEffect(()=>{if(!front)return;const timer=setTimeout(()=>setFront(false),30450);return()=>clearTimeout(timer)},[front]);
+ useEffect(()=>{if(!front)return;const timer=setTimeout(()=>{lockedUntil.current=Date.now()+450;setFront(false)},30450);return()=>clearTimeout(timer)},[front]);
  const flip=()=>{if(Date.now()<lockedUntil.current)return;lockedUntil.current=Date.now()+450;
  if(front)setFront(false);else if(!paused){setIndex(i=>nextPrompt(i,Math.random,kind!=='oral'));setFront(true)}};
  return <div className="w-full text-center" style={{perspective:'900px'}}>
