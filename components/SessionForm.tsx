@@ -185,17 +185,17 @@ export function SessionForm({
   );
 }
 
-export function Stepper({ label, value, onChange }: { label: string; value: number | null; onChange: (n: number | null) => void }) {
+export function Stepper({ label, value, onChange, disabled = false }: { label: string; value: number | null; onChange: (n: number | null) => void; disabled?: boolean }) {
   const n = value ?? 0;
   return (
     <div className="rounded-2xl border border-line bg-surface-2 p-3">
       <p className="mb-2 text-xs text-ink-3">{label}</p>
       <div className="flex items-center justify-between">
-        <button type="button" className="rounded-full bg-surface p-2 active:scale-90" onClick={() => onChange(n > 0 ? n - 1 : null)} aria-label="Less">
+        <button type="button" disabled={disabled} className="rounded-full bg-surface p-2 active:scale-90 disabled:opacity-30" onClick={() => onChange(n > 0 ? n - 1 : null)} aria-label="Less">
           <Minus size={16} />
         </button>
         <span className="text-2xl font-bold tabular-nums">{value ?? '–'}</span>
-        <button type="button" className="rounded-full bg-surface p-2 active:scale-90" onClick={() => onChange(Math.min(20, n + 1))} aria-label="More">
+        <button type="button" disabled={disabled} className="rounded-full bg-surface p-2 active:scale-90 disabled:opacity-30" onClick={() => onChange(Math.min(20, n + 1))} aria-label="More">
           <Plus size={16} />
         </button>
       </div>

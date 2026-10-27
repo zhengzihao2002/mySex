@@ -751,12 +751,12 @@ export async function markEditNoticeRead(id: string): Promise<ActionResult> {
 
 export async function getSessionFeelings(id:string) {
  const ctx=await couple();
- if(!z.uuid().safeParse(id).success)return {meId:ctx.me.userId,reviews:[],orgasms:null as number|null};
+ if(!z.uuid().safeParse(id).success)return {meId:ctx.me.userId,reviews:[],orgasms:null as number|null,partnerOrgasms:null as number|null,isHer:ctx.me.sex==='female'};
  const rows=await sql`select f.*,p.name from session_feelings f join sessions s on s.id=f.session_id
  join profiles p on p.user_id=f.user_id where s.id=${id} and s.couple_id=${ctx.couple.id}
  and f.user_id in (${ctx.me.userId},${ctx.partner.userId})`;
  const own=await sql`select his_orgasms,her_orgasms from sessions where id=${id} and couple_id=${ctx.couple.id}`;
- return {meId:ctx.me.userId,orgasms:(ctx.me.sex==='male'?own[0]?.his_orgasms:own[0]?.her_orgasms) as number|null,reviews:rows.map(r=>({userId:r.user_id as string,name:r.name as string,feeling:r.feeling as string,rating:r.rating as number|null,highlight:r.highlight as string,repeatChoice:r.repeat_choice as 'yes'|'maybe'|'no'|null}))};
+ return {meId:ctx.me.userId,isHer:ctx.me.sex==='female',partnerOrgasms:(ctx.me.sex==='male'?own[0]?.her_orgasms:own[0]?.his_orgasms) as number|null,orgasms:(ctx.me.sex==='male'?own[0]?.his_orgasms:own[0]?.her_orgasms) as number|null,reviews:rows.map(r=>({userId:r.user_id as string,name:r.name as string,feeling:r.feeling as string,rating:r.rating as number|null,highlight:r.highlight as string,repeatChoice:r.repeat_choice as 'yes'|'maybe'|'no'|null}))};
 }
 export async function saveSessionFeeling(id:string,input:unknown):Promise<ActionResult>{
  const ctx=await couple();

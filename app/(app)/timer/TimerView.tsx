@@ -71,7 +71,7 @@ export function TimerView({
         <div className="fixed inset-0 z-[45] bg-bg" />
       ) : current ? (
         <LiveTimer
-          key={current.id}
+          key="live-timer"
           session={current}
           pendingStart={!active}
           starterName={names[current.createdBy] ?? 'You'}
@@ -338,7 +338,7 @@ function LiveTimer({
   };
 
   return (
-    <div className="fixed inset-0 z-[45] flex flex-col overflow-hidden bg-bg">
+    <div className="fixed inset-x-0 top-0 z-[45] flex h-dvh flex-col overflow-hidden bg-bg">
       {/* Ambient light */}
       <div className={`pointer-events-none absolute inset-0 transition-opacity duration-1000 ${paused ? 'opacity-30' : 'opacity-100'}`}>
         <div className="absolute -top-1/4 -left-1/4 h-[80vh] w-[80vh] animate-[drift_22s_linear_infinite] rounded-full bg-rose/25 blur-[100px]" />
@@ -361,7 +361,8 @@ function LiveTimer({
       </header>
 
       <main className="relative z-10 mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col items-center overflow-y-auto px-6 py-3">
-        <div className="relative aspect-square w-full max-w-[340px]">
+        <div className="my-auto flex w-full shrink-0 flex-col items-center py-1">
+        <div className="relative aspect-square w-full max-w-[340px] shrink-0">
           {/* heartbeat ripples */}
           {!paused && (
             <>
@@ -472,7 +473,7 @@ function LiveTimer({
         </div>
 
 
-        {!pendingStart && <div className="my-4 w-full max-w-[300px]"><TimerPrompts paused={paused} kind={session.kind} /></div>}
+        <div className="my-3 w-full max-w-[300px] shrink-0"><TimerPrompts paused={paused || pendingStart} kind={session.kind} /></div>
         <div className="mt-4 w-full max-w-[300px]">
           <div className="mb-1 flex justify-between text-[11px] text-ink-3">
             <span>{t('Stamina points')}</span>
@@ -482,9 +483,10 @@ function LiveTimer({
             <div className="h-full rounded-full bg-gradient-to-r from-rose to-ovulation" style={{ width: `${(stamina / 40) * 100}%` }} />
           </div>
         </div>
+        </div>
       </main>
 
-      <footer className="relative z-10 mx-auto w-full max-w-lg px-6 pb-[calc(env(safe-area-inset-bottom)+20px)]">
+      <footer className="relative z-10 mx-auto w-full max-w-lg shrink-0 px-6 pt-3 pb-[max(env(safe-area-inset-bottom),20px)]">
         <FormError error={act.error} />
         <div className="flex items-center justify-center gap-5">
           <button
