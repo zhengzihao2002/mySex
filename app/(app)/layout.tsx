@@ -1,4 +1,5 @@
 import { getActiveSession, getUnreadCount, getInboxSnapshot, getViewer, requireCouple } from '@/lib/data';
+import {SessionViewer} from '@/components/SessionViewer';
 import { InboxProvider } from '@/components/InboxLink';
 import { TabBar } from '@/components/TabBar';
 import { PinLock } from '@/components/PinLock';
@@ -24,7 +25,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (device.revoked) redirect('/auth/revoked');
   return (
     <TzProvider tz={tz} today={today}>
-    <PinLock>
+    <SessionViewer meId={ctx.me.userId} isHer={ctx.me.sex==='female'}><PinLock>
       <RefreshOnFocus />
       <InboxProvider initial={inboxCount}>
       <div className="mx-auto min-h-dvh max-w-lg px-4 pt-safe pb-[calc(env(safe-area-inset-bottom)+96px)]">
@@ -32,7 +33,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       </div>
       <TabBar unread={unread} live={!!active} />
       </InboxProvider>
-    </PinLock>
+    </PinLock></SessionViewer>
     </TzProvider>
   );
 }

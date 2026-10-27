@@ -1,12 +1,13 @@
 'use client';
+import {useSessionViewer} from './SessionViewer';
 import {SessionPersonality} from './SessionPersonality';
 import { useT } from './I18nProvider';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { MapPin, Trash2 } from 'lucide-react';
-import { getSessionFeelings, deleteSession, updateSession } from '@/app/actions';
+import { deleteSession, updateSession } from '@/app/actions';
 import { flagEmoji, HEAT, PROTECTION } from '@/lib/content';
 import { formatDuration } from '@/lib/dates';
 import type { Score } from '@/lib/score';
@@ -39,8 +40,8 @@ export function SessionCard({
   const { tz } = useTz();
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [experience,setExperience]=useState<Awaited<ReturnType<typeof getSessionFeelings>>|null>(null);
-  useEffect(()=>{let active=true;if(open){setExperience(null);getSessionFeelings(s.id).then(data=>{if(active)setExperience(data)}).catch(()=>{});}return()=>{active=false}},[open,s.id]);
+  const viewer=useSessionViewer();
+  const experience={...viewer,reviews:s.feelings??[]};
   const [confirm, setConfirm] = useState(false);
   const { run, pending, error } = useRun();
   const where = s.place || [s.city, s.region].filter(Boolean).join(', ');
