@@ -1,6 +1,15 @@
 // Simplified Chinese. Keys are the English UI text (see lib/i18n/core.ts).
 // Run `node scripts/check-i18n.mjs --missing` to find untranslated keys.
 export const zh: Record<string, string> = {
+  "One partner lies on their back; the other is above, face to face.": "一方仰卧，另一方在上，彼此面对面。",
+  "One partner rests on hands and knees; the other kneels behind.": "一方用双手和膝盖支撑，另一方跪在后方。",
+  "One partner lies back; the other sits on top, facing them.": "一方仰卧，另一方坐在上方，面向对方。",
+  "One partner lies back; the other sits on top, facing away.": "一方仰卧，另一方坐在上方，背向对方。",
+  "Both lie on the same side, with one partner nestled behind the other.": "双方朝同一方向侧卧，一方贴在另一方身后。",
+  "Both stand close together, using a wall for balance.": "双方靠近站立，用墙面辅助保持平衡。",
+  "Lie on your sides in opposite directions, each head near the other’s hips.": "双方反向侧卧，各自的头靠近对方的髋部。",
+  "Lie on your sides, facing each other.": "双方面对面侧卧。",
+  "One partner sits securely; the other sits on their lap, facing them.": "一方坐稳，另一方面向对方坐在其腿上。",
   "Personal entries are saved. Shared changes wait for your partner’s agreement.": "个人内容已保存。共享内容的修改等待伴侣同意。",
   "Her": "她",
   "Him": "他",
