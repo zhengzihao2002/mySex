@@ -129,3 +129,13 @@ test('backup restore adds only the importing owner feelings and never overwrites
  const rows=(await pg.query<{user_id:string}>('select * from session_feelings')).rows;
  assert.deepEqual(rows.map(r=>r.user_id),['me']);
 });
+
+test('new personal feelings invalidate an older deletion request',async()=>{
+ const {storeSessionFeeling}=await import('./session-feelings.ts');await restoreBackup(client,backup(),who,true);
+ const version=(await pg.query<{updated_at:Date}>('select updated_at from sessions')).rows[0].updated_at.toISOString();
+ assert.equal(await requestSessionDeletion(client,who,sessionId,version),true);
+ const id=(await pg.query<{id:string}>('select id from session_deletion_requests')).rows[0].id;
+ await storeSessionFeeling(client,who,sessionId,{feeling:'Updated feelings',rating:4,highlight:'',repeatChoice:null});
+ assert.equal(await respondToSessionDeletion(client,{...who,userId:'partner',partnerId:'me'},id,'approved'),'expired');
+ assert.equal((await pg.query('select * from sessions')).rows.length,1);
+});
