@@ -78,3 +78,6 @@ lib/
 db/schema.sql           schema (applied on every build)
 proxy.ts                session refresh + route protection
 ```
+
+- **Individual session experiences**: each partner owns their session feeling, personal rating, favourite moment and willingness to repeat. These are shared but only the author can change them. They export with the session; restore imports only the account owner’s entries. Session deletion cascades to these entries.
+- **Timer prompts and personality**: opt-in position/activity shuffle, with optional 90-second prompts while visible and running. Skipping and stopping are always available. Suggestions do not become recorded session facts. Personality cards describe selected tags alongside the existing score.

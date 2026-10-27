@@ -1,4 +1,6 @@
 'use client';
+import {SessionFeelings} from './SessionFeelings';
+import {SessionPersonality} from './SessionPersonality';
 import { useT } from './I18nProvider';
 
 import { useState } from 'react';
@@ -94,6 +96,8 @@ export function SessionCard({
             </p>
           )}
         </div>
+        <SessionPersonality tags={s.tags} />
+        {open && <SessionFeelings sessionId={s.id} />}
         {s.editRequest && (
           <Link href="/inbox" className="btn-ghost mb-4 w-full">{t('A change to this session is waiting for agreement — open Inbox')}</Link>
         )}

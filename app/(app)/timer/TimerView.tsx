@@ -1,4 +1,7 @@
 'use client';
+import {TimerPrompts} from '@/components/TimerPrompts';
+import {SessionFeelings} from '@/components/SessionFeelings';
+import {SessionPersonality} from '@/components/SessionPersonality';
 import { useT } from '@/components/I18nProvider';
 
 import Link from 'next/link';
@@ -83,6 +86,7 @@ export function TimerView({
       ) : (
         <IdleTimer places={places} done={done} onStart={(s) => setOptimistic(s)} onStartFailed={() => setOptimistic(null)} />
       )}
+      {!current && done[0] && <><SessionPersonality tags={done[0].tags}/><SessionFeelings key={done[0].id} sessionId={done[0].id}/></>}
       {reveal && <ScoreReveal score={reveal.score} times={reveal.times} onClose={() => setReveal(null)} />}
     </>
   );
@@ -369,7 +373,7 @@ function LiveTimer({
         </div>
       </header>
 
-      <main className="relative z-10 mx-auto flex w-full max-w-lg flex-1 flex-col items-center justify-center px-6">
+      <main className="relative z-10 mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col items-center overflow-y-auto px-6 py-3">
         <div className="relative aspect-square w-full max-w-[340px]">
           {/* heartbeat ripples */}
           {!paused && (
@@ -493,6 +497,7 @@ function LiveTimer({
       </main>
 
       <footer className="relative z-10 mx-auto w-full max-w-lg px-6 pb-[calc(env(safe-area-inset-bottom)+20px)]">
+        {!pendingStart && <TimerPrompts paused={paused} kind={session.kind} />}
         <FormError error={act.error} />
         <div className="flex items-center justify-center gap-5">
           <button

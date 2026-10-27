@@ -110,3 +110,22 @@ test('backup restore preserves verified GPS area names and their source timestam
   const row=(await pg.query<{city:string;gps_named_at:Date}>('select city,gps_named_at from sessions')).rows[0];
   assert.equal(row.city,'Neighbourhood, Town');assert.equal(row.gps_named_at.toISOString(),version);
 });
+
+test('session feelings are independent per owner and reject other couples and active recordings',async()=>{
+ const {storeSessionFeeling}=await import('./session-feelings.ts');await restoreBackup(client,backup(),who,true);
+ const a={feeling:'Relaxed',rating:4,highlight:'The pace',repeatChoice:'yes' as const};
+ assert.equal(await storeSessionFeeling(client,who,sessionId,a),true);
+ assert.equal(await storeSessionFeeling(client,{...who,userId:'partner'},sessionId,{...a,feeling:'Playful'}),true);
+ assert.equal(await storeSessionFeeling(client,{...who,coupleId:'10000000-0000-4000-8000-000000000002'},sessionId,a),false);
+ await storeSessionFeeling(client,who,sessionId,{...a,feeling:'Comfortable'});
+ const rows=(await pg.query<{user_id:string;feeling:string}>('select * from session_feelings order by user_id')).rows;
+ assert.deepEqual(rows.map(r=>[r.user_id,r.feeling]),[['me','Comfortable'],['partner','Playful']]);
+ await pg.exec("update sessions set status='active'");assert.equal(await storeSessionFeeling(client,who,sessionId,a),false);
+ await pg.exec('delete from sessions');assert.equal((await pg.query('select * from session_feelings')).rows.length,0);
+});
+test('backup restore adds only the importing owner feelings and never overwrites partner feelings',async()=>{
+ const b=backup();b.sessions[0].feelings=[{userId:'me',feeling:'Mine',rating:4,highlight:'A moment',repeatChoice:null},{userId:'partner',feeling:'Theirs',rating:3,highlight:'',repeatChoice:null}];
+ await restoreBackup(client,b,who,true);
+ const rows=(await pg.query<{user_id:string}>('select * from session_feelings')).rows;
+ assert.deepEqual(rows.map(r=>r.user_id),['me']);
+});

@@ -74,6 +74,7 @@ export function SessionForm({
         onSubmit(v);
       }}
     >
+      <p className="text-xs text-ink-3">{t("Record shared session details here. After saving, each partner can add their own feelings and highlights separately.")}</p>
       <KindPicker value={v.kind} onChange={(k) => set('kind', k)} />
 
       {mode !== 'finish' && (
@@ -204,7 +205,7 @@ export function SessionForm({
       )}
 
       <div>
-        <label className="label">{t('Dirty details')}</label>
+        <label className="label">{t('Shared session notes')}</label>
         <textarea
           className="input min-h-20"
           maxLength={500}

@@ -1,6 +1,7 @@
 'use server';
 
 import { dismissEditOutcome, requestSessionEdit, respondToSessionEdit, withdrawSessionEdit } from '@/lib/session-edit-requests';
+import {storeSessionFeeling} from '@/lib/session-feelings';
 import { randomInt, timingSafeEqual } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
@@ -748,4 +749,20 @@ export async function markEditNoticeRead(id: string): Promise<ActionResult> {
   if (!z.uuid().safeParse(id).success) return fail('Invalid input');
   await dismissEditNotice(db(), ctx.couple.id, ctx.me.userId, id);
   return done();
+}
+
+export async function getSessionFeelings(id:string) {
+ const ctx=await couple();
+ if(!z.uuid().safeParse(id).success)return {meId:ctx.me.userId,reviews:[]};
+ const rows=await sql`select f.*,p.name from session_feelings f join sessions s on s.id=f.session_id
+ join profiles p on p.user_id=f.user_id where s.id=${id} and s.couple_id=${ctx.couple.id}
+ and f.user_id in (${ctx.me.userId},${ctx.partner.userId})`;
+ return {meId:ctx.me.userId,reviews:rows.map(r=>({userId:r.user_id as string,name:r.name as string,feeling:r.feeling as string,rating:r.rating as number|null,highlight:r.highlight as string,repeatChoice:r.repeat_choice as 'yes'|'maybe'|'no'|null}))};
+}
+export async function saveSessionFeeling(id:string,input:unknown):Promise<ActionResult>{
+ const ctx=await couple();
+ const p=z.object({feeling:z.string().trim().max(200),rating:z.number().int().min(1).max(5).nullable(),highlight:z.string().trim().max(500),repeatChoice:z.enum(['yes','maybe','no']).nullable()}).safeParse(input);
+ if(!z.uuid().safeParse(id).success||!p.success)return fail('Invalid input');
+ if(!await storeSessionFeeling(db(),{coupleId:ctx.couple.id,userId:ctx.me.userId},id,p.data))return fail('This session is no longer available.');
+ return done();
 }

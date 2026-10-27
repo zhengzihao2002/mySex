@@ -265,3 +265,15 @@ create table if not exists session_edit_outcomes (
   created_at         timestamptz not null default now()
 );
 create index if not exists session_edit_outcomes_recipient on session_edit_outcomes (couple_id, recipient_id);
+
+-- Each person owns their account of a session. Shared session deletion cascades to both.
+create table if not exists session_feelings (
+ session_id uuid not null references sessions(id) on delete cascade,
+ user_id text not null references profiles(user_id) on delete cascade,
+ feeling text not null default '',
+ rating smallint check(rating between 1 and 5),
+ highlight text not null default '',
+ repeat_choice text check(repeat_choice in ('yes','maybe','no')),
+ updated_at timestamptz not null default now(),
+ primary key(session_id,user_id)
+);

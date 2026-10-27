@@ -56,6 +56,7 @@ export function toSession(r: Row): SexSession {
     breaks: Array.isArray(r.breaks) ? r.breaks : [],
     deletionRequest: r.deletion_request ?? null,
     editRequest: r.edit_request ?? null,
+    feelings: r.feelings ?? [],
   };
 }
 
@@ -122,7 +123,7 @@ export async function requireCouple(): Promise<CoupleContext> {
 
 export async function getSessions(coupleId: string): Promise<SexSession[]> {
   const rows = await sql`
-    select s.*, (select jsonb_build_object('id', r.id, 'requestedBy', r.requested_by)
+    select s.*, (select coalesce(jsonb_agg(jsonb_build_object('userId',f.user_id,'feeling',f.feeling,'rating',f.rating,'highlight',f.highlight,'repeatChoice',f.repeat_choice)), '[]'::jsonb) from session_feelings f where f.session_id=s.id) as feelings, (select jsonb_build_object('id', r.id, 'requestedBy', r.requested_by)
       from session_deletion_requests r where r.session_id = s.id and r.couple_id = s.couple_id and r.status = 'pending') as deletion_request,
       (select jsonb_build_object('id', e.id, 'requestedBy', e.requested_by) from session_edit_requests e where e.session_id = s.id and e.couple_id = s.couple_id) as edit_request
     from sessions s where s.couple_id = ${coupleId} order by s.started_at desc`;

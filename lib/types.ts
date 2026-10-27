@@ -57,6 +57,7 @@ export type SexSession = {
   notes: string | null;
   updatedAt: string;
   breaks: Break[];
+  feelings?: {userId:string;feeling:string;rating:number|null;highlight:string;repeatChoice:'yes'|'maybe'|'no'|null}[];
   deletionRequest?: { id: string; requestedBy: string } | null;
   editRequest?: { id: string; requestedBy: string } | null;
 };

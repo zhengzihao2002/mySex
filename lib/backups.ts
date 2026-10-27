@@ -14,6 +14,7 @@ const session = z.object({
   place: text, rating: z.number().int().min(1).max(5).nullable(), protection: text,
   hisOrgasms: z.number().int().min(0).max(20).nullable(), herOrgasms: z.number().int().min(0).max(20).nullable(),
   tags: z.array(z.string().max(30)).max(20), notes: text, updatedAt: timestamp,
+  feelings: z.array(z.object({userId:z.string(),feeling:z.string().max(200),rating:z.number().int().min(1).max(5).nullable(),highlight:z.string().max(500),repeatChoice:z.enum(['yes','maybe','no']).nullable()})).optional(),
   breaks: z.array(z.object({ start: timestamp, end: timestamp.nullable() })).max(10000),
 });
 const backupSchema = z.object({
@@ -58,6 +59,7 @@ export async function restoreBackup(client: NeonQueryFunction<false, false>, b: 
   const periods = who.isHer ? b.periods : [];
   const logs = b.checkIns.filter(l => l.userId === who.userId);
   const notes = b.notes.filter(n => n.fromUser === who.userId);
+  const feelings = b.sessions.flatMap(s=>(s.feelings??[]).filter(f=>f.userId===who.userId).map(f=>({...f,sessionId:s.id})));
   const results = await client.transaction(tx => [
     // Same record IDs on repeated imports cannot duplicate data. Lock membership for the transaction.
     tx`select user_id from profiles where user_id in (${who.userId}, ${who.partnerId}) order by user_id for share`,
@@ -97,7 +99,13 @@ export async function restoreBackup(client: NeonQueryFunction<false, false>, b: 
       insert into love_notes(id,couple_id,from_user,body,kind,read_at,created_at,edited_at)
       select id,${who.coupleId},${who.userId},body,kind,"readAt","createdAt","editedAt" from candidates where ${apply} on conflict do nothing returning id
     ) select case when ${apply} then (select count(*) from added) else (select count(*) from candidates) end as n`,
+    tx`insert into session_feelings(session_id,user_id,feeling,rating,highlight,repeat_choice)
+      select f."sessionId",${who.userId},f.feeling,f.rating,f.highlight,f."repeatChoice"
+      from jsonb_to_recordset(${JSON.stringify(feelings)}::jsonb) f("sessionId" uuid,feeling text,rating smallint,highlight text,"repeatChoice" text)
+      join sessions s on s.id=f."sessionId" and s.couple_id=${who.coupleId} and s.status='done'
+      join profiles p on p.user_id=${who.userId} and p.couple_id=s.couple_id
+      where ${apply} on conflict do nothing`,
   ]);
-  const [s,p,l,n] = results.slice(1).map(r => Number(r[0].n));
+  const [s,p,l,n] = results.slice(1,5).map(r => Number(r[0].n));
   return { sessions:s, periods:p, checkIns:l, notes:n, skipped:b.sessions.length+b.periods.length+b.checkIns.length+b.notes.length-s-p-l-n };
 }
