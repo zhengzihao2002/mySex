@@ -45,14 +45,12 @@ export function CalendarView({
   useEffect(() => {
     if (travelTarget === null) return;
     if (travelTarget === shownMonth) { setTravelTarget(null); return; }
-    const delta = travelTarget < shownMonth ? -1 : 1;
-    const step = () => {
-      if (!monthPager.current?.step(delta)) frame = requestAnimationFrame(step);
-    };
-    // Paint each newly centered month before starting the next slide.
-    let frame = requestAnimationFrame(() => { frame = requestAnimationFrame(step); });
-    return () => cancelAnimationFrame(frame);
   }, [travelTarget, shownMonth]);
+
+  const glideDelta = travelTarget === null ? null : travelTarget - shownMonth;
+  const firstOffset = Math.min(-1, glideDelta ?? 0);
+  const lastOffset = Math.max(1, glideDelta ?? 0);
+  const pageOffsets = Array.from({ length: lastOffset - firstOffset + 1 }, (_, i) => firstOffset + i);
 
   const model = useMemo(() => buildCycleModel(periods, defaults, today, 18), [periods, defaults, today]);
   const scores = useMemo(() => scoreSessions(sessions, tz), [sessions, tz]);
@@ -131,17 +129,17 @@ export function CalendarView({
           >
             {t('Today')}
           </button>
-          <button className="rounded-full bg-surface-2 p-2" onClick={() => { setTravelTarget(null); monthPager.current?.step(-1); }} aria-label="Previous month">
+          <button className="rounded-full bg-surface-2 p-2" onClick={() => { if (travelTarget === null) monthPager.current?.step(-1); }} aria-label="Previous month">
             <ChevronLeft size={20} />
           </button>
-          <button className="rounded-full bg-surface-2 p-2" onClick={() => { setTravelTarget(null); monthPager.current?.step(1); }} aria-label="Next month">
+          <button className="rounded-full bg-surface-2 p-2" onClick={() => { if (travelTarget === null) monthPager.current?.step(1); }} aria-label="Next month">
             <ChevronRight size={20} />
           </button>
         </div>
       </header>
 
       <div className="card p-2">
-        <MonthPager ref={monthPager} key={`${cursor.y}-${cursor.m}`} onChange={shift} pages={[monthPage(-1), monthPage(0), monthPage(1)]} />
+        <MonthPager ref={monthPager} key={`${cursor.y}-${cursor.m}`} onChange={shift} glideDelta={glideDelta} pages={pageOffsets.map(offset => ({ offset, content: monthPage(offset) }))} />
       </div>
 
       <Legend />

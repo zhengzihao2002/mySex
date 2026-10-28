@@ -7,10 +7,10 @@ const EASING = 'cubic-bezier(0.22, 0.61, 0.36, 1)';
 const MONTH_GAP = 24;
 export type MonthPagerHandle = { step: (delta: -1 | 1) => boolean };
 
-/** Three mounted months keep dragging immediate, including the incoming month's contents. */
-export function MonthPager({ pages, onChange, ref }: { pages: [ReactNode, ReactNode, ReactNode]; onChange: (delta: number) => void; ref?: Ref<MonthPagerHandle> }) {
+/** Neighboring months stay mounted; Today preloads its full route for one continuous glide. */
+export function MonthPager({ pages, glideDelta, onChange, ref }: { pages: { offset: number; content: ReactNode }[]; glideDelta: number | null; onChange: (delta: number) => void; ref?: Ref<MonthPagerHandle> }) {
   const viewport = useRef<HTMLDivElement>(null);
-  const panels = useRef<(HTMLDivElement | null)[]>([]);
+  const panels = useRef(new Map<number, HTMLDivElement>());
   const gesture = useRef<{ id: number; x: number; y: number; axis: 'pending' | 'x' | 'y'; source: 'touch' | 'pointer' } | null>(null);
   const suppressClick = useRef(false);
   const blocked = useRef(false);
@@ -18,20 +18,21 @@ export function MonthPager({ pages, onChange, ref }: { pages: [ReactNode, ReactN
   const finishing = useRef(false);
   const [offset, setOffset] = useState(0);
   const [settling, setSettling] = useState(false);
-  const [size, setSize] = useState({ width: 0, heights: [0, 0, 0] });
+  const [duration, setDuration] = useState(DURATION);
+  const [size, setSize] = useState<{ width: number; heights: Record<number, number> }>({ width: 0, heights: {} });
 
   useLayoutEffect(() => {
     const measure = () => {
       const width = viewport.current?.clientWidth ?? 0;
-      const heights = panels.current.map(panel => panel?.offsetHeight ?? 0);
-      setSize(old => old.width === width && old.heights.every((h, i) => h === heights[i]) ? old : { width, heights });
+      const heights = Object.fromEntries(Array.from(panels.current, ([offset, panel]) => [offset, panel.offsetHeight]));
+      setSize(old => old.width === width && Object.keys(old.heights).length === Object.keys(heights).length && Object.entries(heights).every(([offset, h]) => old.heights[Number(offset)] === h) ? old : { width, heights });
     };
     measure();
     const observer = new ResizeObserver(measure);
     if (viewport.current) observer.observe(viewport.current);
     panels.current.forEach(panel => { if (panel) observer.observe(panel); });
     return () => observer.disconnect();
-  }, []);
+  }, [pages.length]);
 
   const finish = useCallback(() => {
     if (finishing.current) return;
@@ -45,19 +46,30 @@ export function MonthPager({ pages, onChange, ref }: { pages: [ReactNode, ReactN
   useEffect(() => {
     if (!settling) return;
     // A fallback also completes when the browser suppresses transitionend (for example, in a background tab).
-    const delay = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : DURATION + 50;
+    const delay = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : duration + 50;
     const timer = window.setTimeout(finish, delay);
     return () => window.clearTimeout(timer);
-  }, [settling, finish]);
+  }, [settling, finish, duration]);
 
-  const settle = useCallback((delta: number) => {
+  const settle = useCallback((delta: number, animationDuration = DURATION) => {
     gesture.current = null;
     blocked.current = true;
     destination.current = delta;
     finishing.current = false;
+    setDuration(animationDuration);
     setSettling(true);
     setOffset(-delta * ((viewport.current?.clientWidth ?? 0) + MONTH_GAP));
   }, []);
+  useEffect(() => {
+    if (glideDelta === null || glideDelta === 0) return;
+    const start = () => {
+      if (blocked.current || gesture.current) { frame = requestAnimationFrame(start); return; }
+      // One easing curve across the entire distance; no pause at intermediate months.
+      settle(glideDelta, Math.min(1400, 350 + Math.abs(glideDelta) * 85));
+    };
+    let frame = requestAnimationFrame(() => { frame = requestAnimationFrame(start); });
+    return () => cancelAnimationFrame(frame);
+  }, [glideDelta, settle]);
   useImperativeHandle(ref, () => ({
     step: delta => {
       if (blocked.current || gesture.current) return false;
@@ -127,13 +139,15 @@ export function MonthPager({ pages, onChange, ref }: { pages: [ReactNode, ReactN
       node.removeEventListener('touchcancel', cancel);
     };
   }, [begin, drag, release, settle]);
-  const progress = size.width ? Math.min(1, Math.abs(offset) / (size.width + MONTH_GAP)) : 0;
-  const height = size.heights[1] + ((size.heights[offset < 0 ? 2 : 0] ?? 0) - size.heights[1]) * progress;
+  const target = settling ? destination.current : offset < 0 ? 1 : -1;
+  const progress = size.width ? Math.min(1, Math.abs(offset) / ((size.width + MONTH_GAP) * Math.max(1, Math.abs(target)))) : 0;
+  const currentHeight = size.heights[0] ?? 0;
+  const height = currentHeight + ((size.heights[target] ?? currentHeight) - currentHeight) * progress;
 
   return <div
     ref={viewport}
     className="calendar-month-viewport relative overflow-hidden select-none"
-    style={{ touchAction: 'pan-y pinch-zoom', height: height || undefined, transition: settling ? `height ${DURATION}ms ${EASING}` : 'none' }}
+    style={{ touchAction: 'pan-y pinch-zoom', height: height || undefined, transition: settling ? `height ${duration}ms ${EASING}` : 'none' }}
     onPointerDown={e => {
       if (e.pointerType === 'touch' || !e.isPrimary || e.button !== 0) return;
       begin(e.pointerId, e.clientX, e.clientY, 'pointer');
@@ -153,14 +167,14 @@ export function MonthPager({ pages, onChange, ref }: { pages: [ReactNode, ReactN
     }}
   >
     <style>{'@media (prefers-reduced-motion: reduce) { .calendar-month-page, .calendar-month-viewport { transition: none !important; } }'}</style>
-    {pages.map((page, i) => <div
-      key={i}
-      ref={node => { panels.current[i] = node; }}
-      aria-hidden={i !== 1}
-      inert={i !== 1}
-      className={`calendar-month-page left-0 top-0 w-full ${i === 1 ? 'relative' : 'absolute'}`}
-      style={{ transform: `translate3d(calc(${(i - 1) * 100}% + ${offset + (i - 1) * MONTH_GAP}px), 0, 0)`, transition: settling ? `transform ${DURATION}ms ${EASING}` : 'none', willChange: 'transform' }}
-      onTransitionEnd={e => { if (settling && i === 1 && e.target === e.currentTarget && e.propertyName === 'transform') finish(); }}
-    >{page}</div>)}
+    {pages.map(({offset: monthOffset, content}) => <div
+      key={monthOffset}
+      ref={node => { if (node) panels.current.set(monthOffset, node); else panels.current.delete(monthOffset); }}
+      aria-hidden={monthOffset !== 0}
+      inert={monthOffset !== 0}
+      className={`calendar-month-page left-0 top-0 w-full ${monthOffset === 0 ? 'relative' : 'absolute'}`}
+      style={{ transform: `translate3d(calc(${monthOffset * 100}% + ${offset + monthOffset * MONTH_GAP}px), 0, 0)`, transition: settling ? `transform ${duration}ms ${EASING}` : 'none', willChange: 'transform' }}
+      onTransitionEnd={e => { if (settling && monthOffset === 0 && e.target === e.currentTarget && e.propertyName === 'transform') finish(); }}
+    >{content}</div>)}
   </div>;
 }
