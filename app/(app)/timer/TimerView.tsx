@@ -558,6 +558,7 @@ function LiveTimer({
         <SessionForm
           mode="finish"
           places={places}
+          recordedLocation={session}
           initial={{ place: session.place ?? '', kind: session.kind }}
           submitLabel={t('Save & see our score')}
           error={finish.error}

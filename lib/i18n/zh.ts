@@ -1,6 +1,7 @@
 // Simplified Chinese. Keys are the English UI text (see lib/i18n/core.ts).
 // Run `node scripts/check-i18n.mjs --missing` to find untranslated keys.
 export const zh: Record<string, string> = {
+  "Recorded location": "记录的位置",
   "This request changed. Refresh your inbox and review the latest changes.": "申请内容已更新，请刷新收件箱并查看最新修改。",
   "Use saved location": "恢复已保存的位置",
   "Inbox items are deleted from the database after 7 days. Unanswered requests are cancelled without changing the record. Handled requests and read replies are deleted sooner.": "收件箱内容会在 7 天后从数据库中删除。未处理的申请会自动取消，原记录保持不变。已处理的申请和已读回复会提前删除。",

@@ -8,6 +8,7 @@ import { HEAT, PROTECTION, TAGS } from '@/lib/content';
 import { FormError } from './FormError';
 import { KindPicker } from './KindPicker';
 import {MapPinPicker} from './MapPinPicker';
+import {RecordedLocationPreview,type RecordedLocation} from './RecordedLocationPreview';
 import type {GpsCoordinates} from '@/lib/gps';
 import type { SessionKind } from '@/lib/types';
 import {samePin, sharedFields, sameSharedField, type SharedValues, type SharedField} from '@/lib/shared-session';
@@ -41,7 +42,6 @@ export { getGps } from '@/lib/gps';
 export function SessionForm({
   mode,
   initial,
-  places,
   submitLabel,
   onSubmit,
   error,
@@ -51,6 +51,7 @@ export function SessionForm({
   draftValues,
   onDraftChange,
   originalPin,
+  recordedLocation,
 }: {
   mode: 'finish' | 'past' | 'edit';
   initial?: Partial<SessionFormValues>;
@@ -64,6 +65,7 @@ export function SessionForm({
   draftValues?:SessionFormValues;
   onDraftChange?:(values:SessionFormValues)=>void;
   originalPin?:GpsCoordinates|null;
+  recordedLocation?:RecordedLocation;
 }) {
   const { t, f } = useT();
   const [v, setV] = useState<SessionFormValues>({
@@ -176,20 +178,11 @@ export function SessionForm({
 
       <ExperienceFields v={v} set={patch=>setV(s=>({...s,...patch}))} mode={mode} isHer={isHer}/>
 
-      <div>
+      {mode === 'edit' && <div>
         <label className="label">{t('Where')}</label>
-        <input className="input" placeholder={t('Bedroom, his car, hotel in Vegas…')} value={v.place} maxLength={60} onChange={(e) => set('place', e.target.value)} />
-        {places.length > 0 && (
-          <div className="no-scrollbar mt-2 flex gap-1.5 overflow-x-auto">
-            {places.slice(0, 10).map((p) => (
-              <button type="button" key={p} onClick={() => set('place', p)} className={`chip shrink-0 ${v.place === p ? 'chip-on' : ''}`}>
-                <MapPin size={12} /> {p}
-              </button>
-            ))}
-          </div>
-        )}
-        {mode === 'edit' && <MapPinPicker value={v.mapPin} originalValue={originalPin} onChange={pin => set('mapPin',pin)}/>}
-      </div>
+        <MapPinPicker value={v.mapPin} originalValue={originalPin} onChange={pin => set('mapPin',pin)}/>
+      </div>}
+      {mode === 'finish' && <RecordedLocationPreview location={recordedLocation}/>}
 
       {mode === 'past' && (
         <div className="space-y-2">
