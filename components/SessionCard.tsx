@@ -64,7 +64,7 @@ export function SessionCard({
                 {flagEmoji(s.country)} {where}
               </>
             ) : (
-              s.geoSource === 'gps' ? t('GPS location') : t('Somewhere secret')
+              s.geoSource === 'map' ? t('Map pin') : s.geoSource === 'gps' ? t('GPS location') : t('Somewhere secret')
             )}
             {protection ? ` · ${protection.emoji} ${t(protection.label)}` : ''}
             {s.herOrgasms ? ` · ${t('her')} ×${s.herOrgasms}` : ''}
@@ -118,6 +118,7 @@ export function SessionCard({
               durationMin: Math.round((s.durationSec ?? 0) / 6) / 10,
               breakMin: Math.round((s.pausedSec ?? 0) / 6) / 10,
               place: s.place ?? '',
+              mapPin: s.latitude != null && s.longitude != null ? {latitude:s.latitude,longitude:s.longitude} : null,
               rating: s.rating,
               protection: s.protection,
               hisOrgasms: s.hisOrgasms,
@@ -138,6 +139,7 @@ export function SessionCard({
                   durationMin: v.durationMin,
                   breakMin: v.breakMin,
                   place: v.place || null,
+                  mapPin: v.mapPin ?? undefined,
                   protection: v.protection,
                   tags: v.tags,
                 }),

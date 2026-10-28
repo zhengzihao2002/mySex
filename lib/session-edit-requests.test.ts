@@ -4,6 +4,7 @@ import { after, before, beforeEach, test } from 'node:test';
 import { PGlite } from '@electric-sql/pglite';
 import type { NeonQueryFunction } from '@neondatabase/serverless';
 import { dismissEditOutcome, requestSessionEdit, respondToSessionEdit, withdrawSessionEdit } from './session-edit-requests.ts';
+import {submitSessionChanges} from './session-experiences.ts';
 
 // Run the production SQL against isolated Postgres/WASM, never the configured Neon database.
 const pg = new PGlite();
@@ -106,4 +107,34 @@ test('requester can withdraw; other couples cannot touch it', async () => {
   assert.equal(await respondToSessionEdit(client, { coupleId: otherCouple, userId: 'other-her', partnerId: 'other-him' }, id, 'approved'), null);
   assert.equal(await withdrawSessionEdit(client, coupleId, 'him', id), true);
   assert.equal((await pending()).length, 0);
+});
+
+test('a map pin is staged with personal changes and applied only by partner approval', async () => {
+  await pg.query("update sessions set latitude=40,longitude=-74,geo_source='gps',city='Old area',ip='192.0.2.1',gps_named_at=$2 where id=$1", [sessionId,version]);
+  const location={latitude:0,longitude:0,city:'Selected area',region:null,country:null,gpsNamedAt:version};
+  assert.equal(await submitSessionChanges(client,him,sessionId,version,{hisRating:4,herRating:null,hisNotes:'My note',herNotes:'',hisOrgasms:3,herOrgasms:null},{...proposal,location}),true);
+  assert.equal((await row()).latitude,40);assert.equal((await row()).city,'Old area');
+  const [{id}]=await pending();
+  assert.equal(await respondToSessionEdit(client,him,id,'approved'),null);
+  assert.equal(await respondToSessionEdit(client,her,id,'approved'),'approved');
+  const saved=await row();
+  assert.equal(saved.latitude,0);assert.equal(saved.longitude,0);assert.equal(saved.geo_source,'map');
+  assert.equal(saved.city,'Selected area');assert.equal(saved.region,null);assert.equal(saved.ip,'192.0.2.1');
+  assert.equal(Number(saved.rating),4);assert.equal((await pending()).length,0);
+});
+
+test('declining, withdrawing, or expiring a map edit preserves the original pin', async () => {
+  await pg.query("update sessions set latitude=40,longitude=-74,geo_source='gps' where id=$1", [sessionId]);
+  const location={latitude:51.5,longitude:-0.1,city:null,region:null,country:null,gpsNamedAt:null};
+  await requestSessionEdit(client,him,sessionId,version,{...proposal,location});
+  let [{id}]=await pending();
+  assert.equal(await respondToSessionEdit(client,her,id,'declined'),'declined');
+  assert.equal((await row()).latitude,40);
+  await requestSessionEdit(client,him,sessionId,version,{...proposal,location});
+  [{id}]=await pending();assert.equal(await withdrawSessionEdit(client,coupleId,'him',id),true);
+  assert.equal((await row()).longitude,-74);
+  await requestSessionEdit(client,him,sessionId,version,{...proposal,location});
+  [{id}]=await pending();await pg.query('update sessions set updated_at=$2 where id=$1',[sessionId,newVersion]);
+  assert.equal(await respondToSessionEdit(client,her,id,'approved'),'expired');
+  assert.equal((await row()).latitude,40);assert.equal((await row()).geo_source,'gps');
 });

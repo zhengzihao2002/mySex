@@ -5,6 +5,7 @@ type Client = NeonQueryFunction<false, false>;
 type Participants = { coupleId: string; userId: string; partnerId: string };
 export type EditProposal = Partial<Pick<SexSession, 'kind' | 'place' | 'rating' | 'protection' | 'hisOrgasms' | 'herOrgasms' | 'tags' | 'notes'>> & {
   startedAt: string; durationMin: number; breakMin?: number;
+  location?: { latitude: number; longitude: number; city: string | null; region: string | null; country: string | null; gpsNamedAt: string | null };
 };
 
 /** Park an edit until the partner agrees. Returns false if the record changed or the partner's own edit is pending. */
@@ -14,6 +15,7 @@ export async function requestSessionEdit(client: Client, who: Participants, id: 
     kind: p.kind ?? null, startedAt: p.startedAt, durationMin: p.durationMin, breakMin: p.breakMin ?? 0,
     place: p.place || null, rating: p.rating ?? null, protection: p.protection ?? null,
     hisOrgasms: p.hisOrgasms ?? null, herOrgasms: p.herOrgasms ?? null, tags: p.tags ?? [], notes: p.notes || null,
+    ...(p.location ? {location:p.location} : {}),
   });
   const results = await client.transaction((tx) => [
     tx`select id from sessions where id = ${id} and couple_id = ${coupleId} for update`,
@@ -75,6 +77,13 @@ export async function respondToSessionEdit(client: Client, who: Participants, re
              + make_interval(secs => round((r.proposed->>'durationMin')::numeric * 60) + round((r.proposed->>'breakMin')::numeric * 60)),
            breaks = case when s.paused_sec = round((r.proposed->>'breakMin')::numeric * 60) then s.breaks else '[]'::jsonb end,
            place = nullif(r.proposed->>'place', ''),
+           latitude = case when r.proposed ? 'location' then (r.proposed->'location'->>'latitude')::double precision else s.latitude end,
+           longitude = case when r.proposed ? 'location' then (r.proposed->'location'->>'longitude')::double precision else s.longitude end,
+           geo_source = case when r.proposed ? 'location' then 'map' else s.geo_source end,
+           city = case when r.proposed ? 'location' then r.proposed->'location'->>'city' else s.city end,
+           region = case when r.proposed ? 'location' then r.proposed->'location'->>'region' else s.region end,
+           country = case when r.proposed ? 'location' then r.proposed->'location'->>'country' else s.country end,
+           gps_named_at = case when r.proposed ? 'location' then (r.proposed->'location'->>'gpsNamedAt')::timestamptz else s.gps_named_at end,
            protection = r.proposed->>'protection',
            tags = coalesce(array(select jsonb_array_elements_text(r.proposed->'tags')), '{}'),
            updated_at = now()

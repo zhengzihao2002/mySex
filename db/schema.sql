@@ -49,7 +49,7 @@ create table if not exists sessions (
   country      text,
   latitude     double precision,
   longitude    double precision,
-  geo_source   text check (geo_source in ('ip', 'gps')),
+  geo_source   text check (geo_source in ('ip', 'gps', 'map')),
   place        text,
   rating       smallint check (rating between 1 and 5),
   protection   text,
@@ -60,6 +60,8 @@ create table if not exists sessions (
   created_at   timestamptz not null default now()
 );
 -- GPS-derived names are separate from legacy network names.
+alter table sessions drop constraint if exists sessions_geo_source_check;
+alter table sessions add constraint sessions_geo_source_check check (geo_source in ('ip', 'gps', 'map'));
 alter table sessions add column if not exists gps_named_at timestamptz;
 -- Version stamp for optimistic concurrency when both partners edit the same session.
 alter table sessions add column if not exists updated_at timestamptz not null default now();

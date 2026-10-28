@@ -183,3 +183,10 @@ test('personal-only edit creates no approval request and stale edits cannot over
  assert.equal((await pg.query('select * from session_edit_requests')).rows.length,0);
  assert.equal(await submitSessionChanges(client,who,sessionId,version,d,null),false);
 });
+
+test('map-selected location provenance and pin survive export verification and restore',async()=>{
+ const b=backup();b.sessions[0]={...b.sessions[0],geoSource:'map',latitude:0,longitude:0,city:'Selected area',gpsNamedAt:version};
+ const valid=verifyBackup({...b,signature:signBackup(b,secret)},secret,who);assert.equal(valid.sessions[0].geoSource,'map');
+ await restoreBackup(client,valid,who,true);const saved=(await pg.query<{latitude:number;longitude:number;geo_source:string}>('select latitude,longitude,geo_source from sessions')).rows[0];
+ assert.equal(saved.latitude,0);assert.equal(saved.longitude,0);assert.equal(saved.geo_source,'map');
+});

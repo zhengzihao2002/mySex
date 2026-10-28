@@ -392,6 +392,7 @@ export async function logPastSession(input: z.input<typeof pastSchema>): Promise
 }
 
 const editSchema = detailsSchema.extend({
+  mapPin: coords,
   startedAt: z.string().datetime({ offset: true }),
   durationMin: z.number().min(0).max(24 * 60),
   breakMin: z.number().min(0).max(24 * 60).optional(),
@@ -401,8 +402,10 @@ const editSchema = detailsSchema.extend({
 export async function updateSession(id:string,input:z.input<typeof editSchema>):Promise<ActionResult>{
  const ctx=await couple();const parsed=editSchema.safeParse(input);if(!parsed.success)return fail('Invalid input');const d=parsed.data;
  const rows=await sql`select * from sessions where id=${id} and couple_id=${ctx.couple.id}`;const s=rows[0];if(!s)return fail('This session is no longer available.');
- const changed=(d.kind??s.kind)!==s.kind || Date.parse(d.startedAt)!==new Date(s.started_at).getTime() || Math.round(d.durationMin*60)!==(s.duration_sec??0) || Math.round((d.breakMin??0)*60)!==s.paused_sec || (d.place||null)!==(s.place||null) || (d.protection??null)!==(s.protection||null) || JSON.stringify([...(d.tags??[])].sort())!==JSON.stringify([...(s.tags??[])].sort());
- const proposal=changed?{kind:d.kind,startedAt:d.startedAt,durationMin:d.durationMin,breakMin:d.breakMin??0,place:d.place||null,protection:d.protection??null,tags:d.tags??[],rating:s.rating,hisOrgasms:s.his_orgasms,herOrgasms:s.her_orgasms,notes:s.notes}:null;
+ const pinChanged=!!d.mapPin && (d.mapPin.latitude!==s.latitude || d.mapPin.longitude!==s.longitude);
+ const area=pinChanged?await getGpsArea(db(),d.mapPin!):null;
+ const changed=pinChanged || (d.kind??s.kind)!==s.kind || Date.parse(d.startedAt)!==new Date(s.started_at).getTime() || Math.round(d.durationMin*60)!==(s.duration_sec??0) || Math.round((d.breakMin??0)*60)!==s.paused_sec || (d.place||null)!==(s.place||null) || (d.protection??null)!==(s.protection||null) || JSON.stringify([...(d.tags??[])].sort())!==JSON.stringify([...(s.tags??[])].sort());
+ const proposal=changed?{kind:d.kind,startedAt:d.startedAt,durationMin:d.durationMin,breakMin:d.breakMin??0,place:d.place||null,protection:d.protection??null,tags:d.tags??[],rating:s.rating,hisOrgasms:s.his_orgasms,herOrgasms:s.her_orgasms,notes:s.notes,...(pinChanged?{location:{...d.mapPin!,city:area?.city??null,region:area?.region??null,country:area?.country??null,gpsNamedAt:area?new Date().toISOString():null}}:{})}:null;
  if(!await submitSessionChanges(db(),{coupleId:ctx.couple.id,userId:ctx.me.userId,partnerId:ctx.partner.userId},id,d.version,{...d,hisOrgasms:d.hisOrgasms??null,herOrgasms:d.herOrgasms??null},proposal))return fail('Your partner just changed this session — close it and reopen to see their changes.');
  return done();
 }

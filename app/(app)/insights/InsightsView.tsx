@@ -2,7 +2,9 @@
 import { useT } from '@/components/I18nProvider';
 
 import { useMemo, useState } from 'react';
-import { ExternalLink, MapPin } from 'lucide-react';
+import { MapPin } from 'lucide-react';
+import {MapPinMap} from '@/components/MapPinPicker';
+import {Sheet} from '@/components/Sheet';
 import { Bars, HBars } from '@/components/Bars';
 import { KindFilter, KIND_META } from '@/components/KindPicker';
 import { ScoreBadge } from '@/components/ScoreBadge';
@@ -489,6 +491,7 @@ function HistoryTab({ sessions }: { sessions: SexSession[] }) {
 
 function PlacesTab({ sessions }: { sessions: SexSession[] }) {
   const { t, f } = useT();
+  const [mapPlace,setMapPlace]=useState<{name:string;latitude:number;longitude:number}|null>(null);
   const { tz } = useTz();
   const scores = useMemo(() => scoreSessions(sessions, tz), [sessions, tz]);
   const groups = useMemo(() => {
@@ -531,15 +534,14 @@ function PlacesTab({ sessions }: { sessions: SexSession[] }) {
                 </p>
               </div>
               {geo ? (
-                <a
-                  href={`https://maps.apple.com/?ll=${geo.latitude},${geo.longitude}&q=${encodeURIComponent(name)}`}
-                  target="_blank"
-                  rel="noreferrer"
+                <button
+                  type="button"
+                  onClick={()=>setMapPlace({name,latitude:geo.latitude!,longitude:geo.longitude!})}
                   className="rounded-full bg-surface-2 p-2.5 text-rose-2"
-                  aria-label="Open in Maps"
+                  aria-label={t('Open map')}
                 >
-                  <ExternalLink size={16} />
-                </a>
+                  <MapPin size={16} />
+                </button>
               ) : (
                 <MapPin size={16} className="text-ink-3" />
               )}
@@ -548,6 +550,7 @@ function PlacesTab({ sessions }: { sessions: SexSession[] }) {
         })}
         {!groups.length && <p className="card text-sm text-ink-2">{t('Turn on “Record location” when you start the timer to build your map of conquests 🗺️')}</p>}
       </div>
+      <Sheet open={!!mapPlace} onClose={()=>setMapPlace(null)} title={mapPlace?.name}>{mapPlace&&<MapPinMap value={mapPlace}/>}</Sheet>
     </div>
   );
 }

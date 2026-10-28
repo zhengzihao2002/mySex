@@ -7,6 +7,8 @@ import { Flame, MapPin, Minus, Navigation, Plus } from 'lucide-react';
 import { HEAT, PROTECTION, TAGS } from '@/lib/content';
 import { FormError } from './FormError';
 import { KindPicker } from './KindPicker';
+import {MapPinPicker} from './MapPinPicker';
+import type {GpsCoordinates} from '@/lib/gps';
 import type { SessionKind } from '@/lib/types';
 
 export type SessionFormValues = {
@@ -15,6 +17,7 @@ export type SessionFormValues = {
   durationMin: number;
   breakMin: number;
   place: string;
+  mapPin: GpsCoordinates | null;
   useLocation: boolean;
   useGps: boolean;
   rating: number | null;
@@ -61,6 +64,7 @@ export function SessionForm({
     durationMin: initial?.durationMin ?? 15,
     breakMin: initial?.breakMin ?? 0,
     place: initial?.place ?? '',
+    mapPin: initial?.mapPin ?? null,
     useLocation: initial?.useLocation ?? false,
     useGps: false,
     rating: initial?.rating ?? null,
@@ -74,7 +78,7 @@ export function SessionForm({
   const set = <K extends keyof SessionFormValues>(k: K, val: SessionFormValues[K]) => setV((s) => ({ ...s, [k]: val }));
 
   const base=initial;
-  const sharedChanged=mode==='edit' && !!base && (v.kind!==base.kind || Date.parse(v.startedAt)!==Date.parse(base.startedAt!) || Math.round(v.durationMin*60)!==Math.round((base.durationMin??0)*60) || Math.round(v.breakMin*60)!==Math.round((base.breakMin??0)*60) || v.place!==(base.place??'') || v.protection!==(base.protection??null) || JSON.stringify([...v.tags].sort())!==JSON.stringify([...(base.tags??[])].sort()));
+  const sharedChanged=mode==='edit' && !!base && (v.mapPin?.latitude!==base.mapPin?.latitude || v.mapPin?.longitude!==base.mapPin?.longitude || v.kind!==base.kind || Date.parse(v.startedAt)!==Date.parse(base.startedAt!) || Math.round(v.durationMin*60)!==Math.round((base.durationMin??0)*60) || Math.round(v.breakMin*60)!==Math.round((base.breakMin??0)*60) || v.place!==(base.place??'') || v.protection!==(base.protection??null) || JSON.stringify([...v.tags].sort())!==JSON.stringify([...(base.tags??[])].sort()));
   return (
     <form
       className="space-y-5"
@@ -169,6 +173,7 @@ export function SessionForm({
             ))}
           </div>
         )}
+        {mode === 'edit' && <MapPinPicker value={v.mapPin} onChange={pin => set('mapPin',pin)}/>}
       </div>
 
       {mode === 'past' && (

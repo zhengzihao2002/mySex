@@ -1,6 +1,23 @@
 // Simplified Chinese. Keys are the English UI text (see lib/i18n/core.ts).
 // Run `node scripts/check-i18n.mjs --missing` to find untranslated keys.
 export const zh: Record<string, string> = {
+  "View map": "查看地图",
+  "Current location": "当前记录的位置",
+  "Proposed location": "申请修改的位置",
+  "Unnamed map location": "地图位置（暂无地名）",
+  "No recorded location": "未记录位置",
+
+  "Map pin": "地图标记",
+  "Hide map": "收起地图",
+  "Edit map pin": "修改地图标记",
+  "Add map pin": "添加地图标记",
+  "Drag the pin to adjust the location": "拖动标记调整位置",
+  "Tap the map to place your pin. Drag it to adjust.": "点击地图放置标记，拖动标记调整位置。",
+  "Location map": "位置地图",
+  "Loading map…": "正在加载地图…",
+  "The map could not load. Check your connection and try again.": "地图加载失败，请检查网络后重试。",
+  "Retry": "重试",
+
   "One partner lies on their back; the other is above, face to face.": "一方仰卧，另一方在上，彼此面对面。",
   "One partner rests on hands and knees; the other kneels behind.": "一方用双手和膝盖支撑，另一方跪在后方。",
   "One partner lies back; the other sits on top, facing them.": "一方仰卧，另一方坐在上方，面向对方。",

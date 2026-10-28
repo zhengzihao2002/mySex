@@ -46,7 +46,7 @@ export type SexSession = {
   country: string | null;
   latitude: number | null;
   longitude: number | null;
-  geoSource: 'ip' | 'gps' | null;
+  geoSource: 'ip' | 'gps' | 'map' | null;
   gpsNamedAt?: string | null;
   place: string | null;
   rating: number | null;
@@ -117,5 +117,6 @@ export type SessionEditRequest = {
   proposed: {
     kind: SessionKind | null; startedAt: string; durationMin: number; breakMin: number; place: string | null; rating: number | null;
     protection: string | null; hisOrgasms: number | null; herOrgasms: number | null; tags: string[]; notes: string | null;
+    location?: { latitude: number; longitude: number; city: string | null; region: string | null; country: string | null; gpsNamedAt: string | null };
   } | null;
 };

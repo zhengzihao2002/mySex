@@ -10,7 +10,7 @@ const session = z.object({
   startedAt: timestamp, endedAt: timestamp.nullable(), pausedAt: timestamp.nullable(),
   pausedSec: z.number().int().nonnegative(), durationSec: z.number().int().nonnegative().nullable(),
   ip: text, city: text, region: text, country: text, latitude: z.number().min(-90).max(90).nullable(),
-  longitude: z.number().min(-180).max(180).nullable(), geoSource: z.enum(['ip', 'gps']).nullable(), gpsNamedAt: timestamp.nullable().optional(),
+  longitude: z.number().min(-180).max(180).nullable(), geoSource: z.enum(['ip', 'gps', 'map']).nullable(), gpsNamedAt: timestamp.nullable().optional(),
   place: text, rating: z.number().min(1).max(5).nullable(), protection: text,
   hisOrgasms: z.number().int().min(0).max(20).nullable(), herOrgasms: z.number().int().min(0).max(20).nullable(),
   tags: z.array(z.string().max(30)).max(20), notes: text, updatedAt: timestamp,

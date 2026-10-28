@@ -7,11 +7,8 @@ import type { Break } from '@/lib/types';
 import { SessionTimes } from './SessionTimes';
 
 export function scoreColor(total: number) {
-  if (total >= 90) return '#facc15';
-  if (total >= 75) return '#ff3d7f';
-  if (total >= 60) return '#ff7aa8';
-  if (total >= 40) return '#c9b3c2';
-  return '#8f7589';
+  const value = Number.isFinite(total) ? Math.max(0, Math.min(100, total)) : 0;
+  return `hsl(${(value * 1.2).toFixed(2)} 80% 60%)`;
 }
 
 export function ScoreBadge({ score, size = 'sm' }: { score: Score; size?: 'sm' | 'md' }) {
@@ -65,23 +62,17 @@ export function ScoreReveal({ score, times, onClose }: { score: Score; times?: R
       <p className="text-sm font-semibold tracking-[0.3em] text-ink-3 uppercase">{t('mySex Score')}</p>
       <div className="relative my-4 h-48 w-48">
         <svg viewBox="0 0 220 220" className="h-full w-full -rotate-90">
-          <defs>
-            <linearGradient id="scoreGrad" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor="#ff3d7f" />
-              <stop offset="100%" stopColor="#7c3aed" />
-            </linearGradient>
-          </defs>
           <circle cx="110" cy="110" r={R} stroke="var(--color-surface-2)" strokeWidth="14" fill="none" />
           <circle
             cx="110"
             cy="110"
             r={R}
-            stroke="url(#scoreGrad)"
+            stroke={scoreColor(shown)}
             strokeWidth="14"
             fill="none"
             strokeLinecap="round"
             strokeDasharray={`${(shown / 100) * C} ${C}`}
-            style={{ filter: 'drop-shadow(0 0 12px rgba(255,61,127,0.6))' }}
+            style={{ filter: `drop-shadow(0 0 12px ${scoreColor(shown)})` }}
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">

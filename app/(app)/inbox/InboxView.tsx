@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Check, ChevronLeft, Inbox, RefreshCw } from 'lucide-react';
 import { markEditNoticeRead, cancelEditRequest, markEditOutcomeRead, respondToEditRequest, cancelDeletionRequest, markDeletionRequestRead, respondToDeletionRequest } from '@/app/actions';
 import { FormError } from '@/components/FormError';
+import {MapPinPreview} from '@/components/MapPinPicker';
 import { useT } from '@/components/I18nProvider';
 import { KIND_META } from '@/components/KindPicker';
 import { Sheet } from '@/components/Sheet';
@@ -193,7 +194,12 @@ function EditRequestCard({ edit: e, meId, partnerName }: { edit: SessionEditRequ
               <p className="text-xs text-ink-3">{label}</p>
               <p className="break-words whitespace-pre-wrap"><span className="text-ink-3 line-through">{from}</span> → <b>{to}</b></p>
             </div>
-          )) : <p className="text-ink-3">{t('No visible differences.')}</p>}
+          )) : !p.location && <p className="text-ink-3">{t('No visible differences.')}</p>}
+          {p.location && <div className="space-y-3">
+            <div><p className="text-xs text-ink-3">{t('Current location')}</p><p>{[s.city,s.region,s.country].filter(Boolean).join(', ') || (s.latitude!=null?t('Unnamed map location'):t('No recorded location'))}</p>{s.latitude!=null&&s.longitude!=null&&<MapPinPreview value={{latitude:s.latitude,longitude:s.longitude}}/>}</div>
+            <p aria-hidden="true" className="text-rose-2">↓</p>
+            <div><p className="text-xs text-ink-3">{t('Proposed location')}</p><p>{[p.location.city,p.location.region,p.location.country].filter(Boolean).join(', ') || t('Unnamed map location')}</p><MapPinPreview value={p.location}/></div>
+          </div>}
         </div>
       )}
       {!answered && (mine ? (
