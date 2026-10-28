@@ -6,6 +6,7 @@ import type { NeonQueryFunction } from '@neondatabase/serverless';
 import { signBackup, verifyBackup, restoreBackup, type Backup } from './backups.ts';
 import { requestSessionDeletion, respondToSessionDeletion, dismissOutcome } from './session-deletions.ts';
 import { editSharedSession } from './session-edits.ts';
+import {completeRecording} from './session-recording.ts';
 const pg = new PGlite();
 type Statement = { text: string; values: unknown[] };
 const tag = (parts: TemplateStringsArray, ...values: unknown[]): Statement => ({
@@ -44,6 +45,23 @@ beforeEach(async()=> {
   await pg.exec("insert into profiles(user_id,name,invite_code,sex) values ('me','Me','ME','male'),('partner','Partner','PARTNER','female')");
   await pg.query("insert into couples(id,male_id,female_id) values ($1,'me','partner')",[coupleId]);
   await pg.query('update profiles set couple_id=$1',[coupleId]);
+});
+test('completing a recording preserves its chosen type and location, freezes at the pause, and only completes once',async()=>{
+  await restoreBackup(client,backup(),who,true);
+  await pg.query(`update sessions set status='active',kind='oral',experiences_initialized=false,
+    started_at='2026-10-01T10:00:00Z',paused_at='2026-10-01T10:15:00Z',paused_sec=120,
+    latitude=40,longitude=-74,geo_source='gps',city='Captured area',
+    breaks='[{"start":"2026-10-01T10:05:00Z","end":"2026-10-01T10:07:00Z"},{"start":"2026-10-01T10:15:00Z","end":null}]'
+    where id=$1`,[sessionId]);
+  const details={kind:'intercourse',protection:'na',tags:['Massage'],hisOrgasms:1,herOrgasms:2};
+  assert.equal(await completeRecording(client,{coupleId:'10000000-0000-4000-8000-000000000002',isHer:false},sessionId,details),false);
+  assert.equal(await completeRecording(client,{coupleId,isHer:false},sessionId,details),true);
+  const saved=(await pg.query<any>('select * from sessions where id=$1',[sessionId])).rows[0];
+  assert.equal(saved.kind,'oral');assert.equal(saved.city,'Captured area');assert.equal(saved.latitude,40);assert.equal(saved.longitude,-74);
+  assert.equal(saved.duration_sec,780);assert.equal(saved.paused_sec,120);assert.equal(saved.breaks.length,1);
+  assert.equal(new Date(saved.ended_at).toISOString(),'2026-10-01T10:15:00.000Z');
+  assert.equal(await completeRecording(client,{coupleId,isHer:false},sessionId,{...details,protection:'condom'}),false);
+  assert.equal((await pg.query<any>('select protection from sessions where id=$1',[sessionId])).rows[0].protection,'na');
 });
 test('signed backup verification rejects tampering, legacy exports, another account and another partnership',()=> {
   const b=backup();const signed={...b,signature:signBackup(b,secret)};

@@ -3,15 +3,16 @@ import { useT } from './I18nProvider';
 
 import {ExperienceFields} from './ExperienceFields';
 import { useEffect,useState } from 'react';
-import { Flame, MapPin, Minus, Navigation, Plus } from 'lucide-react';
-import { HEAT, PROTECTION, TAGS } from '@/lib/content';
+import { MapPin, Minus, Navigation, Plus } from 'lucide-react';
+import { PROTECTION, TAGS } from '@/lib/content';
 import { FormError } from './FormError';
-import { KindPicker } from './KindPicker';
-import {MapPinPicker} from './MapPinPicker';
+import { KIND_META,KindPicker } from './KindPicker';
+import {SessionTimes} from './SessionTimes';
+import {SessionLocationEditor} from './SessionLocationEditor';
 import {RecordedLocationPreview,type RecordedLocation} from './RecordedLocationPreview';
 import type {GpsCoordinates} from '@/lib/gps';
-import type { SessionKind } from '@/lib/types';
-import {samePin, sharedFields, sameSharedField, type SharedValues, type SharedField} from '@/lib/shared-session';
+import type { Break,SessionKind } from '@/lib/types';
+import {samePin, sharedFields, sameSharedField, type SharedValues, type SharedField, type SessionProposal} from '@/lib/shared-session';
 
 export type SessionFormValues = {
   kind: SessionKind;
@@ -52,6 +53,8 @@ export function SessionForm({
   onDraftChange,
   originalPin,
   recordedLocation,
+  proposedLocation,
+  timingBreaks=[],
 }: {
   mode: 'finish' | 'past' | 'edit';
   initial?: Partial<SessionFormValues>;
@@ -66,6 +69,8 @@ export function SessionForm({
   onDraftChange?:(values:SessionFormValues)=>void;
   originalPin?:GpsCoordinates|null;
   recordedLocation?:RecordedLocation;
+  proposedLocation?:SessionProposal['location'];
+  timingBreaks?:Break[];
 }) {
   const { t, f } = useT();
   const [v, setV] = useState<SessionFormValues>({
@@ -95,6 +100,9 @@ export function SessionForm({
     return !sameSharedField(key,v[key] as SharedValues[SharedField],base[key] as SharedValues[SharedField]);
   }):[];
   const sharedChanged=changedFields.length>0;
+  const activeSec=exactTiming&&v.durationMin===initial?.durationMin?exactTiming.durationSec:Math.round(v.durationMin*60);
+  const breakSec=exactTiming&&v.breakMin===initial?.breakMin?exactTiming.breakSec:Math.round(v.breakMin*60);
+  const unchangedTiming=v.durationMin===initial?.durationMin&&v.breakMin===initial?.breakMin&&Date.parse(v.startedAt)===Date.parse(initial?.startedAt??'');
   return (
     <form
       className="space-y-5"
@@ -104,7 +112,7 @@ export function SessionForm({
         onSubmit(mode==='edit' ? {...v,sharedFields:changedFields,...(exactTiming?{durationMin:v.durationMin===initial?.durationMin?exactTiming.durationSec/60:v.durationMin,breakMin:v.breakMin===initial?.breakMin?exactTiming.breakSec/60:v.breakMin}:{})}:v);
       }}
     >
-      <KindPicker value={v.kind} onChange={(k) => set('kind', k)} />
+      {mode==='finish'?<p className="text-sm font-semibold">{KIND_META[initial?.kind??v.kind].emoji} {t(KIND_META[initial?.kind??v.kind].label)}</p>:<KindPicker value={v.kind} onChange={(k) => set('kind', k)} disabled={pending}/>}
 
       {mode !== 'finish' && (
         <div className="grid grid-cols-1 gap-3">
@@ -135,8 +143,9 @@ export function SessionForm({
           <div>
             <label className="label">{t('Breaks · {n} min', { n: v.breakMin })}</label>
             <NumInput className="input w-24 text-center" value={v.breakMin} onChange={(n) => set('breakMin', n)} />
-            <p className="mt-1 text-xs text-ink-3">{t('Total time = {n} min', { n: v.durationMin + v.breakMin })}</p>
+            {mode==='past'&&<p className="mt-1 text-xs text-ink-3">{t('Total time = {n} min', { n: v.durationMin + v.breakMin })}</p>}
           </div>
+          {mode==='edit'&&<div><p className="label">{t('Time breakdown')}</p><SessionTimes startedAt={v.startedAt} activeSec={activeSec} breakSec={breakSec} breaks={unchangedTiming?timingBreaks:[]}/></div>}
         </div>
       )}
 
@@ -178,10 +187,7 @@ export function SessionForm({
 
       <ExperienceFields v={v} set={patch=>setV(s=>({...s,...patch}))} mode={mode} isHer={isHer}/>
 
-      {mode === 'edit' && <div>
-        <label className="label">{t('Where')}</label>
-        <MapPinPicker value={v.mapPin} originalValue={originalPin} onChange={pin => set('mapPin',pin)}/>
-      </div>}
+      {mode === 'edit' && <SessionLocationEditor value={v.mapPin} originalPin={originalPin} saved={recordedLocation} proposed={proposedLocation} onChange={pin=>set('mapPin',pin)}/>}
       {mode === 'finish' && <RecordedLocationPreview location={recordedLocation}/>}
 
       {mode === 'past' && (
@@ -232,16 +238,20 @@ export function Toggle({
   icon,
   title,
   sub,
+  disabled=false,
 }: {
   on: boolean;
   onChange: (on: boolean) => void;
   icon?: React.ReactNode;
   title: string;
   sub?: string;
+  disabled?:boolean;
 }) {
   return (
     <button
       type="button"
+      disabled={disabled}
+      aria-pressed={on}
       onClick={() => onChange(!on)}
       className="flex w-full items-center gap-3 rounded-2xl border border-line bg-surface-2 px-4 py-3 text-left"
     >

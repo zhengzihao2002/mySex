@@ -155,7 +155,7 @@ function IdleTimer({
     <div className="flex flex-col items-center pt-4">
       <p className="text-xs font-semibold tracking-[0.3em] text-ink-3 uppercase">{t('Live timer')}</p>
       <h1 className="font-display mt-1 text-3xl font-bold">{t('Ready when you are')}</h1>
-      <KindPicker value={kind} onChange={setKind} className="mt-4 w-full max-w-xs" />
+      <KindPicker value={kind} onChange={setKind} disabled={start.pending} className="mt-4 w-full max-w-xs" />
 
       <button onClick={begin} disabled={start.pending || !locationReady} className="group relative my-10 flex h-56 w-56 items-center justify-center" aria-label="Start timer">
         <span className="absolute inset-0 rounded-full bg-rose/30 [animation:ripple_2.4s_ease-out_infinite]" />
@@ -170,13 +170,13 @@ function IdleTimer({
       </button>
 
       <div className="w-full space-y-3">
-        <Toggle on={useLocation} onChange={setUseLocation} icon={<MapPin size={16} />} title={t('Record location')} sub={t('Saves your IP & city so you can see where you did it')} />
+        <Toggle on={useLocation} onChange={setUseLocation} disabled={start.pending} icon={<MapPin size={16} />} title={t('Record location')} sub={t('Saves your IP & city so you can see where you did it')} />
         {useLocation && (
-          <Toggle on={useGps} onChange={setUseGps} icon={<Navigation size={16} />} title={t('Precise GPS pin')} sub={t('Asks for location permission')} />
+          <Toggle on={useGps} onChange={setUseGps} disabled={start.pending} icon={<Navigation size={16} />} title={t('Precise GPS pin')} sub={t('Asks for location permission')} />
         )}
         <FormError error={start.error} />
 
-        <button onClick={() => setPastOpen(true)} className="btn-ghost w-full">
+        <button onClick={() => setPastOpen(true)} disabled={start.pending} className="btn-ghost w-full">
           <History size={16} /> {t('Forgot the timer? Log a past session')}
         </button>
 
@@ -192,7 +192,7 @@ function IdleTimer({
         <SessionForm
           mode="past"
           places={places}
-          initial={{ useLocation: false }}
+          initial={{ kind, useLocation: false }}
           submitLabel={t('Save it 😈')}
           error={past.error}
           pending={past.pending}
@@ -334,7 +334,7 @@ function LiveTimer({
     frozenAt.current = secs;
     // Freeze the clock first so filling in the details doesn't add minutes.
     // Always an explicit pause (never a toggle), so a stale screen can't resume a partner-paused clock.
-    await act.run(() => setPaused(session.id, true));
+    if(!await act.run(() => setPaused(session.id, true)))return;
     setFinishOpen(true);
   };
 
@@ -566,7 +566,7 @@ function LiveTimer({
           onSubmit={async (v) => {
             const values = {
               hisRating:v.hisRating,herRating:v.herRating,hisNotes:v.hisNotes,herNotes:v.herNotes,
-              kind: v.kind,
+              kind: session.kind,
               place: v.place || null,
               rating: v.rating,
               protection: v.protection,

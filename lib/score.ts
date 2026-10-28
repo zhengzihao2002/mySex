@@ -16,7 +16,7 @@ export type ScoreInput = {
 };
 
 export type ScorePart = { key: string; label: string; points: number; max: number };
-export type Score = { total: number; grade: string; emoji: string; parts: ScorePart[] };
+export type Score = { total: number; grade: string; emoji: string; parts: ScorePart[]; context?:{newPlace:boolean;roundOfDay:number;adventurousActivity:boolean} };
 
 const ADVENTURE_TAGS = new Set(['Outdoors', 'Car', 'Shower', 'Roleplay', 'Toys', 'Mirror', 'Blindfold', 'Standing']);
 
@@ -44,7 +44,8 @@ export function scoreSession(s: ScoreInput, ctx: { newPlace: boolean; roundOfDay
 
   let adventure = 0;
   if (ctx.newPlace) adventure += 3;
-  if (s.tags.some((t) => ADVENTURE_TAGS.has(t))) adventure += 3;
+  const adventurousActivity=s.tags.some((t) => ADVENTURE_TAGS.has(t));
+  if (adventurousActivity) adventure += 3;
   if (ctx.roundOfDay >= 2) adventure += 3;
 
   const parts: ScorePart[] = [
@@ -58,7 +59,7 @@ export function scoreSession(s: ScoreInput, ctx: { newPlace: boolean; roundOfDay
   // i18n:end
 
   const total = Math.min(100, parts.reduce((a, p) => a + p.points, 0));
-  return { total, ...grade(total), parts };
+  return { total, ...grade(total), parts, context:{...ctx,adventurousActivity} };
 }
 
 /** Scores every finished session, using history for "new place" and "rounds per day" bonuses. */

@@ -6,7 +6,7 @@ import { useT } from './I18nProvider';
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { MapPin, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { deleteSession, updateSession } from '@/app/actions';
 import { flagEmoji, HEAT, PROTECTION } from '@/lib/content';
 import { formatDuration } from '@/lib/dates';
@@ -16,14 +16,13 @@ import type { SexSession } from '@/lib/types';
 import { ScoreBadge } from './ScoreBadge';
 import { KIND_META } from './KindPicker';
 import { SessionForm } from './SessionForm';
-import { SessionTimes } from './SessionTimes';
 import { Sheet } from './Sheet';
 import { useTz } from './TzProvider';
 import { useRun } from './useRun';
-import { LocationPin } from './LocationPin';
 import { FormError } from './FormError';
 import {SessionEditDiff} from './SessionEditDiff';
 import {sharedValues} from '@/lib/shared-session';
+import {SessionScore} from './SessionScore';
 
 export function SessionCard({
   s,
@@ -84,31 +83,16 @@ export function SessionCard({
       </button>
 
       <Sheet open={open} onClose={close} title={t('Edit session')}>
-        <div className="mb-3">
-          <SessionTimes startedAt={s.startedAt} activeSec={s.durationSec ?? 0} breakSec={s.pausedSec ?? 0} breaks={s.breaks} />
-        </div>
+        {score&&<SessionScore score={score} session={s}/>}
         <div className="mb-4 space-y-1 rounded-2xl bg-surface-2 p-3 text-xs text-ink-3">
           <p>{t('Logged by {name}', { name: byName })}</p>
-          {(s.city || s.ip) && (
-            <p className="flex items-center gap-1">
-              <MapPin size={12} />
-              {[s.city, s.region, s.country].filter(Boolean).join(', ') || t('Unknown city')}
-              {s.ip ? ` · IP ${s.ip}` : ''}
-
-            </p>
-          )}
-          <LocationPin location={s} />
-          {score && (
-            <p>
-              {t('Score')} {score.total}/100 · {score.emoji} {t(score.grade)}
-              {s.rating ? ` · ${t('rated')} “${t(HEAT[Math.round(s.rating) - 1])}”` : ''}
-            </p>
-          )}
+          {s.ip&&<p>IP {s.ip}</p>}
+          {s.rating?<p>{t('rated')} “{t(HEAT[Math.round(s.rating)-1])}”</p>:null}
         </div>
         <SessionPersonality tags={s.tags} />
         {s.editRequest && (
           <div className="mb-4 space-y-3">
-            {proposal&&<SessionEditDiff session={s} proposed={proposal}/>}
+            {proposal&&<SessionEditDiff session={s} proposed={proposal} includeLocation={false}/>}
             <Link href="/inbox" className="btn-ghost w-full">{t('A change to this session is waiting for agreement — open Inbox')}</Link>
           </div>
         )}
@@ -120,6 +104,9 @@ export function SessionCard({
             isHer={experience.isHer}
             exactTiming={{durationSec:Math.round(editor.durationMin*60),breakSec:Math.round(editor.breakMin*60)}}
             originalPin={s.latitude!=null&&s.longitude!=null?{latitude:s.latitude,longitude:s.longitude}:null}
+            recordedLocation={s}
+            proposedLocation={proposal?.location}
+            timingBreaks={editor.startedAt===s.startedAt&&Math.round(editor.durationMin*60)===(s.durationSec??0)&&Math.round(editor.breakMin*60)===s.pausedSec?s.breaks:[]}
             places={places}
             initial={{
               hisRating:experience.reviews.find(r=>experience.isHer?r.userId!==experience.meId:r.userId===experience.meId)?.rating??null,

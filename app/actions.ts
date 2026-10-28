@@ -4,6 +4,7 @@ import { dismissEditOutcome, requestSessionEdit, respondToSessionEdit, withdrawS
 import {storeSessionFeeling} from '@/lib/session-feelings';
 import {isUnverified} from '@/lib/auth-errors';
 import {initializeExperiences,submitSessionChanges} from '@/lib/session-experiences';
+import {completeRecording} from '@/lib/session-recording';
 import { randomInt, timingSafeEqual } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
@@ -335,23 +336,9 @@ export async function finishSession(id: string, input: z.input<typeof detailsSch
   const p = detailsSchema.safeParse(input);
   if (!p.success) return fail('Invalid input');
   const d = p.data;
-  const rows = await sql`
-    update sessions set
-      status = 'done',
-      kind = coalesce(${d.kind ?? null}, kind),
-      ended_at = coalesce(paused_at, now()),
-      duration_sec = greatest(0, extract(epoch from coalesce(paused_at, now()) - started_at)::int - paused_sec),
-      paused_at = null,
-      -- The session ends where the last pause began, so an open trailing break isn't a break.
-      breaks = coalesce((select jsonb_agg(b) from jsonb_array_elements(breaks) b where b->>'end' is not null), '[]'::jsonb),
-      place = coalesce(${d.place || null}, place),
-      protection = ${d.protection ?? null},
-      his_orgasms = case when ${ctx.me.sex === 'male'} then ${d.hisOrgasms ?? null} else his_orgasms end, her_orgasms = case when ${ctx.me.sex === 'female'} then ${d.herOrgasms ?? null} else her_orgasms end,
-      tags = ${d.tags ?? []}, updated_at = now()
-    where id = ${id} and couple_id = ${ctx.couple.id} and status = 'active'
-    returning id`;
+  const completed=await completeRecording(db(),{coupleId:ctx.couple.id,isHer:ctx.me.sex==='female'},id,d);
   if (!await initializeExperiences(db(),{coupleId:ctx.couple.id,userId:ctx.me.userId},id,{...d,hisOrgasms:d.hisOrgasms??null,herOrgasms:d.herOrgasms??null})) {
-    if(!rows.length)return fail('This session was already saved. Open it to edit your own experience.');
+    if(!completed)return fail('This session was already saved. Open it to edit your own experience.');
   }
   return done();
 }

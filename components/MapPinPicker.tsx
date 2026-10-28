@@ -9,7 +9,7 @@ import {useT} from './I18nProvider';
 import 'leaflet/dist/leaflet.css';
 
 /** Coordinates can only be changed by placing or dragging a pin on the map. */
-export function MapPinPicker({value, onChange,originalValue}: {value: GpsCoordinates | null; onChange: (pin: GpsCoordinates|null) => void;originalValue?:GpsCoordinates|null}) {
+export function MapPinPicker({value, onChange,originalValue}: {value: GpsCoordinates | null; onChange: (pin: GpsCoordinates|null,label?:string) => void;originalValue?:GpsCoordinates|null}) {
   const {t} = useT();
   const [open, setOpen] = useState(false);
   return <div className="mt-3 space-y-2">
@@ -31,7 +31,7 @@ export function MapPinMap({value}: {value:GpsCoordinates}) {
   return <InteractiveMap value={value} onChange={()=>{}} readOnly/>;
 }
 
-function InteractiveMap({value, onChange, readOnly=false}: {value: GpsCoordinates | null; onChange: (pin: GpsCoordinates) => void; readOnly?: boolean}) {
+function InteractiveMap({value, onChange, readOnly=false}: {value: GpsCoordinates | null; onChange: (pin: GpsCoordinates,label?:string) => void; readOnly?: boolean}) {
   const {t,lang} = useT();
   const container = useRef<HTMLDivElement>(null);
   const initial = useRef(value);
@@ -75,13 +75,13 @@ function InteractiveMap({value, onChange, readOnly=false}: {value: GpsCoordinate
       tiles.on('tileerror', () => {if (!disposed) setError(true);});
       const icon = L.divIcon({className: 'session-map-pin', iconSize: [32,42], iconAnchor: [16,42], html: '<svg viewBox="0 0 32 42" width="32" height="42" aria-hidden="true"><path d="M16 40C13 35 2 25 2 16a14 14 0 0 1 28 0c0 9-11 19-14 24Z" fill="#ff3d7f" stroke="white" stroke-width="2"/><circle cx="16" cy="16" r="5" fill="white"/></svg>'});
       let marker: import('leaflet').Marker | undefined;
-      const place = (latlng: import('leaflet').LatLng, notify: boolean) => {
+      const place = (latlng: import('leaflet').LatLng, notify: boolean,label?:string) => {
         const point = {latitude: Number(Math.max(-85,Math.min(85,latlng.lat)).toFixed(6)), longitude: Number(Math.max(-180,Math.min(180,latlng.lng)).toFixed(6))};
         if (!marker) {
           marker = L.marker([point.latitude,point.longitude], {icon, draggable: !readOnly, title: readOnly?t('Map pin'):t('Drag the pin to adjust the location')}).addTo(map!);
           if (!readOnly) marker.on('dragend', () => place(marker!.getLatLng(), true));
         } else marker.setLatLng([point.latitude,point.longitude]);
-        if (notify) change.current(point);
+        if (notify) change.current(point,label);
       };
       if (pin) place(L.latLng(pin.latitude,pin.longitude), false);
       syncPin.current=next=>{
@@ -93,7 +93,7 @@ function InteractiveMap({value, onChange, readOnly=false}: {value: GpsCoordinate
       };
       if (!readOnly) map.on('click', (e: import('leaflet').LeafletMouseEvent) => place(e.latlng, true));
       chooseAddress.current=result=>{
-        place(L.latLng(result.latitude,result.longitude),true);
+        place(L.latLng(result.latitude,result.longitude),true,result.label);
         map?.flyTo([result.latitude,result.longitude],16,{duration:0.6});
         container.current?.focus({preventScroll:true});
       };

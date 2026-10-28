@@ -9,7 +9,7 @@ export const KIND_META: Record<SessionKind, { label: string; emoji: string }> = 
 };
 
 /** Two-way switch between intercourse and oral. */
-export function KindPicker({ value, onChange, className = '' }: { value: SessionKind; onChange: (k: SessionKind) => void; className?: string }) {
+export function KindPicker({ value, onChange, className = '', disabled=false }: { value: SessionKind; onChange: (k: SessionKind) => void; className?: string; disabled?:boolean }) {
   const { t } = useT();
   return (
     <div className={`grid grid-cols-2 gap-2 ${className}`} role="radiogroup">
@@ -19,6 +19,7 @@ export function KindPicker({ value, onChange, className = '' }: { value: Session
           type="button"
           role="radio"
           aria-checked={value === k}
+          disabled={disabled}
           onClick={() => onChange(k)}
           className={`flex items-center justify-center gap-2 rounded-2xl border py-2.5 text-sm font-semibold transition active:scale-95 ${
             value === k ? 'border-rose bg-rose/20 text-ink' : 'border-line bg-surface-2 text-ink-3'

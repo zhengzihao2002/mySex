@@ -9,7 +9,7 @@ import {samePin, type SessionProposal} from '@/lib/shared-session';
 import type {SexSession} from '@/lib/types';
 
 /** The saved record stays intact; the proposal is shown beside it until both agree. */
-export function SessionEditDiff({session:s,proposed:p}:{session:SexSession;proposed:SessionProposal}) {
+export function SessionEditDiff({session:s,proposed:p,includeLocation=true}:{session:SexSession;proposed:SessionProposal;includeLocation?:boolean}) {
   const {t,f}=useT();
   const {tz}=useTz();
   const dash='–';
@@ -22,13 +22,14 @@ export function SessionEditDiff({session:s,proposed:p}:{session:SexSession;propo
     [t('Where'),s.place||dash,p.place||dash],
     [t('Protection'),protection(s.protection),protection(p.protection)],
     [t('What went down'),s.tags.map(x=>t(x)).join(', ')||dash,p.tags.map(x=>t(x)).join(', ')||dash],
-  ].filter((r):r is [string,string,string]=>r[1]!==r[2]);
+  ].filter((r):r is [string,string,string]=>r[1]!==r[2]&&(includeLocation||r[0]!==t('Where')));
   const original=s.latitude!=null&&s.longitude!=null?{latitude:s.latitude,longitude:s.longitude}:null;
   const moved=!!p.location&&!samePin(original,p.location);
   const locationName=(v:{city:string|null;region:string|null;country:string|null})=>[v.city,v.region,v.country].filter(Boolean).join(', ')||t('Unnamed map location');
+  if(!includeLocation&&!rows.length)return null;
   return <div className="space-y-3 rounded-2xl bg-surface-2 p-3 text-sm" data-session-edit-diff>
     {rows.map(([label,from,to])=><div key={label}><p className="text-xs text-ink-3">{label}</p><p className="break-words whitespace-pre-wrap"><del className="text-ink-3">{from}</del> → <b>{to}</b></p></div>)}
-    {moved&&p.location&&<div className="space-y-2">
+    {includeLocation&&moved&&p.location&&<div className="space-y-2">
       <div><p className="text-xs text-ink-3">{t('Current location')}</p><del className="text-ink-3">{original?locationName(s):t('No recorded location')}</del></div>
       <div><p className="text-xs text-ink-3">{t('Proposed location')}</p><b>{locationName(p.location)}</b><MapPinPreview value={p.location}/></div>
     </div>}

@@ -22,17 +22,19 @@ export function SessionTimes({
   const t0 = new Date(startedAt).getTime();
   const longest = closed.reduce((m, b) => Math.max(m, (new Date(b.end!).getTime() - new Date(b.start).getTime()) / 1000), 0);
   const count = closed.length || (breakSec > 0 ? 1 : 0);
+  const timedBreakSec=closed.reduce((sum,b)=>sum+(new Date(b.end!).getTime()-new Date(b.start).getTime())/1000,0);
+  const hasTimeline=closed.length>0&&Math.abs(timedBreakSec-breakSec)<2&&closed.every(b=>new Date(b.start).getTime()>=t0&&new Date(b.end!).getTime()<=t0+total*1000);
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" role="group" aria-label={t('Time breakdown')}>
       <div className="grid grid-cols-3 gap-2 text-center">
         <Stat label={t('Total')} value={f.formatDuration(total)} />
         <Stat label={t('Active')} value={f.formatDuration(activeSec)} accent />
         <Stat label={t('Breaks')} value={breakSec ? f.formatDuration(breakSec) : '–'} />
       </div>
-      {total > 0 && (
-        <div className="relative h-2 overflow-hidden rounded-full bg-rose/80" aria-hidden>
-          {closed.map((b, i) => {
+      {total > 0 && breakSec>0 && <>
+        <div className="relative h-2 overflow-hidden rounded-full bg-rose/80" role="img" aria-label={t('Time breakdown')}>
+          {hasTimeline?closed.map((b, i) => {
             const s = (new Date(b.start).getTime() - t0) / 1000;
             const e = (new Date(b.end!).getTime() - t0) / 1000;
             return (
@@ -42,10 +44,11 @@ export function SessionTimes({
                 style={{ left: `${(s / total) * 100}%`, width: `${Math.max(0.8, ((e - s) / total) * 100)}%` }}
               />
             );
-          })}
+          }):<span className="absolute inset-y-0 right-0 bg-luteal" style={{width:`${breakSec/total*100}%`}}/>}
         </div>
-      )}
-      {count > 0 && (
+        <p className="flex justify-center gap-4 text-[11px] text-ink-3"><span className="flex items-center gap-1"><i className="h-1.5 w-1.5 rounded-full bg-rose"/>{t('Active')}</span><span className="flex items-center gap-1"><i className="h-1.5 w-1.5 rounded-full bg-luteal"/>{t('Breaks')}</span></p>
+      </>}
+      {hasTimeline&&count > 0 && (
         <p className="text-center text-[11px] text-ink-3">
           {f.plural(count, t('{n} break', { n: count }), t('{n} breaks', { n: count }))}
           {longest > 0 ? ` · ${t('longest {d}', { d: f.formatDuration(longest) })}` : ''}
