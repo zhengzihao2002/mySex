@@ -4,6 +4,7 @@ import { after, before, beforeEach, test } from 'node:test';
 import { PGlite } from '@electric-sql/pglite';
 import type { NeonQueryFunction } from '@neondatabase/serverless';
 import { getGpsArea } from './gps-area.ts';
+import {searchAddresses} from './address-search.ts';
 import { cleanupExpiredData, forgetDevices, isDeviceRevoked, rememberDevice, revocationHash } from './privacy.ts';
 
 const pg = new PGlite();
@@ -156,6 +157,7 @@ test('GPS naming gate enforces a shared one-request-per-second limit in Postgres
   try {
     await getGpsArea(client,{latitude:0,longitude:0});
     await getGpsArea(client,{latitude:1,longitude:1});
+    assert.deepEqual(await searchAddresses(client,'12 Example Road','en'),{error:'busy'});
     assert.equal(calls,1);
     await pg.exec("update app_maintenance set last_run=clock_timestamp()-interval '2 seconds' where name='gps-area-lookup'");
     await getGpsArea(client,{latitude:1,longitude:1});assert.equal(calls,2);

@@ -16,12 +16,16 @@ export function parseGpsArea(value: unknown): GpsArea | null {
   return { city: parts.join(', '), region: name(address.state) ?? name(address.region), country: code && /^[a-z]{2}$/i.test(code) ? code.toUpperCase() : null };
 }
 
-/** Nominatim's public policy allows at most one request/sec across the application. */
-export async function getGpsArea(client: NeonQueryFunction<false, false>, gps: GpsCoordinates): Promise<GpsArea | null> {
+/** Search and reverse lookup share Nominatim's one-request/sec application limit. */
+export async function claimGeocodingSlot(client: NeonQueryFunction<false, false>): Promise<boolean> {
   const claimed = await client`insert into app_maintenance(name,last_run) values ('gps-area-lookup',clock_timestamp())
     on conflict(name) do update set last_run=excluded.last_run
     where app_maintenance.last_run <= clock_timestamp()-interval '1 second' returning name`;
-  if (!claimed.length) return null;
+  return claimed.length > 0;
+}
+
+export async function getGpsArea(client: NeonQueryFunction<false, false>, gps: GpsCoordinates): Promise<GpsArea | null> {
+  if (!await claimGeocodingSlot(client)) return null;
   const params = new URLSearchParams({ format:'jsonv2',addressdetails:'1',zoom:'18',lat:String(gps.latitude),lon:String(gps.longitude),'accept-language':'en' });
   try {
     const response = await fetch(`https://nominatim.openstreetmap.org/reverse?${params}`, {

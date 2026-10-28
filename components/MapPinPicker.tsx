@@ -1,8 +1,9 @@
 'use client';
 
-import {useEffect, useRef, useState} from 'react';
+import {useEffect, useId, useRef, useState} from 'react';
 import {MapPin} from 'lucide-react';
 import type {GpsCoordinates} from '@/lib/gps';
+import type {AddressPlace} from '@/lib/address-search';
 import {useT} from './I18nProvider';
 import 'leaflet/dist/leaflet.css';
 
@@ -29,13 +30,21 @@ export function MapPinMap({value}: {value:GpsCoordinates}) {
 }
 
 function InteractiveMap({value, onChange, readOnly=false}: {value: GpsCoordinates | null; onChange: (pin: GpsCoordinates) => void; readOnly?: boolean}) {
-  const {t} = useT();
+  const {t,lang} = useT();
   const container = useRef<HTMLDivElement>(null);
   const initial = useRef(value);
   const change = useRef(onChange);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const [query,setQuery]=useState('');
+  const searchId=useId();
+  const [searching,setSearching]=useState(false);
+  const [results,setResults]=useState<AddressPlace[]|null>(null);
+  const [searchError,setSearchError]=useState<string|null>(null);
+  const searchRequest=useRef<AbortController|null>(null);
+  const chooseAddress=useRef<((place:AddressPlace)=>void)|null>(null);
+  useEffect(()=>()=>{searchRequest.current?.abort();},[]);
   useEffect(() => {change.current = onChange;}, [onChange]);
   useEffect(() => {
     let disposed = false;
@@ -64,13 +73,42 @@ function InteractiveMap({value, onChange, readOnly=false}: {value: GpsCoordinate
       };
       if (pin) place(L.latLng(pin.latitude,pin.longitude), false);
       if (!readOnly) map.on('click', (e: import('leaflet').LeafletMouseEvent) => place(e.latlng, true));
+      chooseAddress.current=result=>{
+        place(L.latLng(result.latitude,result.longitude),true);
+        map?.flyTo([result.latitude,result.longitude],16,{duration:0.6});
+        container.current?.focus({preventScroll:true});
+      };
       observer = new ResizeObserver(() => map?.invalidateSize({pan:false}));
       observer.observe(container.current);
       setReady(true);
     }).catch(() => {if (!disposed) setError(true);});
-    return () => {disposed = true; observer?.disconnect(); map?.remove();};
+    return () => {disposed = true; chooseAddress.current=null; observer?.disconnect(); map?.remove();};
   }, [attempt,t,readOnly]);
+  const search=async()=>{
+    const address=query.trim();
+    if (!ready||searching||address.length<3||address.length>200) return;
+    const controller=new AbortController();
+    searchRequest.current?.abort();searchRequest.current=controller;
+    setSearching(true);setSearchError(null);setResults(null);
+    try {
+      const response=await fetch('/api/locations/search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:address,lang}),signal:controller.signal});
+      if (controller.signal.aborted) return;
+      if (!response.ok) throw new Error(response.status===429?'busy':response.status===401?'auth':'unavailable');
+      const data=await response.json() as {places:AddressPlace[]};
+      if (!controller.signal.aborted) setResults(data.places);
+    } catch (e) {
+      if (!controller.signal.aborted) setSearchError(e instanceof Error&&e.message==='busy'?t('Please wait a moment and search again.'):e instanceof Error&&e.message==='auth'?t('Sign in again to search addresses.'):t('Address search is unavailable. Please try again.'));
+    } finally {if(searchRequest.current===controller){searchRequest.current=null;if(!controller.signal.aborted)setSearching(false);}}
+  };
   return <div className="space-y-2">
+    {!readOnly&&<div className="space-y-2" aria-busy={searching}>
+      <label className="label" htmlFor={searchId}>{t('Search by address')}</label><div className="flex gap-2"><input id={searchId} className="input min-w-0 flex-1" aria-label={t('Address or place')} placeholder={t('Street address, city, or place')} value={query} maxLength={200} autoComplete="off"
+        onChange={e=>{searchRequest.current?.abort();searchRequest.current=null;setQuery(e.target.value);setSearching(false);setResults(null);setSearchError(null);}}
+        onKeyDown={e=>{if(e.key==='Enter'&&!e.nativeEvent.isComposing){e.preventDefault();e.stopPropagation();void search();}}}/><button type="button" className="btn-ghost shrink-0" disabled={!ready||searching||query.trim().length<3} onClick={()=>void search()}>{searching?t('Searching…'):t('Search')}</button></div>
+      {searchError&&<p role="alert" className="text-xs text-menstrual">{searchError}</p>}
+      {results&&<div role="status" className="space-y-1">{results.length?results.map((result,i)=><button key={i} type="button" disabled={!ready} className="block w-full rounded-xl border border-line bg-surface-2 p-3 text-left text-sm text-ink-2" onClick={()=>{chooseAddress.current?.(result);setQuery(result.label.slice(0,200));setResults(null);}}>{result.label}</button>):<p className="text-xs text-ink-3">{t('No matching addresses. Try adding the city or postcode.')}</p>}</div>}
+      <p className="text-[11px] text-ink-3">{t('Address search © OpenStreetMap contributors.')}</p>
+    </div>}
     {!readOnly&&<p className="text-xs text-ink-3">{t('Tap the map to place your pin. Drag it to adjust.')}</p>}
     <div className="relative isolate h-72 overflow-hidden rounded-2xl border border-line bg-surface-2">
       <div ref={container} role="region" aria-label={t('Location map')} className="relative z-0 h-full w-full"/>

@@ -1,6 +1,17 @@
 // Simplified Chinese. Keys are the English UI text (see lib/i18n/core.ts).
 // Run `node scripts/check-i18n.mjs --missing` to find untranslated keys.
 export const zh: Record<string, string> = {
+  "Search by address": "按地址搜索",
+  "Address or place": "地址或地点",
+  "Street address, city, or place": "街道地址、城市或地点",
+  "Searching…": "正在搜索…",
+  "Search": "搜索",
+  "Please wait a moment and search again.": "请稍等片刻后重新搜索。",
+  "Sign in again to search addresses.": "请重新登录后搜索地址。",
+  "Address search is unavailable. Please try again.": "地址搜索暂时不可用，请重试。",
+  "No matching addresses. Try adding the city or postcode.": "没有找到匹配的地址，请尝试添加城市或邮政编码。",
+  "Address search © OpenStreetMap contributors.": "地址搜索 © OpenStreetMap 贡献者。",
+
   "View map": "查看地图",
   "Current location": "当前记录的位置",
   "Proposed location": "申请修改的位置",
