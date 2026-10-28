@@ -4,6 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNo
 
 const DURATION = 260;
 const EASING = 'cubic-bezier(0.22, 0.61, 0.36, 1)';
+const MONTH_GAP = 24;
 
 /** Three mounted months keep dragging immediate, including the incoming month's contents. */
 export function MonthPager({ pages, onChange }: { pages: [ReactNode, ReactNode, ReactNode]; onChange: (delta: number) => void }) {
@@ -54,7 +55,7 @@ export function MonthPager({ pages, onChange }: { pages: [ReactNode, ReactNode, 
     destination.current = delta;
     finishing.current = false;
     setSettling(true);
-    setOffset(-delta * (viewport.current?.clientWidth ?? 0));
+    setOffset(-delta * ((viewport.current?.clientWidth ?? 0) + MONTH_GAP));
   }, []);
   const begin = useCallback((id: number, x: number, y: number, source: 'touch' | 'pointer') => {
     if (blocked.current || gesture.current) return;
@@ -71,8 +72,8 @@ export function MonthPager({ pages, onChange }: { pages: [ReactNode, ReactNode, 
     }
     if (start.axis !== 'x') return false;
     suppressClick.current = true;
-    const width = viewport.current?.clientWidth ?? 0;
-    setOffset(Math.max(-width, Math.min(width, dx)));
+    const distance = (viewport.current?.clientWidth ?? 0) + MONTH_GAP;
+    setOffset(Math.max(-distance, Math.min(distance, dx)));
     return true;
   }, []);
   const release = useCallback((x: number) => {
@@ -118,7 +119,7 @@ export function MonthPager({ pages, onChange }: { pages: [ReactNode, ReactNode, 
       node.removeEventListener('touchcancel', cancel);
     };
   }, [begin, drag, release, settle]);
-  const progress = size.width ? Math.min(1, Math.abs(offset) / size.width) : 0;
+  const progress = size.width ? Math.min(1, Math.abs(offset) / (size.width + MONTH_GAP)) : 0;
   const height = size.heights[1] + ((size.heights[offset < 0 ? 2 : 0] ?? 0) - size.heights[1]) * progress;
 
   return <div
@@ -150,7 +151,7 @@ export function MonthPager({ pages, onChange }: { pages: [ReactNode, ReactNode, 
       aria-hidden={i !== 1}
       inert={i !== 1}
       className={`calendar-month-page left-0 top-0 w-full ${i === 1 ? 'relative' : 'absolute'}`}
-      style={{ transform: `translate3d(calc(${(i - 1) * 100}% + ${offset}px), 0, 0)`, transition: settling ? `transform ${DURATION}ms ${EASING}` : 'none', willChange: 'transform' }}
+      style={{ transform: `translate3d(calc(${(i - 1) * 100}% + ${offset + (i - 1) * MONTH_GAP}px), 0, 0)`, transition: settling ? `transform ${DURATION}ms ${EASING}` : 'none', willChange: 'transform' }}
       onTransitionEnd={e => { if (settling && i === 1 && e.target === e.currentTarget && e.propertyName === 'transform') finish(); }}
     >{page}</div>)}
   </div>;
