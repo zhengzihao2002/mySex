@@ -39,7 +39,7 @@ export function KindFilter({ value, onChange }: { value: 'all' | SessionKind; on
   return (
     <div className="no-scrollbar flex justify-center gap-2 overflow-x-auto py-1">
       {opts.map((k) => (
-        <button key={k} type="button" onClick={() => onChange(k)} className={`chip shrink-0 ${value === k ? 'chip-on' : ''}`}>
+        <button key={k} type="button" aria-pressed={value === k} onClick={() => onChange(k)} className={`chip shrink-0 ${value === k ? 'chip-on' : ''}`}>
           {k === 'all' ? t('All') : `${KIND_META[k].emoji} ${t(KIND_META[k].label)}`}
         </button>
       ))}

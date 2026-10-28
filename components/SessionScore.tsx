@@ -13,6 +13,8 @@ const R=66,C=2*Math.PI*R;
 export function SessionScore({score,session:s}:{score:Score;session:SexSession}) {
   const {t,f}=useT();
   const [selected,setSelected]=useState<string|null>(null);
+  const [expanded,setExpanded]=useState(false);
+  const choose=(key:string)=>{setExpanded(true);setSelected(selected===key?null:key);};
   const detailId=useId();
   const part=score.parts.find(p=>p.key===selected);
   let offset=0;
@@ -36,14 +38,16 @@ export function SessionScore({score,session:s}:{score:Score;session:SexSession})
             strokeWidth={selected===p.key?19:14} strokeDasharray={`${Math.max(0,p.points-0.7)/100*C} ${C}`} strokeDashoffset={-start/100*C}
             role="button" tabIndex={0} aria-label={`${t(p.label)}: ${p.points}%`} aria-pressed={selected===p.key} aria-controls={detailId}
             className="cursor-pointer transition-all duration-200 motion-reduce:transition-none" style={{opacity:selected&&selected!==p.key?0.3:1}}
-            onClick={()=>setSelected(selected===p.key?null:p.key)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setSelected(selected===p.key?null:p.key);}}}/>:null;
+            onClick={()=>choose(p.key)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();choose(p.key);}}}/>:null;
         })}
       </svg>
       <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center" role="meter" aria-label={t('Saved score')} aria-valuenow={score.total} aria-valuemin={0} aria-valuemax={100}><span className="text-5xl font-bold tabular-nums" style={{color:scoreColor(score.total)}}>{score.total}<span className="text-lg">%</span></span><span className="mt-1 text-xs text-ink-2">{score.emoji} {t(score.grade)}</span></div>
     </div>
+    <button type="button" className="btn-ghost w-full" aria-expanded={expanded} aria-controls={detailId} onClick={()=>{setExpanded(!expanded);if(expanded)setSelected(null);}}>{expanded?t('Hide score breakdown'):t('How is this calculated?')}</button>
+    {expanded&&<div className="mt-3 space-y-3">
     <div className="grid grid-cols-2 gap-2">
-      {score.parts.map((p,i)=><button type="button" key={p.key} aria-pressed={selected===p.key} aria-controls={detailId} onClick={()=>setSelected(selected===p.key?null:p.key)}
-        className={`flex items-center gap-2 rounded-xl border p-2.5 text-left text-xs transition-colors ${selected===p.key?'border-rose bg-rose/10':'border-line bg-surface/40'}`}>
+      {score.parts.map((p,i)=><button type="button" key={p.key} aria-pressed={selected===p.key} aria-controls={detailId} onClick={()=>choose(p.key)}
+        className={`flex min-h-11 items-center gap-2 rounded-xl border p-2.5 text-left text-xs transition-colors ${selected===p.key?'border-rose bg-rose/10':'border-line bg-surface/40'}`}>
         <span className="h-2 w-2 shrink-0 rounded-full" style={{backgroundColor:COLORS[i%COLORS.length]}}/><span className="flex-1">{t(p.label)}</span><b className="tabular-nums">{p.points}%</b>
       </button>)}
     </div>
@@ -55,7 +59,8 @@ export function SessionScore({score,session:s}:{score:Score;session:SexSession})
         </ul>}
       </>:<p>{t('Tap a segment or category to see how it is calculated.')}</p>}
     </div>
-    <p className="mt-2 text-center text-[11px] text-ink-3">{t('Read-only · calculated from saved details')}</p>
-    <p className="text-center text-[11px] text-ink-3">{t('Contributions add up to {n}%.',{n:score.total})}</p>
+    <p className="text-center text-xs text-ink-3">{t('Contributions add up to {n}%.',{n:score.total})}</p>
+    </div>}
+    <p className="mt-2 text-center text-xs text-ink-3">{t('Read-only · calculated from saved details')}</p>
   </section>;
 }

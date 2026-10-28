@@ -1,7 +1,9 @@
 'use client';
 import { useT } from '@/components/I18nProvider';
 
-import { useMemo, useState } from 'react';
+import { useEffect,useMemo, useState } from 'react';
+import {useSearchParams} from 'next/navigation';
+import {useViewState,useViewScroll} from '@/components/ViewMemory';
 import { MapPin } from 'lucide-react';
 import {MapPinMap} from '@/components/MapPinPicker';
 import {Sheet} from '@/components/Sheet';
@@ -34,7 +36,14 @@ export function InsightsView(props: {
   defaults: CycleDefaults;
 }) {
   const { t, f } = useT();
-  const [tab, setTab] = useState<Tab>('sex');
+  const [tab,setTab]=useViewState<Tab>('insights:tab','sex');
+  const query=useSearchParams();
+  const requested=query.get('session');
+  const target=props.sessions.some(s=>s.id===requested)?requested:null;
+  const visibleTab=target?'history':tab;
+  useEffect(()=>{if(target)setTab('history');},[target,setTab]);
+  useViewScroll(`insights:${visibleTab}`);
+  const clearTarget=()=>{const url=new URL(window.location.href);url.searchParams.delete('session');window.history.replaceState(window.history.state,'',url.pathname+url.search+url.hash);};
   return (
     <div className="space-y-4 pt-2">
       <h1 className="font-display text-3xl font-bold">{t('Insights')}</h1>
@@ -47,15 +56,15 @@ export function InsightsView(props: {
             ['places', /*i18n*/ 'Places 📍'],
           ] as const
         ).map(([k, label]) => (
-          <button key={k} onClick={() => setTab(k)} className={`rounded-xl py-2 transition ${tab === k ? 'bg-surface text-ink shadow' : 'text-ink-3'}`}>
+          <button key={k} onClick={() => {clearTarget();setTab(k);}} className={`rounded-xl py-2 transition ${visibleTab === k ? 'bg-surface text-ink shadow' : 'text-ink-3'}`}>
             {t(label)}
           </button>
         ))}
       </div>
-      {tab === 'cycle' && <CycleTab {...props} />}
-      {tab === 'sex' && <SexTab {...props} />}
-      {tab === 'history' && <HistoryTab sessions={props.sessions} />}
-      {tab === 'places' && <PlacesTab sessions={props.sessions} />}
+      {visibleTab === 'cycle' && <CycleTab {...props} />}
+      {visibleTab === 'sex' && <SexTab {...props} />}
+      {visibleTab === 'history' && <HistoryTab sessions={props.sessions} target={target} onTargetClosed={clearTarget}/>}
+      {visibleTab === 'places' && <PlacesTab sessions={props.sessions} />}
     </div>
   );
 }
@@ -223,7 +232,7 @@ function CycleTab({ periods, sessions, herLogs, isHer, herName, defaults }: Para
 function SexTab({ sessions: allSessions, herName, hisName, logs, notes }: Parameters<typeof InsightsView>[0]) {
   const { t } = useT();
   const { tz, today } = useTz();
-  const [kind, setKind] = useState<'all' | SessionKind>('all');
+  const [kind, setKind] = useViewState<'all' | SessionKind>('insights:sex-kind','all');
   const sessions = useMemo(() => (kind === 'all' ? allSessions : allSessions.filter((s) => s.kind === kind)), [allSessions, kind]);
   // Achievements are always about everything, regardless of the filter.
   const allScores = useMemo(() => scoreSessions(allSessions, tz), [allSessions, tz]);
@@ -374,8 +383,8 @@ function SexStats({ sessions, kind, allSessions, scores, herName, hisName }: { s
 
 function BadgeGrid({ badges }: { badges: ReturnType<typeof achievements> }) {
   const { t } = useT();
-  const [filter, setFilter] = useState<'all' | 'stories' | 'unlocked' | 'remaining'>('all');
-  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useViewState<'all' | 'stories' | 'unlocked' | 'remaining'>('insights:badges','all');
+  const [search, setSearch] = useViewState('insights:badge-search','');
   const visible = badges.filter(b => (filter === 'all' || (filter === 'stories' ? b.collection === 'stories' : filter === 'unlocked' ? b.unlocked : !b.unlocked)) &&
     `${t(b.title)} ${t(b.desc)}`.toLowerCase().includes(search.toLowerCase()));
   return <div className="mt-3 space-y-3">
@@ -435,10 +444,11 @@ function Tile({ value, label, small }: { value: React.ReactNode; label: string; 
 
 // ─────────────────────────────── history ───────────────────────────────
 
-function HistoryTab({ sessions }: { sessions: SexSession[] }) {
+function HistoryTab({sessions,target,onTargetClosed}:{sessions:SexSession[];target:string|null;onTargetClosed:()=>void}) {
   const { t, f } = useT();
   const { tz } = useTz();
-  const [kind, setKind] = useState<'all' | SessionKind>('all');
+  const [savedKind, setKind] = useViewState<'all' | SessionKind>('insights:history-kind','all');
+  const kind=target?'all':savedKind;
   const scores = useMemo(() => scoreSessions(sessions, tz), [sessions, tz]);
   const places = useMemo(() => placeSuggestions(sessions), [sessions]);
   const shown = useMemo(() => (kind === 'all' ? sessions : sessions.filter((s) => s.kind === kind)), [sessions, kind]);
@@ -478,7 +488,7 @@ function HistoryTab({ sessions }: { sessions: SexSession[] }) {
               </p>
             </div>
             {list.map((s) => (
-              <SessionCard key={s.id} s={s} score={scores.get(s.id)} places={places} byName={t('one of you')} showDate={f.prettyDate(dayInTz(s.startedAt, tz))} />
+              <SessionCard key={`${s.id}:${target===s.id}`} initiallyOpen={target===s.id} onClosed={target===s.id?onTargetClosed:undefined} s={s} score={scores.get(s.id)} places={places} byName={t('one of you')} showDate={f.prettyDate(dayInTz(s.startedAt, tz))} />
             ))}
           </section>
         );

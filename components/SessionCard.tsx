@@ -4,14 +4,13 @@ import {SessionPersonality} from './SessionPersonality';
 import { useT } from './I18nProvider';
 
 import { useState } from 'react';
+import {SessionDetails} from './SessionDetails';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Trash2 } from 'lucide-react';
 import { deleteSession, updateSession } from '@/app/actions';
-import { flagEmoji, HEAT, PROTECTION } from '@/lib/content';
-import { formatDuration } from '@/lib/dates';
+import { flagEmoji, PROTECTION } from '@/lib/content';
 import type { Score } from '@/lib/score';
-import { timeInTz } from '@/lib/tz';
 import type { SexSession } from '@/lib/types';
 import { ScoreBadge } from './ScoreBadge';
 import { KIND_META } from './KindPicker';
@@ -30,20 +29,25 @@ export function SessionCard({
   places,
   byName,
   showDate,
+  initiallyOpen=false,
+  onClosed,
 }: {
   s: SexSession;
   score?: Score;
   places: string[];
   byName: string;
   showDate?: string;
+  initiallyOpen?: boolean;
+  onClosed?:()=>void;
 }) {
   const { t, f } = useT();
   const { tz } = useTz();
   const router = useRouter();
   const draft=useSessionDraft();
   const remembered=draft?.current?.sessionId===s.id&&draft.current.version===s.updatedAt?draft.current.values:undefined;
-  const [open, setOpen] = useState(!!remembered);
-  const close=()=>{if(draft?.current?.sessionId===s.id)draft.current=null;setOpen(false);};
+  const [open, setOpen] = useState(!!remembered||initiallyOpen);
+  const [editing,setEditing]=useState(!!remembered);
+  const close=()=>{if(draft?.current?.sessionId===s.id)draft.current=null;setOpen(false);setEditing(false);onClosed?.();};
   const viewer=useSessionViewer();
   const experience={...viewer,reviews:s.feelings??[]};
   const proposal=s.editRequest?.proposed;
@@ -82,21 +86,18 @@ export function SessionCard({
         </div>
       </button>
 
-      <Sheet open={open} onClose={close} title={t('Edit session')}>
+      <Sheet open={open} onClose={close} viewKey={editing?'edit':'details'} title={editing?t('Edit session'):t('Session details')}>
+        {open&&<>
         {score&&<SessionScore score={score} session={s}/>}
-        <div className="mb-4 space-y-1 rounded-2xl bg-surface-2 p-3 text-xs text-ink-3">
-          <p>{t('Logged by {name}', { name: byName })}</p>
-          {s.ip&&<p>IP {s.ip}</p>}
-          {s.rating?<p>{t('rated')} “{t(HEAT[Math.round(s.rating)-1])}”</p>:null}
-        </div>
         <SessionPersonality tags={s.tags} />
-        {s.editRequest && (
+        {editing&&s.editRequest && (
           <div className="mb-4 space-y-3">
             {proposal&&<SessionEditDiff session={s} proposed={proposal} includeLocation={false}/>}
             <Link href="/inbox" className="btn-ghost w-full">{t('A change to this session is waiting for agreement — open Inbox')}</Link>
           </div>
         )}
-        {open && experience && (
+        {!editing&&<><SessionDetails session={s} byName={byName}/><button type="button" className="btn-primary sticky bottom-0 z-10 mt-4 w-full" onClick={()=>setEditing(true)}>{t('Edit session')}</button>{s.editRequest&&<Link href="/inbox" className="btn-ghost mt-3 w-full">{t('A change to this session is waiting for agreement — open Inbox')}</Link>}</>}
+        {editing && experience && (
           <SessionForm
             mode="edit"
             draftValues={remembered}
@@ -157,6 +158,7 @@ export function SessionCard({
             <Trash2 size={16} /> {t('Request session deletion')}
           </button>
         )}
+        </>}
       </Sheet>
 
       <Sheet open={confirm} onClose={() => setConfirm(false)} title={t('Request deletion for both of you?')}>

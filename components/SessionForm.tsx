@@ -199,9 +199,9 @@ export function SessionForm({
 
 
       <FormError error={error} />
-      <button className="btn-primary w-full" disabled={pending}>
+      <div className="sticky bottom-0 z-10 -mx-1 bg-surface/95 px-1 pt-3 pb-1 backdrop-blur-xl"><button className="btn-primary w-full" disabled={pending}>
         {pending ? t('Saving…') : mode==='edit' ? sharedChanged?t('Send change for approval'):t('Save'):submitLabel}
-      </button>
+      </button></div>
     </form>
   );
 }

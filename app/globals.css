@@ -119,7 +119,7 @@ input[type='datetime-local'] {
     @apply mb-1.5 block text-xs font-semibold tracking-wide text-ink-3 uppercase;
   }
   .chip {
-    @apply inline-flex min-h-9 items-center gap-1 rounded-full border border-line bg-surface-2 px-3 text-sm text-ink-2 transition active:scale-95;
+    @apply inline-flex min-h-11 items-center gap-1 rounded-full border border-line bg-surface-2 px-3 text-sm text-ink-2 transition active:scale-95;
   }
   .chip-on {
     @apply border-rose/80 bg-rose/20 text-ink;
@@ -130,4 +130,10 @@ input[type='datetime-local'] {
   0%, 100% { transform: translateX(0); }
   20%, 60% { transform: translateX(-10px); }
   40%, 80% { transform: translateX(10px); }
+}
+
+/* Keep keyboard focus visible on the original dark palette. */
+:where(button, a, summary, [tabindex="0"]):focus-visible {
+  outline: 2px solid var(--color-rose-2);
+  outline-offset: 3px;
 }

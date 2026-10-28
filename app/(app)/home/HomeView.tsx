@@ -115,7 +115,7 @@ export function HomeView({
       </div>
 
       {last && (
-        <Link href="/insights" className="card flex items-center gap-3">
+        <Link href={`/insights?session=${last.id}`} className="card flex items-center gap-3">
           {scores.get(last.id) && <ScoreBadge score={scores.get(last.id)!} size="md" />}
           <div className="flex-1">
             <p className="text-xs text-ink-3 uppercase">{t('Last time')}</p>

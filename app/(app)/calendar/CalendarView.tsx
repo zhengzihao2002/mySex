@@ -1,5 +1,6 @@
 'use client';
 
+import {useViewState,useViewScroll} from '@/components/ViewMemory';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Droplet, Heart, Plus, SmilePlus } from 'lucide-react';
 import { deletePeriod, endPeriod, logPastSession, startPeriod, updatePeriod } from '@/app/actions';
@@ -36,8 +37,9 @@ export function CalendarView({
   defaults: CycleDefaults;
 }) {
   const { tz, today } = useTz();
-  const [cursor, setCursor] = useState(() => ({ y: Number(today.slice(0, 4)), m: Number(today.slice(5, 7)) }));
-  const [selected, setSelected] = useState(today);
+  const [cursor, setCursor] = useViewState('calendar:month',() => ({ y: Number(today.slice(0, 4)), m: Number(today.slice(5, 7)) }));
+  const [selected, setSelected] = useViewState('calendar:day',today);
+  useViewScroll('calendar');
   const monthPager = useRef<MonthPagerHandle>(null);
   const [travelTarget, setTravelTarget] = useState<number | null>(null);
   const shownMonth = cursor.y * 12 + cursor.m - 1;

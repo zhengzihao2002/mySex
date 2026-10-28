@@ -25,9 +25,13 @@ export function InboxView({ requests, notices, edits, meId, partnerName }: {
   const [now,setNow]=useState(()=>Date.now());
   useEffect(()=>{const timer=setInterval(()=>setNow(Date.now()),60000);return()=>clearInterval(timer);},[]);
   const urgentFirst=<T extends {createdAt:string}>(items:T[])=>[...items].sort((a,b)=>Number(inboxUrgent(b.createdAt,now))-Number(inboxUrgent(a.createdAt,now))||new Date(a.createdAt).getTime()-new Date(b.createdAt).getTime());
-  const incoming = requests.filter((r) => r.status === 'pending' && r.recipientId === meId);
-  const outgoing = requests.filter((r) => r.status === 'pending' && r.requestedBy === meId);
-  const history = requests.filter((r) => r.status !== 'pending');
+  type Item={type:'deletion';value:SessionDeletionRequest}|{type:'edit';value:SessionEditRequest}|{type:'notice';value:SessionEditNotice};
+  const items:Item[]=[...requests.map(value=>({type:'deletion' as const,value})),...edits.map(value=>({type:'edit' as const,value})),...notices.map(value=>({type:'notice' as const,value}))];
+  const groups=[
+    {title:t('Needs your agreement'),items:items.filter(i=>i.type!=='notice'&&i.value.status==='pending'&&i.value.recipientId===meId)},
+    {title:t('Waiting for your partner'),items:items.filter(i=>i.type!=='notice'&&i.value.status==='pending'&&i.value.requestedBy===meId)},
+    {title:t('Unread replies and updates'),items:items.filter(i=>i.type==='notice'||i.value.status!=='pending')},
+  ];
   return (
     <div className="space-y-5 pt-2">
       <header className="flex items-center gap-2">
@@ -46,18 +50,13 @@ export function InboxView({ requests, notices, edits, meId, partnerName }: {
           <p className="mt-1 text-sm">{t('Deletion requests and your partner’s replies will appear here.')}</p>
         </div>
       )}
-      {edits.length > 0 && <section className="space-y-3"><h2 className="px-1 text-sm font-semibold text-ink-2">{t('Edit requests')} · {edits.length}</h2>{urgentFirst(edits).map(e => <EditRequestCard key={e.id} edit={e} meId={meId} partnerName={partnerName} now={now}/>)}</section>}
-      {notices.length > 0 && <section className="space-y-3"><h2 className="px-1 text-sm font-semibold text-ink-2">{t('Shared record updates')}</h2>{urgentFirst(notices).map(n => <EditNotice key={n.id} notice={n} partnerName={partnerName} now={now}/>)}</section>}
-      {[
-        { title: t('Needs your agreement'), items: incoming },
-        { title: t('Waiting for your partner'), items: outgoing },
-        { title: t('Unread replies'), items: history },
-      ].filter((group) => group.items.length).map((group) => (
-        <section key={group.title} className="space-y-3">
-          <h2 className="px-1 text-sm font-semibold text-ink-2">{group.title} · {group.items.length}</h2>
-          {urgentFirst(group.items).map((r) => <RequestCard key={r.id} request={r} meId={meId} partnerName={partnerName} now={now}/>)}
-        </section>
-      ))}
+      {groups.filter(group=>group.items.length).map(group=><section key={group.title} className="space-y-3" aria-label={group.title}>
+        <h2 className="px-1 text-sm font-semibold text-ink-2">{group.title} · {group.items.length}</h2>
+        {urgentFirst(group.items.map(item=>({...item,createdAt:item.value.createdAt}))).map(item=>item.type==='edit'
+          ?<EditRequestCard key={item.type+item.value.id} edit={item.value} meId={meId} partnerName={partnerName} now={now}/>
+          :item.type==='deletion'?<RequestCard key={item.type+item.value.id} request={item.value} meId={meId} partnerName={partnerName} now={now}/>
+          :<EditNotice key={item.type+item.value.id} notice={item.value} partnerName={partnerName} now={now}/>)}
+      </section>)}
     </div>
   );
 }
@@ -81,6 +80,7 @@ function RequestCard({ request: r, meId, partnerName, now }: {
   }[r.status];
   return (
     <article className={`card space-y-3 ${inboxUrgent(r.createdAt,now)?'border-menstrual ring-1 ring-menstrual/40':unread ? 'border-rose/60' : ''}`}>
+      <p className="text-xs font-semibold text-ink-2">{t('Deletion request')}</p>
       <InboxExpiry createdAt={r.createdAt} now={now}/>
       <div className="flex items-start gap-2">
         <span className="text-xl">{KIND_META[r.sessionKind].emoji}</span>
@@ -172,6 +172,7 @@ function EditRequestCard({ edit: e, meId, partnerName,now }: { edit: SessionEdit
   }[e.status];
   return (
     <article className={`card space-y-3 ${inboxUrgent(e.createdAt,now)?'border-menstrual ring-1 ring-menstrual/40':answered || !mine ? 'border-rose/60' : ''}`}>
+      <p className="text-xs font-semibold text-ink-2">{t('Edit request')}</p>
       <InboxExpiry createdAt={e.createdAt} now={now}/>
       <div className="flex items-start gap-2">
         <span className="text-xl">{KIND_META[s.kind].emoji}</span>
