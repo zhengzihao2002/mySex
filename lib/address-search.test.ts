@@ -12,9 +12,19 @@ test('address results accept valid zero coordinates and reject unusable provider
 });
 test('Chinese results use Simplified names and remove repeated semicolon aliases without inventing street translations',()=>{
   const result=parseAddressResults([{display_name:'19, Hirth Drive, 新澤西州;新泽西州;紐澤西州, 美國;美国',lat:'40',lon:'-74',address:{country:'美國;美国',country_code:'us'}}],'zh');
-  assert.equal(result[0].label,'19，Hirth Drive，新泽西州，美国');
+  assert.equal(result[0].label,'19 Hirth Drive，新泽西州');
   const named=parseAddressResults([{display_name:'Central Library, 臺北, Taiwan',name:'Central Library',namedetails:{'name:zh-Hans':'中央圖書館'},address:{country:'Taiwan',country_code:'tw'},lat:'25',lon:'121'}],'zh');
-  assert.equal(named[0].label,'中央图书馆，台北，台湾');
+  assert.equal(named[0].label,'中央图书馆，台北');
+});
+test('address results contain only street address, town/city, state and zip',()=>{
+  const row={display_name:'19, Hirth Drive, Groveville, Hamilton Township, Mercer County, 新泽西州, 08620, 美国',lat:'40',lon:'-74',address:{house_number:'19',road:'Hirth Drive',hamlet:'Groveville',municipality:'Hamilton Township',county:'Mercer County',state:'新泽西州',postcode:'08620',country:'美国',country_code:'us'}};
+  assert.equal(parseAddressResults([row],'zh')[0].label,'19 Hirth Drive，Groveville，新泽西州，08620');
+  const english={...row,display_name:'19, Hirth Drive, Groveville, New Jersey, 08620, United States',address:{...row.address,state:'New Jersey'}};
+  assert.equal(parseAddressResults([english],'en')[0].label,'19 Hirth Drive, Groveville, New Jersey, 08620');
+  const chinese={display_name:'19, 中山路, 臺北, 臺灣',lat:'25',lon:'121',address:{house_number:'19',road:'中山路',city:'臺北'}};
+  assert.equal(parseAddressResults([chinese],'zh')[0].label,'中山路19号，台北');
+  assert.equal(parseAddressResults([{display_name:'08620, New Jersey, United States',lat:'40',lon:'-74'}],'en')[0].label,'08620, New Jersey, United States');
+  assert.deepEqual(parseAddressResults([{display_name:'United States',lat:'40',lon:'-74',address:{country:'United States',country_code:'us'}}],'en'),[]);
 });
 test('submitted searches send bounded queries and locale to the fixed provider with caching and attribution',async()=>{
   const original=globalThis.fetch;let calls=0;

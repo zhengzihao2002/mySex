@@ -1,6 +1,6 @@
 import type {NeonQueryFunction} from '@neondatabase/serverless';
 import {claimGeocodingSlot} from './gps-area.ts';
-import {simplifiedAddress} from './map-labels.ts';
+import {formatAddress} from './map-labels.ts';
 
 export type AddressPlace = {label: string; latitude: number; longitude: number};
 export type SearchArea={latitude:number|null;longitude:number|null};
@@ -13,7 +13,8 @@ export function parseAddressResults(value: unknown,lang:'en'|'zh'='en'): Address
     const number=(v:unknown)=>typeof v==='number'||(typeof v==='string'&&v.trim())?Number(v):NaN;
     const latitude=number(r.lat),longitude=number(r.lon);
     if (!Number.isFinite(latitude)||!Number.isFinite(longitude)||Math.abs(latitude)>85||Math.abs(longitude)>180) return [];
-    return [{label:(lang==='zh'?simplifiedAddress(r):r.display_name.trim()).slice(0,500),latitude,longitude}];
+    const label=formatAddress(r,lang).slice(0,500);
+    return label?[{label,latitude,longitude}]:[];
   }).slice(0,5);
 }
 
