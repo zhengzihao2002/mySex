@@ -1,12 +1,13 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, Droplet, Heart, Plus, SmilePlus } from 'lucide-react';
 import { deletePeriod, endPeriod, logPastSession, startPeriod, updatePeriod } from '@/app/actions';
 import { CheckInSheet } from '@/components/CheckInSheet';
 import { FormError } from '@/components/FormError';
 import { SessionCard } from '@/components/SessionCard';
 import { SessionForm } from '@/components/SessionForm';
+import { MonthPager } from '@/components/MonthPager';
 import { Sheet } from '@/components/Sheet';
 import { useTz } from '@/components/TzProvider';
 import { useRun } from '@/components/useRun';
@@ -56,21 +57,47 @@ export function CalendarView({
     return map;
   }, [logs]);
 
-  const first = `${cursor.y}-${String(cursor.m).padStart(2, '0')}-01`;
-  const firstN = toDayNum(first);
-  const weekday = new Date(firstN * 86_400_000).getUTCDay();
-  const gridStart = firstN - weekday;
-  const days = Array.from({ length: 42 }, (_, i) => fromDayNum(gridStart + i));
-  const rows = days[35].slice(0, 7) === first.slice(0, 7) ? 6 : 5;
-
   const shift = (delta: number) =>
     setCursor(({ y, m }) => {
       const idx = y * 12 + (m - 1) + delta;
       return { y: Math.floor(idx / 12), m: (idx % 12) + 1 };
     });
 
-  const touch = useRef<number | null>(null);
   const { t, f } = useT();
+  const monthPage = (delta: number) => {
+    const idx = cursor.y * 12 + cursor.m - 1 + delta;
+    const first = `${Math.floor(idx / 12)}-${String(idx % 12 + 1).padStart(2, '0')}-01`;
+    const firstN = toDayNum(first);
+    const gridStart = firstN - new Date(firstN * 86_400_000).getUTCDay();
+    const days = Array.from({ length: 42 }, (_, i) => fromDayNum(gridStart + i));
+    const rows = days[35].slice(0, 7) === first.slice(0, 7) ? 6 : 5;
+    return (
+      <div>
+        <div className="mb-1 grid grid-cols-7 text-center text-[11px] font-semibold text-ink-3">
+          {[0, 1, 2, 3, 4, 5, 6].map((i) => f.weekdayLetter(i)).map((d, i) => (
+            <span key={i} className="py-1">
+              {d}
+            </span>
+          ))}
+        </div>
+        <div className="grid grid-cols-7 gap-y-1">
+          {days.slice(0, rows * 7).map((d) => (
+            <DayCell
+              key={d}
+              date={d}
+              inMonth={d.slice(0, 7) === first.slice(0, 7)}
+              info={model ? dayInfo(model, d) : null}
+              sex={(byDay.get(d) ?? []).filter((x) => x.kind !== 'oral').length}
+              oral={(byDay.get(d) ?? []).filter((x) => x.kind === 'oral').length}
+              isToday={d === today}
+              isSelected={d === selected}
+              onClick={() => setSelected(d)}
+            />
+          ))}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="pt-2">
@@ -98,38 +125,8 @@ export function CalendarView({
         </div>
       </header>
 
-      <div
-        className="card p-2"
-        onTouchStart={(e) => (touch.current = e.touches[0].clientX)}
-        onTouchEnd={(e) => {
-          if (touch.current == null) return;
-          const dx = e.changedTouches[0].clientX - touch.current;
-          if (Math.abs(dx) > 60) shift(dx < 0 ? 1 : -1);
-          touch.current = null;
-        }}
-      >
-        <div className="mb-1 grid grid-cols-7 text-center text-[11px] font-semibold text-ink-3">
-          {[0, 1, 2, 3, 4, 5, 6].map((i) => f.weekdayLetter(i)).map((d, i) => (
-            <span key={i} className="py-1">
-              {d}
-            </span>
-          ))}
-        </div>
-        <div className="grid grid-cols-7 gap-y-1">
-          {days.slice(0, rows * 7).map((d) => (
-            <DayCell
-              key={d}
-              date={d}
-              inMonth={d.slice(0, 7) === first.slice(0, 7)}
-              info={model ? dayInfo(model, d) : null}
-              sex={(byDay.get(d) ?? []).filter((x) => x.kind !== 'oral').length}
-              oral={(byDay.get(d) ?? []).filter((x) => x.kind === 'oral').length}
-              isToday={d === today}
-              isSelected={d === selected}
-              onClick={() => setSelected(d)}
-            />
-          ))}
-        </div>
+      <div className="card p-2">
+        <MonthPager key={`${cursor.y}-${cursor.m}`} onChange={shift} pages={[monthPage(-1), monthPage(0), monthPage(1)]} />
       </div>
 
       <Legend />
