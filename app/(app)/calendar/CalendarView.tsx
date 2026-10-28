@@ -1,13 +1,13 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Droplet, Heart, Plus, SmilePlus } from 'lucide-react';
 import { deletePeriod, endPeriod, logPastSession, startPeriod, updatePeriod } from '@/app/actions';
 import { CheckInSheet } from '@/components/CheckInSheet';
 import { FormError } from '@/components/FormError';
 import { SessionCard } from '@/components/SessionCard';
 import { SessionForm } from '@/components/SessionForm';
-import { MonthPager } from '@/components/MonthPager';
+import { MonthPager, type MonthPagerHandle } from '@/components/MonthPager';
 import { Sheet } from '@/components/Sheet';
 import { useTz } from '@/components/TzProvider';
 import { useRun } from '@/components/useRun';
@@ -38,6 +38,21 @@ export function CalendarView({
   const { tz, today } = useTz();
   const [cursor, setCursor] = useState(() => ({ y: Number(today.slice(0, 4)), m: Number(today.slice(5, 7)) }));
   const [selected, setSelected] = useState(today);
+  const monthPager = useRef<MonthPagerHandle>(null);
+  const [travelTarget, setTravelTarget] = useState<number | null>(null);
+  const shownMonth = cursor.y * 12 + cursor.m - 1;
+
+  useEffect(() => {
+    if (travelTarget === null) return;
+    if (travelTarget === shownMonth) { setTravelTarget(null); return; }
+    const delta = travelTarget < shownMonth ? -1 : 1;
+    const step = () => {
+      if (!monthPager.current?.step(delta)) frame = requestAnimationFrame(step);
+    };
+    // Paint each newly centered month before starting the next slide.
+    let frame = requestAnimationFrame(() => { frame = requestAnimationFrame(step); });
+    return () => cancelAnimationFrame(frame);
+  }, [travelTarget, shownMonth]);
 
   const model = useMemo(() => buildCycleModel(periods, defaults, today, 18), [periods, defaults, today]);
   const scores = useMemo(() => scoreSessions(sessions, tz), [sessions, tz]);
@@ -72,7 +87,7 @@ export function CalendarView({
     const days = Array.from({ length: 42 }, (_, i) => fromDayNum(gridStart + i));
     const rows = days[35].slice(0, 7) === first.slice(0, 7) ? 6 : 5;
     return (
-      <div>
+      <div className="py-1">
         <div className="mb-1 grid grid-cols-7 text-center text-[11px] font-semibold text-ink-3">
           {[0, 1, 2, 3, 4, 5, 6].map((i) => f.weekdayLetter(i)).map((d, i) => (
             <span key={i} className="py-1">
@@ -110,23 +125,23 @@ export function CalendarView({
           <button
             className="chip"
             onClick={() => {
-              setCursor({ y: Number(today.slice(0, 4)), m: Number(today.slice(5, 7)) });
+              setTravelTarget(Number(today.slice(0, 4)) * 12 + Number(today.slice(5, 7)) - 1);
               setSelected(today);
             }}
           >
             {t('Today')}
           </button>
-          <button className="rounded-full bg-surface-2 p-2" onClick={() => shift(-1)} aria-label="Previous month">
+          <button className="rounded-full bg-surface-2 p-2" onClick={() => { setTravelTarget(null); monthPager.current?.step(-1); }} aria-label="Previous month">
             <ChevronLeft size={20} />
           </button>
-          <button className="rounded-full bg-surface-2 p-2" onClick={() => shift(1)} aria-label="Next month">
+          <button className="rounded-full bg-surface-2 p-2" onClick={() => { setTravelTarget(null); monthPager.current?.step(1); }} aria-label="Next month">
             <ChevronRight size={20} />
           </button>
         </div>
       </header>
 
       <div className="card p-2">
-        <MonthPager key={`${cursor.y}-${cursor.m}`} onChange={shift} pages={[monthPage(-1), monthPage(0), monthPage(1)]} />
+        <MonthPager ref={monthPager} key={`${cursor.y}-${cursor.m}`} onChange={shift} pages={[monthPage(-1), monthPage(0), monthPage(1)]} />
       </div>
 
       <Legend />

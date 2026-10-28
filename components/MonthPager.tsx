@@ -1,13 +1,14 @@
 'use client';
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type ReactNode, type Ref } from 'react';
 
 const DURATION = 260;
 const EASING = 'cubic-bezier(0.22, 0.61, 0.36, 1)';
 const MONTH_GAP = 24;
+export type MonthPagerHandle = { step: (delta: -1 | 1) => boolean };
 
 /** Three mounted months keep dragging immediate, including the incoming month's contents. */
-export function MonthPager({ pages, onChange }: { pages: [ReactNode, ReactNode, ReactNode]; onChange: (delta: number) => void }) {
+export function MonthPager({ pages, onChange, ref }: { pages: [ReactNode, ReactNode, ReactNode]; onChange: (delta: number) => void; ref?: Ref<MonthPagerHandle> }) {
   const viewport = useRef<HTMLDivElement>(null);
   const panels = useRef<(HTMLDivElement | null)[]>([]);
   const gesture = useRef<{ id: number; x: number; y: number; axis: 'pending' | 'x' | 'y'; source: 'touch' | 'pointer' } | null>(null);
@@ -57,6 +58,13 @@ export function MonthPager({ pages, onChange }: { pages: [ReactNode, ReactNode, 
     setSettling(true);
     setOffset(-delta * ((viewport.current?.clientWidth ?? 0) + MONTH_GAP));
   }, []);
+  useImperativeHandle(ref, () => ({
+    step: delta => {
+      if (blocked.current || gesture.current) return false;
+      settle(delta);
+      return true;
+    },
+  }), [settle]);
   const begin = useCallback((id: number, x: number, y: number, source: 'touch' | 'pointer') => {
     if (blocked.current || gesture.current) return;
     suppressClick.current = false;
