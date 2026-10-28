@@ -1,6 +1,10 @@
 // Simplified Chinese. Keys are the English UI text (see lib/i18n/core.ts).
 // Run `node scripts/check-i18n.mjs --missing` to find untranslated keys.
 export const zh: Record<string, string> = {
+  "Zoom in": "放大",
+  "Zoom out": "缩小",
+  "OpenStreetMap": "开放街图",
+
   "Search by address": "按地址搜索",
   "Address or place": "地址或地点",
   "Street address, city, or place": "街道地址、城市或地点",

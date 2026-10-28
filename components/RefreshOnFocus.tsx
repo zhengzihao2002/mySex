@@ -12,6 +12,8 @@ export function RefreshOnFocus() {
   const last = useRef(Date.now());
   useEffect(() => {
     const onVisible = () => {
+      // Preserve the open editor and its unsaved notes/pin when returning from another app or tab.
+      if (document.querySelector('[data-session-editor]')) return;
       if (document.visibilityState === 'visible' && Date.now() - last.current > 5000) {
         last.current = Date.now();
         router.refresh();

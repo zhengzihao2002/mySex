@@ -2,7 +2,7 @@
 import { useT } from './I18nProvider';
 
 import {ExperienceFields} from './ExperienceFields';
-import { useState } from 'react';
+import { useEffect,useState } from 'react';
 import { Flame, MapPin, Minus, Navigation, Plus } from 'lucide-react';
 import { HEAT, PROTECTION, TAGS } from '@/lib/content';
 import { FormError } from './FormError';
@@ -46,6 +46,8 @@ export function SessionForm({
   pending,
   isHer=false,
   exactTiming,
+  draftValues,
+  onDraftChange,
 }: {
   mode: 'finish' | 'past' | 'edit';
   initial?: Partial<SessionFormValues>;
@@ -56,6 +58,8 @@ export function SessionForm({
   pending?: boolean;
   isHer?:boolean;
   exactTiming?:{durationSec:number;breakSec:number};
+  draftValues?:SessionFormValues;
+  onDraftChange?:(values:SessionFormValues)=>void;
 }) {
   const { t, f } = useT();
   const [v, setV] = useState<SessionFormValues>({
@@ -74,7 +78,9 @@ export function SessionForm({
     tags: initial?.tags ?? [],
     notes: initial?.notes ?? '',
     hisRating:initial?.hisRating??null,herRating:initial?.herRating??null,hisNotes:initial?.hisNotes??'',herNotes:initial?.herNotes??'',
+    ...draftValues,
   });
+  useEffect(()=>{onDraftChange?.(v);},[v,onDraftChange]);
   const set = <K extends keyof SessionFormValues>(k: K, val: SessionFormValues[K]) => setV((s) => ({ ...s, [k]: val }));
 
   const base=initial;
@@ -82,6 +88,7 @@ export function SessionForm({
   return (
     <form
       className="space-y-5"
+      data-session-editor={mode === 'edit' ? '' : undefined}
       onSubmit={(e) => {
         e.preventDefault();
         onSubmit(mode==='edit' && exactTiming ? {...v,durationMin:v.durationMin===initial?.durationMin?exactTiming.durationSec/60:v.durationMin,breakMin:v.breakMin===initial?.breakMin?exactTiming.breakSec/60:v.breakMin}:v);

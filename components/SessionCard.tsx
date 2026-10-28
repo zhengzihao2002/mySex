@@ -1,5 +1,5 @@
 'use client';
-import {useSessionViewer} from './SessionViewer';
+import {useSessionViewer,useSessionDraft} from './SessionViewer';
 import {SessionPersonality} from './SessionPersonality';
 import { useT } from './I18nProvider';
 
@@ -39,7 +39,10 @@ export function SessionCard({
   const { t, f } = useT();
   const { tz } = useTz();
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const draft=useSessionDraft();
+  const remembered=draft?.current?.sessionId===s.id&&draft.current.version===s.updatedAt?draft.current.values:undefined;
+  const [open, setOpen] = useState(!!remembered);
+  const close=()=>{if(draft?.current?.sessionId===s.id)draft.current=null;setOpen(false);};
   const viewer=useSessionViewer();
   const experience={...viewer,reviews:s.feelings??[]};
   const [confirm, setConfirm] = useState(false);
@@ -76,7 +79,7 @@ export function SessionCard({
         </div>
       </button>
 
-      <Sheet open={open} onClose={() => setOpen(false)} title={t('Edit session')}>
+      <Sheet open={open} onClose={close} title={t('Edit session')}>
         <div className="mb-3">
           <SessionTimes startedAt={s.startedAt} activeSec={s.durationSec ?? 0} breakSec={s.pausedSec ?? 0} breaks={s.breaks} />
         </div>
@@ -105,6 +108,8 @@ export function SessionCard({
         {open && experience && (
           <SessionForm
             mode="edit"
+            draftValues={remembered}
+            onDraftChange={values=>{if(draft)draft.current={sessionId:s.id,version:s.updatedAt,values};}}
             isHer={experience.isHer}
             exactTiming={{durationSec:s.durationSec??0,breakSec:s.pausedSec}}
             places={places}
@@ -144,7 +149,7 @@ export function SessionCard({
                   tags: v.tags,
                 }),
               );
-              if (ok) setOpen(false);
+              if (ok) close();
             }}
           />
         )}
@@ -170,7 +175,7 @@ export function SessionCard({
             onClick={async () => {
               if (await run(() => deleteSession(s.id, s.updatedAt))) {
                 setConfirm(false);
-                setOpen(false);
+                close();
                 router.push('/inbox');
               }
             }}

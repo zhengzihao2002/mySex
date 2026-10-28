@@ -48,17 +48,25 @@ function InteractiveMap({value, onChange, readOnly=false}: {value: GpsCoordinate
   useEffect(() => {change.current = onChange;}, [onChange]);
   useEffect(() => {
     let disposed = false;
+    const locationRequest=new AbortController();
     let map: import('leaflet').Map | undefined;
     let observer: ResizeObserver | undefined;
     setReady(false);
     setError(false);
-    void import('leaflet').then(L => {
+    const nearby=!readOnly&&!initial.current?(async()=>{
+      const timeout=setTimeout(()=>locationRequest.abort(),2000);
+      try{const response=await fetch('/api/locations/context',{signal:locationRequest.signal});return response.ok?await response.json() as {latitude:number|null;longitude:number|null;region:string|null;country:string|null}:null;}catch{return null;}finally{clearTimeout(timeout);}
+    })():Promise.resolve(null);
+    void Promise.all([import('leaflet'),nearby]).then(([L,area]) => {
       if (disposed || !container.current) return;
       const pin = initial.current;
-      map = L.map(container.current, {scrollWheelZoom: false, minZoom: 2, maxZoom: 19, maxBounds: [[-85,-180],[85,180]], maxBoundsViscosity: 1})
-        .setView(pin ? [pin.latitude,pin.longitude] : [20,0], pin ? 15 : 2);
+      const local=area?.latitude!=null&&area.longitude!=null&&Number.isFinite(area.latitude)&&Number.isFinite(area.longitude)?area:null;
+      map = L.map(container.current, {scrollWheelZoom: false, zoomControl:false, minZoom: 2, maxZoom: 19, maxBounds: [[-85,-180],[85,180]], maxBoundsViscosity: 1})
+        .setView(pin ? [pin.latitude,pin.longitude] : local ? [Math.max(-85,Math.min(85,local.latitude!)),local.longitude!] : [20,0], pin ? 15 : local ? local.region?7:5 : 2);
+      map.attributionControl.setPrefix(false);
+      L.control.zoom({zoomInTitle:t('Zoom in'),zoomOutTitle:t('Zoom out')}).addTo(map);
       const tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        noWrap: true, maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        noWrap: true, maxZoom: 19, attribution: `&copy; ${t('OpenStreetMap')} · ODbL`,
       }).addTo(map);
       tiles.on('tileerror', () => {if (!disposed) setError(true);});
       const icon = L.divIcon({className: 'session-map-pin', iconSize: [32,42], iconAnchor: [16,42], html: '<svg viewBox="0 0 32 42" width="32" height="42" aria-hidden="true"><path d="M16 40C13 35 2 25 2 16a14 14 0 0 1 28 0c0 9-11 19-14 24Z" fill="#ff3d7f" stroke="white" stroke-width="2"/><circle cx="16" cy="16" r="5" fill="white"/></svg>'});
@@ -82,7 +90,7 @@ function InteractiveMap({value, onChange, readOnly=false}: {value: GpsCoordinate
       observer.observe(container.current);
       setReady(true);
     }).catch(() => {if (!disposed) setError(true);});
-    return () => {disposed = true; chooseAddress.current=null; observer?.disconnect(); map?.remove();};
+    return () => {disposed = true; locationRequest.abort();chooseAddress.current=null; observer?.disconnect(); map?.remove();};
   }, [attempt,t,readOnly]);
   const search=async()=>{
     const address=query.trim();
@@ -102,14 +110,12 @@ function InteractiveMap({value, onChange, readOnly=false}: {value: GpsCoordinate
   };
   return <div className="space-y-2">
     {!readOnly&&<div className="space-y-2" aria-busy={searching}>
-      <label className="label" htmlFor={searchId}>{t('Search by address')}</label><div className="flex gap-2"><input id={searchId} className="input min-w-0 flex-1" aria-label={t('Address or place')} placeholder={t('Street address, city, or place')} value={query} maxLength={200} autoComplete="off"
+      <label className="sr-only" htmlFor={searchId}>{t('Search by address')}</label><div className="flex gap-2"><input id={searchId} className="input min-w-0 flex-1" aria-label={t('Address or place')} placeholder={t('Street address, city, or place')} value={query} maxLength={200} autoComplete="off"
         onChange={e=>{searchRequest.current?.abort();searchRequest.current=null;setQuery(e.target.value);setSearching(false);setResults(null);setSearchError(null);}}
         onKeyDown={e=>{if(e.key==='Enter'&&!e.nativeEvent.isComposing){e.preventDefault();e.stopPropagation();void search();}}}/><button type="button" className="btn-ghost shrink-0" disabled={!ready||searching||query.trim().length<3} onClick={()=>void search()}>{searching?t('Searching…'):t('Search')}</button></div>
       {searchError&&<p role="alert" className="text-xs text-menstrual">{searchError}</p>}
       {results&&<div role="status" className="space-y-1">{results.length?results.map((result,i)=><button key={i} type="button" disabled={!ready} className="block w-full rounded-xl border border-line bg-surface-2 p-3 text-left text-sm text-ink-2" onClick={()=>{chooseAddress.current?.(result);setQuery(result.label.slice(0,200));setResults(null);}}>{result.label}</button>):<p className="text-xs text-ink-3">{t('No matching addresses. Try adding the city or postcode.')}</p>}</div>}
-      <p className="text-[11px] text-ink-3">{t('Address search © OpenStreetMap contributors.')}</p>
     </div>}
-    {!readOnly&&<p className="text-xs text-ink-3">{t('Tap the map to place your pin. Drag it to adjust.')}</p>}
     <div className="relative isolate h-72 overflow-hidden rounded-2xl border border-line bg-surface-2">
       <div ref={container} role="region" aria-label={t('Location map')} className="relative z-0 h-full w-full"/>
       {!ready && <p role="status" className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-ink-3">{t('Loading map…')}</p>}
