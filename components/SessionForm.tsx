@@ -2,16 +2,18 @@
 import { useT } from './I18nProvider';
 
 import {ExperienceFields} from './ExperienceFields';
-import { useEffect,useState } from 'react';
+import { useEffect,useRef,useState } from 'react';
 import { MapPin, Minus, Navigation, Plus } from 'lucide-react';
-import { PROTECTION, TAGS } from '@/lib/content';
+import { PROTECTION } from '@/lib/content';
+import {activityDetails} from '@/lib/activity-details';
+import {ActivityFields} from './ActivityFields';
 import { FormError } from './FormError';
 import { KIND_META,KindPicker } from './KindPicker';
 import {SessionTimes} from './SessionTimes';
 import {SessionLocationEditor} from './SessionLocationEditor';
 import {RecordedLocationPreview,type RecordedLocation} from './RecordedLocationPreview';
 import type {GpsCoordinates} from '@/lib/gps';
-import type { Break,SessionKind } from '@/lib/types';
+import type { Break,SessionKind,SexSession } from '@/lib/types';
 import {samePin, sharedFields, sameSharedField, type SharedValues, type SharedField, type SessionProposal} from '@/lib/shared-session';
 
 export type SessionFormValues = {
@@ -55,6 +57,7 @@ export function SessionForm({
   recordedLocation,
   proposedLocation,
   timingBreaks=[],
+  originalActivity,
 }: {
   mode: 'finish' | 'past' | 'edit';
   initial?: Partial<SessionFormValues>;
@@ -71,6 +74,7 @@ export function SessionForm({
   recordedLocation?:RecordedLocation;
   proposedLocation?:SessionProposal['location'];
   timingBreaks?:Break[];
+  originalActivity?:Pick<SexSession,'kind'|'tags'|'protection'>;
 }) {
   const { t, f } = useT();
   const [v, setV] = useState<SessionFormValues>({
@@ -92,6 +96,12 @@ export function SessionForm({
     ...draftValues,
   });
   useEffect(()=>{onDraftChange?.(v);},[v,onDraftChange]);
+  const kindDrafts=useRef<Partial<Record<SessionKind,{tags:string[];protection:string|null}>>>({...(originalActivity?{[originalActivity.kind]:{tags:originalActivity.tags,protection:originalActivity.protection}}:{}),[v.kind]:{tags:v.tags,protection:v.protection}});
+  const changeKind=(kind:SessionKind)=>{
+    kindDrafts.current[v.kind]={tags:[...v.tags],protection:v.protection};
+    const next=kindDrafts.current[kind]??activityDetails(kind,v);
+    setV(current=>({...current,...next,kind}));
+  };
   const set = <K extends keyof SessionFormValues>(k: K, val: SessionFormValues[K]) => setV((s) => ({ ...s, [k]: val }));
 
   const base=initial;
@@ -109,10 +119,10 @@ export function SessionForm({
       data-session-editor={mode === 'edit' ? '' : undefined}
       onSubmit={(e) => {
         e.preventDefault();
-        onSubmit(mode==='edit' ? {...v,sharedFields:changedFields,...(exactTiming?{durationMin:v.durationMin===initial?.durationMin?exactTiming.durationSec/60:v.durationMin,breakMin:v.breakMin===initial?.breakMin?exactTiming.breakSec/60:v.breakMin}:{})}:v);
+        onSubmit(mode==='edit' ? {...v,sharedFields:changedFields,...(exactTiming?{durationMin:v.durationMin===initial?.durationMin?exactTiming.durationSec/60:v.durationMin,breakMin:v.breakMin===initial?.breakMin?exactTiming.breakSec/60:v.breakMin}:{})}:{...v,...activityDetails(v.kind,v)});
       }}
     >
-      {mode==='finish'?<p className="text-sm font-semibold">{KIND_META[initial?.kind??v.kind].emoji} {t(KIND_META[initial?.kind??v.kind].label)}</p>:<KindPicker value={v.kind} onChange={(k) => set('kind', k)} disabled={pending}/>}
+      {mode==='finish'?<p className="text-sm font-semibold">{KIND_META[initial?.kind??v.kind].emoji} {t(KIND_META[initial?.kind??v.kind].label)}</p>:<KindPicker value={v.kind} onChange={changeKind} disabled={pending}/>}
 
       {mode !== 'finish' && (
         <div className="grid grid-cols-1 gap-3">
@@ -149,7 +159,7 @@ export function SessionForm({
         </div>
       )}
 
-      <div>
+      {v.kind==='intercourse'&&<div>
         <label className="label">{t('Protection')}</label>
         <div className="flex flex-wrap gap-2">
           {PROTECTION.map((p) => (
@@ -163,27 +173,9 @@ export function SessionForm({
             </button>
           ))}
         </div>
-      </div>
+      </div>}
 
-      <div>
-        <label className="label">{t('What went down')}</label>
-        <div className="flex flex-wrap gap-2">
-          {TAGS.map((tag) => {
-            const on = v.tags.includes(tag);
-            return (
-              <button
-                type="button"
-                key={tag}
-                data-tag={tag}
-                onClick={() => set('tags', on ? v.tags.filter((x) => x !== tag) : [...v.tags, tag])}
-                className={`chip ${on ? 'chip-on' : ''}`}
-              >
-                {t(tag)}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      <ActivityFields key={v.kind} kind={v.kind} value={v.tags} onChange={tags=>set('tags',tags)} disabled={pending}/>
 
       <ExperienceFields v={v} set={patch=>setV(s=>({...s,...patch}))} mode={mode} isHer={isHer}/>
 

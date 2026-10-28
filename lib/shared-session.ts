@@ -1,4 +1,5 @@
 import type {SexSession, SessionEditRequest} from './types';
+import {activityDetails} from './activity-details.ts';
 
 export const sharedFields = ['kind','startedAt','durationMin','breakMin','place','protection','tags','location'] as const;
 export type SharedField = typeof sharedFields[number];
@@ -33,6 +34,16 @@ export function sameSharedField(key:SharedField,a:SharedValues[SharedField],b:Sh
 /** Merge only fields touched in this editor. Returning to the saved values cancels the proposal. */
 export function mergeSharedProposal(s:SexSession,pending:SessionProposal|null,patch:Partial<SharedValues>):SessionProposal|null {
   const original=sharedValues(s),next={...sharedValues(s,pending),...patch};
+  const kind=next.kind??s.kind;
+  if(patch.kind&&patch.kind!==(pending?.kind??s.kind)){
+    const restoring=kind===s.kind&&next.protection===s.protection;
+    Object.assign(next,activityDetails(kind,next,kind===s.kind?s.tags:[]));
+    if(restoring)next.protection=s.protection;
+  }
+  else {
+    if(patch.tags)next.tags=activityDetails(kind,next,s.kind===kind?s.tags:[]).tags;
+    if(patch.protection!==undefined&&kind==='oral')next.protection=null;
+  }
   if(sharedFields.every(key=>sameSharedField(key,original[key],next[key])))return null;
   const {location,...values}=next;
   return {...values,rating:s.rating,hisOrgasms:s.hisOrgasms,herOrgasms:s.herOrgasms,notes:s.notes,

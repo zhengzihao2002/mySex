@@ -51,7 +51,7 @@ export function SessionCard({
   const [confirm, setConfirm] = useState(false);
   const { run, pending, error } = useRun();
   const where = s.place || [s.city, s.region].filter(Boolean).join(', ');
-  const protection = PROTECTION.find((p) => p.key === s.protection);
+  const protection = s.kind==='intercourse'?PROTECTION.find((p) => p.key === s.protection):null;
 
   return (
     <>
@@ -106,6 +106,7 @@ export function SessionCard({
             originalPin={s.latitude!=null&&s.longitude!=null?{latitude:s.latitude,longitude:s.longitude}:null}
             recordedLocation={s}
             proposedLocation={proposal?.location}
+            originalActivity={s}
             timingBreaks={editor.startedAt===s.startedAt&&Math.round(editor.durationMin*60)===(s.durationSec??0)&&Math.round(editor.breakMin*60)===s.pausedSec?s.breaks:[]}
             places={places}
             initial={{

@@ -5,6 +5,7 @@ import {storeSessionFeeling} from '@/lib/session-feelings';
 import {isUnverified} from '@/lib/auth-errors';
 import {initializeExperiences,submitSessionChanges} from '@/lib/session-experiences';
 import {completeRecording} from '@/lib/session-recording';
+import {activityDetails} from '@/lib/activity-details';
 import { randomInt, timingSafeEqual } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
@@ -362,7 +363,7 @@ export async function logPastSession(input: z.input<typeof pastSchema>): Promise
   const ctx = await couple();
   const p = pastSchema.safeParse(input);
   if (!p.success) return fail(p.error.issues[0]?.message ?? 'Invalid input');
-  const d = p.data;
+  const d = {...p.data,...activityDetails(p.data.kind??'intercourse',p.data)};
   if (new Date(d.startedAt).getTime() > Date.now() + 5 * 60_000) return fail('That’s in the future — use the live timer instead 😉');
   const loc = await locationFields(d.useLocation, d.gps);
   const dur = Math.round(d.durationMin * 60);

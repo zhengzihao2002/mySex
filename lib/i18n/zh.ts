@@ -1,6 +1,23 @@
 // Simplified Chinese. Keys are the English UI text (see lib/i18n/core.ts).
 // Run `node scripts/check-i18n.mjs --missing` to find untranslated keys.
 export const zh: Record<string, string> = {
+  "Positions": "姿势",
+  "Who received?": "谁接受了口交？",
+  "Pace & mood": "节奏与氛围",
+  "Extras": "加点花样",
+  "Setting": "场景",
+  "Taking turns": "轮流",
+  "Lying down": "躺着",
+  "Gentle": "温柔",
+  "Teasing": "挑逗",
+  "Eye contact": "眼神交流",
+  "Previously recorded": "原有记录",
+  "{n} selected": "已选 {n} 项",
+  "Search activities": "搜索活动",
+  "Close activity search": "关闭活动搜索",
+  "Find a position, mood, or extra…": "搜索姿势、氛围或花样…",
+  "No matching activities.": "没有匹配的活动。",
+  "Up to {n} selections": "最多选择 {n} 项",
   "Read-only · calculated from saved details": "仅供查看 · 根据已保存的记录自动计算",
   "Time breakdown": "时长明细",
   "New map location": "新的地图位置",

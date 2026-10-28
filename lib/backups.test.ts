@@ -53,15 +53,16 @@ test('completing a recording preserves its chosen type and location, freezes at 
     latitude=40,longitude=-74,geo_source='gps',city='Captured area',
     breaks='[{"start":"2026-10-01T10:05:00Z","end":"2026-10-01T10:07:00Z"},{"start":"2026-10-01T10:15:00Z","end":null}]'
     where id=$1`,[sessionId]);
-  const details={kind:'intercourse',protection:'na',tags:['Massage'],hisOrgasms:1,herOrgasms:2};
+  const details={kind:'intercourse',protection:'na',tags:['Missionary','Massage','Taking turns'],hisOrgasms:1,herOrgasms:2};
   assert.equal(await completeRecording(client,{coupleId:'10000000-0000-4000-8000-000000000002',isHer:false},sessionId,details),false);
   assert.equal(await completeRecording(client,{coupleId,isHer:false},sessionId,details),true);
   const saved=(await pg.query<any>('select * from sessions where id=$1',[sessionId])).rows[0];
   assert.equal(saved.kind,'oral');assert.equal(saved.city,'Captured area');assert.equal(saved.latitude,40);assert.equal(saved.longitude,-74);
+  assert.equal(saved.protection,null);assert.deepEqual(saved.tags,['Massage','Taking turns']);
   assert.equal(saved.duration_sec,780);assert.equal(saved.paused_sec,120);assert.equal(saved.breaks.length,1);
   assert.equal(new Date(saved.ended_at).toISOString(),'2026-10-01T10:15:00.000Z');
   assert.equal(await completeRecording(client,{coupleId,isHer:false},sessionId,{...details,protection:'condom'}),false);
-  assert.equal((await pg.query<any>('select protection from sessions where id=$1',[sessionId])).rows[0].protection,'na');
+  assert.equal((await pg.query<any>('select protection from sessions where id=$1',[sessionId])).rows[0].protection,null);
 });
 test('signed backup verification rejects tampering, legacy exports, another account and another partnership',()=> {
   const b=backup();const signed={...b,signature:signBackup(b,secret)};
