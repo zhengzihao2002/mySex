@@ -1,6 +1,14 @@
 // Simplified Chinese. Keys are the English UI text (see lib/i18n/core.ts).
 // Run `node scripts/check-i18n.mjs --missing` to find untranslated keys.
 export const zh: Record<string, string> = {
+  "This request changed. Refresh your inbox and review the latest changes.": "申请内容已更新，请刷新收件箱并查看最新修改。",
+  "Use saved location": "恢复已保存的位置",
+  "Inbox items are deleted from the database after 7 days. Unanswered requests are cancelled without changing the record. Handled requests and read replies are deleted sooner.": "收件箱内容会在 7 天后从数据库中删除。未处理的申请会自动取消，原记录保持不变。已处理的申请和已读回复会提前删除。",
+  "Expired — cancelled": "已过期，已取消",
+  "Expires in {n} min": "将在 {n} 分钟后过期",
+  "Expires in {n} hours": "将在 {n} 小时后过期",
+  "Expires in {n} days": "将在 {n} 天后过期",
+
   "Zoom in": "放大",
   "Zoom out": "缩小",
   "OpenStreetMap": "开放街图",

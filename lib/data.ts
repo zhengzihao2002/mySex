@@ -125,7 +125,7 @@ export async function getSessions(coupleId: string): Promise<SexSession[]> {
   const rows = await sql`
     select s.*, (select coalesce(jsonb_agg(jsonb_build_object('userId',f.user_id,'feeling',f.feeling,'rating',f.rating,'highlight',f.highlight,'repeatChoice',f.repeat_choice)), '[]'::jsonb) from session_feelings f where f.session_id=s.id) as feelings, (select jsonb_build_object('id', r.id, 'requestedBy', r.requested_by)
       from session_deletion_requests r where r.session_id = s.id and r.couple_id = s.couple_id and r.status = 'pending') as deletion_request,
-      (select jsonb_build_object('id', e.id, 'requestedBy', e.requested_by) from session_edit_requests e where e.session_id = s.id and e.couple_id = s.couple_id) as edit_request
+      (select jsonb_build_object('id', e.id, 'requestedBy', e.requested_by, 'createdAt', e.created_at, 'proposed', e.proposed) from session_edit_requests e where e.session_id = s.id and e.couple_id = s.couple_id) as edit_request
     from sessions s where s.couple_id = ${coupleId} order by s.started_at desc`;
   // Repair one legacy/missing precise-location name per view; a global gate limits external requests.
   const unnamed = rows.find(r => (r.geo_source === 'gps' || r.geo_source === 'map') && !r.gps_named_at && r.latitude != null && r.longitude != null);
@@ -295,7 +295,7 @@ export async function getInboxSnapshot(coupleId: string, userId: string) {
     union all
     select id, 'edited', true from session_edit_notices where couple_id = ${coupleId} and recipient_id = ${userId}
     union all
-    select id, 'edit-pending', recipient_id = ${userId} from session_edit_requests where couple_id = ${coupleId}
+    select id, 'edit-pending:' || md5(proposed::text), recipient_id = ${userId} from session_edit_requests where couple_id = ${coupleId}
       and (recipient_id = ${userId} or requested_by = ${userId})
     union all
     select id, status, true from session_edit_outcomes where couple_id = ${coupleId} and recipient_id = ${userId}

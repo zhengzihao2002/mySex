@@ -59,7 +59,7 @@ export type SexSession = {
   breaks: Break[];
   feelings?: {userId:string;feeling:string;rating:number|null;highlight:string;repeatChoice:'yes'|'maybe'|'no'|null}[];
   deletionRequest?: { id: string; requestedBy: string } | null;
-  editRequest?: { id: string; requestedBy: string } | null;
+  editRequest?: { id: string; requestedBy: string; createdAt?: string; proposed?: NonNullable<SessionEditRequest['proposed']> } | null;
 };
 
 export type SessionDeletionRequest = {

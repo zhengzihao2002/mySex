@@ -138,3 +138,76 @@ test('declining, withdrawing, or expiring a map edit preserves the original pin'
   assert.equal(await respondToSessionEdit(client,her,id,'approved'),'expired');
   assert.equal((await row()).latitude,40);assert.equal((await row()).geo_source,'gps');
 });
+
+const personal={hisRating:4,herRating:3,hisNotes:'Mine',herNotes:'Hers',hisOrgasms:1,herOrgasms:2};
+test('repeated submissions use one request and retain its original seven-day deadline',async()=>{
+  await submitSessionChanges(client,him,sessionId,version,personal,proposal);
+  const first=(await pg.query<any>('select * from session_edit_requests')).rows[0];
+  await pg.query("update session_edit_requests set created_at=now()-interval '6 days'");
+  const created=(await pg.query<any>('select created_at from session_edit_requests')).rows[0].created_at;
+  const v=new Date((await row()).updated_at).toISOString();
+  await submitSessionChanges(client,him,sessionId,v,personal,{...proposal,place:'Newest'});
+  const all=(await pg.query<any>('select * from session_edit_requests')).rows;
+  assert.equal(all.length,1);assert.equal(all[0].id,first.id);assert.equal(all[0].proposed.place,'Newest');
+  assert.deepEqual(all[0].created_at,created);
+  assert.equal((await pg.query('select 1 from session_edit_outcomes')).rows.length,0);
+});
+
+test('either partner can save personal entries without invalidating the pending shared change',async()=>{
+  await submitSessionChanges(client,him,sessionId,version,personal,proposal);
+  const [{id}]=await pending();
+  let v=new Date((await row()).updated_at).toISOString();
+  assert.equal(await submitSessionChanges(client,him,sessionId,v,{...personal,hisNotes:'Updated'},null),true);
+  v=new Date((await row()).updated_at).toISOString();
+  assert.equal(await submitSessionChanges(client,her,sessionId,v,{...personal,herNotes:'Partner updated'},null),true);
+  assert.equal((await pending()).length,1);
+  assert.equal(await respondToSessionEdit(client,her,id,'approved'),'approved');
+  assert.equal((await row()).place,'Hotel');
+  assert.equal((await pg.query('select 1 from session_edit_outcomes')).rows.length,1);
+});
+
+test('restoring all original shared values removes the request while keeping personal changes',async()=>{
+  await submitSessionChanges(client,him,sessionId,version,personal,proposal);
+  const v=new Date((await row()).updated_at).toISOString();
+  assert.equal(await submitSessionChanges(client,him,sessionId,v,{...personal,hisNotes:'Still saved'},null,true),true);
+  assert.equal((await pending()).length,0);assert.equal((await row()).place,null);
+  assert.equal((await pg.query<any>("select feeling from session_feelings where user_id='him'")).rows[0].feeling,'Still saved');
+});
+
+test('a partner counterproposal stays one request and requires the other partner to approve it',async()=>{
+  await submitSessionChanges(client,him,sessionId,version,personal,proposal);
+  const [{id}]=await pending();const v=new Date((await row()).updated_at).toISOString();
+  assert.equal(await submitSessionChanges(client,her,sessionId,v,personal,{...proposal,place:'Counterproposal'}),true);
+  assert.equal((await pending()).length,1);assert.equal((await pending())[0].id,id);
+  assert.equal(await respondToSessionEdit(client,her,id,'approved'),null);
+  assert.equal(await respondToSessionEdit(client,him,id,'approved'),'approved');
+  assert.equal((await row()).place,'Counterproposal');
+});
+
+test('an expired edit cannot be approved even before a cleanup sweep',async()=>{
+  await requestSessionEdit(client,him,sessionId,version,proposal);
+  const [{id}]=await pending();await pg.exec("update session_edit_requests set created_at=now()-interval '7 days'");
+  assert.equal(await respondToSessionEdit(client,her,id,'approved'),null);
+  assert.equal((await row()).place,null);
+});
+
+test('a withdrawn or replaced proposal cannot be resurrected by an in-flight save',async()=>{
+  await submitSessionChanges(client,him,sessionId,version,personal,proposal);
+  const first=(await pg.query<any>('select * from session_edit_requests')).rows[0];
+  const v=new Date((await row()).updated_at).toISOString();
+  await withdrawSessionEdit(client,coupleId,'him',first.id);
+  assert.equal(await submitSessionChanges(client,him,sessionId,v,personal,proposal,true,{id:first.id,proposed:first.proposed}),false);
+  assert.equal((await pending()).length,0);
+});
+
+test('approval is bound to the proposal reviewed, so a stale inbox cannot approve a newer pin',async()=>{
+  await submitSessionChanges(client,him,sessionId,version,personal,proposal);
+  const first=(await pg.query<any>('select * from session_edit_requests')).rows[0];
+  const v=new Date((await row()).updated_at).toISOString();
+  const latest={...proposal,location:{latitude:42,longitude:-76,city:'Latest',region:null,country:'US',gpsNamedAt:null}};
+  await submitSessionChanges(client,him,sessionId,v,personal,latest);
+  assert.equal(await respondToSessionEdit(client,her,first.id,'approved',JSON.stringify(first.proposed)),null);
+  assert.equal((await row()).latitude,null);
+  assert.equal(await respondToSessionEdit(client,her,first.id,'approved',JSON.stringify(latest)),'approved');
+  assert.equal((await row()).latitude,42);
+});

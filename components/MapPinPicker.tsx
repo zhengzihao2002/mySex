@@ -4,17 +4,19 @@ import {useEffect, useId, useRef, useState} from 'react';
 import {MapPin} from 'lucide-react';
 import type {GpsCoordinates} from '@/lib/gps';
 import type {AddressPlace} from '@/lib/address-search';
+import {samePin} from '@/lib/shared-session';
 import {useT} from './I18nProvider';
 import 'leaflet/dist/leaflet.css';
 
 /** Coordinates can only be changed by placing or dragging a pin on the map. */
-export function MapPinPicker({value, onChange}: {value: GpsCoordinates | null; onChange: (pin: GpsCoordinates) => void}) {
+export function MapPinPicker({value, onChange,originalValue}: {value: GpsCoordinates | null; onChange: (pin: GpsCoordinates|null) => void;originalValue?:GpsCoordinates|null}) {
   const {t} = useT();
   const [open, setOpen] = useState(false);
   return <div className="mt-3 space-y-2">
     <button type="button" className="btn-ghost w-full" aria-expanded={open} onClick={() => setOpen(!open)}>
       <MapPin size={16}/>{open ? t('Hide map') : value ? t('Edit map pin') : t('Add map pin')}
     </button>
+    {originalValue!==undefined&&!samePin(value,originalValue)&&<button type="button" className="chip" onClick={()=>onChange(originalValue)}>{t('Use saved location')}</button>}
     {open && <InteractiveMap value={value} onChange={onChange}/>}
   </div>;
 }
@@ -34,6 +36,7 @@ function InteractiveMap({value, onChange, readOnly=false}: {value: GpsCoordinate
   const container = useRef<HTMLDivElement>(null);
   const initial = useRef(value);
   const change = useRef(onChange);
+  const syncPin=useRef<((pin:GpsCoordinates|null)=>void)|null>(null);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -46,6 +49,7 @@ function InteractiveMap({value, onChange, readOnly=false}: {value: GpsCoordinate
   const chooseAddress=useRef<((place:AddressPlace)=>void)|null>(null);
   useEffect(()=>()=>{searchRequest.current?.abort();},[]);
   useEffect(() => {change.current = onChange;}, [onChange]);
+  useEffect(()=>{initial.current=value;syncPin.current?.(value);},[value]);
   useEffect(() => {
     let disposed = false;
     const locationRequest=new AbortController();
@@ -80,6 +84,13 @@ function InteractiveMap({value, onChange, readOnly=false}: {value: GpsCoordinate
         if (notify) change.current(point);
       };
       if (pin) place(L.latLng(pin.latitude,pin.longitude), false);
+      syncPin.current=next=>{
+        if(!next){marker?.remove();marker=undefined;return;}
+        const previous=marker?.getLatLng();
+        if(previous&&samePin({latitude:previous.lat,longitude:previous.lng},next))return;
+        place(L.latLng(next.latitude,next.longitude),false);
+        map?.panTo([next.latitude,next.longitude]);
+      };
       if (!readOnly) map.on('click', (e: import('leaflet').LeafletMouseEvent) => place(e.latlng, true));
       chooseAddress.current=result=>{
         place(L.latLng(result.latitude,result.longitude),true);
@@ -90,7 +101,7 @@ function InteractiveMap({value, onChange, readOnly=false}: {value: GpsCoordinate
       observer.observe(container.current);
       setReady(true);
     }).catch(() => {if (!disposed) setError(true);});
-    return () => {disposed = true; locationRequest.abort();chooseAddress.current=null; observer?.disconnect(); map?.remove();};
+    return () => {disposed = true; locationRequest.abort();chooseAddress.current=null;syncPin.current=null; observer?.disconnect(); map?.remove();};
   }, [attempt,t,readOnly]);
   const search=async()=>{
     const address=query.trim();

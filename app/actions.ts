@@ -9,7 +9,8 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { getAuth } from '@/lib/auth/server';
-import { getCoupleContext, getViewer, hasCoupleHistory } from '@/lib/data';
+import { getCoupleContext, getViewer, hasCoupleHistory, toSession } from '@/lib/data';
+import {mergeSharedProposal, samePin, sharedFields, sharedValues, type SharedValues} from '@/lib/shared-session';
 import { db, sql } from '@/lib/db';
 import { getGpsArea } from '@/lib/gps-area';
 import { sessionLocation } from '@/lib/session-location';
@@ -397,16 +398,24 @@ const editSchema = detailsSchema.extend({
   durationMin: z.number().min(0).max(24 * 60),
   breakMin: z.number().min(0).max(24 * 60).optional(),
   version: z.string().datetime({ offset: true }),
+  sharedFields: z.array(z.enum(sharedFields)).max(sharedFields.length).optional(),
 });
 
 export async function updateSession(id:string,input:z.input<typeof editSchema>):Promise<ActionResult>{
  const ctx=await couple();const parsed=editSchema.safeParse(input);if(!parsed.success)return fail('Invalid input');const d=parsed.data;
  const rows=await sql`select * from sessions where id=${id} and couple_id=${ctx.couple.id}`;const s=rows[0];if(!s)return fail('This session is no longer available.');
- const pinChanged=!!d.mapPin && (d.mapPin.latitude!==s.latitude || d.mapPin.longitude!==s.longitude);
+ const current=toSession(s);
+ const pendingRows=await sql`select id,proposed,requested_by from session_edit_requests where session_id=${id} and couple_id=${ctx.couple.id}`;
+ const existing=pendingRows[0]?.proposed??null;
+ const fields=d.sharedFields??sharedFields.filter(key=>key!=='location'||d.mapPin!==undefined);
+ const pinChanged=fields.includes('location')&&!!d.mapPin && !samePin(d.mapPin,sharedValues(current).location);
  const area=pinChanged?await getGpsArea(db(),d.mapPin!):null;
- const changed=pinChanged || (d.kind??s.kind)!==s.kind || Date.parse(d.startedAt)!==new Date(s.started_at).getTime() || Math.round(d.durationMin*60)!==(s.duration_sec??0) || Math.round((d.breakMin??0)*60)!==s.paused_sec || (d.place||null)!==(s.place||null) || (d.protection??null)!==(s.protection||null) || JSON.stringify([...(d.tags??[])].sort())!==JSON.stringify([...(s.tags??[])].sort());
- const proposal=changed?{kind:d.kind,startedAt:d.startedAt,durationMin:d.durationMin,breakMin:d.breakMin??0,place:d.place||null,protection:d.protection??null,tags:d.tags??[],rating:s.rating,hisOrgasms:s.his_orgasms,herOrgasms:s.her_orgasms,notes:s.notes,...(pinChanged?{location:{...d.mapPin!,city:area?.city??null,region:area?.region??null,country:area?.country??null,gpsNamedAt:area?new Date().toISOString():null}}:{})}:null;
- if(!await submitSessionChanges(db(),{coupleId:ctx.couple.id,userId:ctx.me.userId,partnerId:ctx.partner.userId},id,d.version,{...d,hisOrgasms:d.hisOrgasms??null,herOrgasms:d.herOrgasms??null},proposal))return fail('Your partner just changed this session — close it and reopen to see their changes.');
+ const values:SharedValues={kind:d.kind??s.kind,startedAt:d.startedAt,durationMin:d.durationMin,breakMin:d.breakMin??0,place:d.place||null,protection:d.protection??null,tags:d.tags??[],
+   location:pinChanged?{...d.mapPin!,city:area?.city??null,region:area?.region??null,country:area?.country??null,gpsNamedAt:area?new Date().toISOString():null}:sharedValues(current).location};
+ // Only touched fields replace earlier proposals. Other pending fields survive another save.
+ const patch=Object.fromEntries(fields.map(key=>[key,values[key]]));
+ const proposal=mergeSharedProposal(current,existing,patch);
+ if(!await submitSessionChanges(db(),{coupleId:ctx.couple.id,userId:ctx.me.userId,partnerId:ctx.partner.userId},id,d.version,{...d,hisOrgasms:d.hisOrgasms??null,herOrgasms:d.herOrgasms??null},proposal,fields.length>0,pendingRows[0]?{id:pendingRows[0].id,proposed:existing}:null))return fail('Your partner just changed this session — close it and reopen to see their changes.');
  return done();
 }
 
@@ -437,10 +446,12 @@ export async function cancelDeletionRequest(id: string): Promise<ActionResult> {
   return done();
 }
 
-export async function respondToEditRequest(id: string, decision: 'approved' | 'declined'): Promise<ActionResult> {
+export async function respondToEditRequest(id: string, decision: 'approved' | 'declined', expectedProposal?:string): Promise<ActionResult> {
   const ctx = await couple();
   if (!z.uuid().safeParse(id).success || !['approved', 'declined'].includes(decision)) return fail('Invalid input');
-  const status = await respondToSessionEdit(db(), { coupleId: ctx.couple.id, userId: ctx.me.userId, partnerId: ctx.partner.userId }, id, decision);
+  if(!expectedProposal||expectedProposal.length>20000)return fail('This request changed. Refresh your inbox and review the latest changes.');
+  try{JSON.parse(expectedProposal);}catch{return fail('Invalid input');}
+  const status = await respondToSessionEdit(db(), { coupleId: ctx.couple.id, userId: ctx.me.userId, partnerId: ctx.partner.userId }, id, decision,expectedProposal);
   if (!status) return fail('This request is no longer pending or is not addressed to you.');
   return done();
 }

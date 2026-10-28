@@ -107,12 +107,30 @@ test('foreground touches preserve sign-in time and do not add login events', asy
   assert.equal((await rows('login_events')).length, 1);
 });
 
-test('maintenance keeps pending inbox requests, including older than seven days', async () => {
-  await pg.query(`insert into session_deletion_requests
-    (couple_id,session_id,requested_by,recipient_id,session_version,session_started_at,session_kind,created_at)
-    values ($1,$2,'me','partner',now(),now(),'intercourse',now()-interval '30 days')`, [coupleId,sessionId]);
+test('every foreground sweep physically removes all expired inbox types but preserves records and fresh items', async () => {
+  for(const age of ['8 days','6 days']) {
+    await pg.query(`insert into session_deletion_requests
+      (couple_id,session_id,requested_by,recipient_id,session_version,session_started_at,session_kind,created_at,status)
+      values ($1,$2,'me','partner',now(),now(),'intercourse',now()-$3::interval,'declined')`, [coupleId,sessionId,age]);
+    await pg.query(`insert into session_edit_requests(couple_id,session_id,requested_by,recipient_id,session_version,proposed,created_at)
+      values ($1,$2,'me','partner',now(),'{}',now()-$3::interval) on conflict(session_id) do nothing`,[coupleId,sessionId,age]);
+    for(const table of ['session_deletion_outcomes','session_edit_outcomes'])await pg.query(`insert into ${table}
+      (id,couple_id,session_id,requested_by,recipient_id,session_started_at,session_kind,status,created_at)
+      values (gen_random_uuid(),$1,$2,'me','partner',now(),'intercourse','declined',now()-$3::interval)`,[coupleId,sessionId,age]);
+    await pg.query(`insert into session_edit_notices(couple_id,session_id,edited_by,recipient_id,created_at)
+      values ($1,$2,'me','partner',now()-$3::interval)`,[coupleId,sessionId,age]);
+  }
   await cleanupExpiredData(client);
-  assert.equal((await rows('session_deletion_requests')).length,1);
+  for(const table of ['session_deletion_requests','session_deletion_outcomes','session_edit_outcomes','session_edit_notices'])
+    assert.equal((await pg.query(`select 1 from ${table}`)).rows.length,1,table);
+  assert.equal((await pg.query('select 1 from session_edit_requests')).rows.length,0);
+  assert.equal((await rows('sessions')).length,1);
+  // A pending request that expires between logins is swept even while the hourly revocation gate is closed.
+  await pg.query(`insert into session_edit_requests(couple_id,session_id,requested_by,recipient_id,session_version,proposed,created_at)
+    values ($1,$2,'me','partner',now(),'{}',now()-interval '7 days')`,[coupleId,sessionId]);
+  await cleanupExpiredData(client);
+  assert.equal((await pg.query('select 1 from session_edit_requests')).rows.length,0);
+  assert.equal((await pg.query('select 1 from session_edit_outcomes')).rows.length,1); // No new expiry reply that survives the deadline.
 });
 
 test('cleanup removes expired anonymous markers and throttles repeated database sweeps', async () => {

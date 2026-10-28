@@ -61,6 +61,7 @@ export async function respondToSessionDeletion(
          where r.id = ${requestId} and r.couple_id = ${coupleId} and r.status = 'pending'
              and r.recipient_id = ${userId} and r.requested_by = ${partnerId}
            and r.requested_by <> ${userId} and c.unpaired_at is null
+           and r.created_at > now() - interval '7 days'
            and ((c.male_id = me.user_id and c.female_id = partner.user_id)
              or (c.female_id = me.user_id and c.male_id = partner.user_id))
          for update of r
@@ -99,7 +100,7 @@ export async function discardDraft(client: Client, coupleId: string, sessionId: 
 export async function withdrawDeletion(client: Client, coupleId: string, userId: string, id: string) {
   const rows = await client`with removed as (
     delete from session_deletion_requests where id = ${id} and couple_id = ${coupleId}
-      and requested_by = ${userId} and status = 'pending' returning *
+      and requested_by = ${userId} and status = 'pending' and created_at > now() - interval '7 days' returning *
   ) insert into session_deletion_outcomes(id,couple_id,session_id,requested_by,recipient_id,session_started_at,session_kind,status)
     select id,couple_id,session_id,requested_by,recipient_id,session_started_at,session_kind,'cancelled' from removed returning id`;
   return rows.length > 0;

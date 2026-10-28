@@ -162,12 +162,12 @@ test('a failed deletion rolls back the approval and leaves the request pending',
   }
 });
 
-test('pending requests no longer expire after seven days', async () => {
+test('a month-old pending request cannot authorize deletion', async () => {
   const id = await request();
   await pg.query("update session_deletion_requests set created_at = now() - interval '30 days' where id = $1", [id]);
-  assert.equal(await respondToSessionDeletion(client, her, id, 'approved'), 'approved');
-  assert.equal(await exists(), false);
-  assert.equal((await pg.query('select * from session_deletion_requests')).rows.length, 0);
+  assert.equal(await respondToSessionDeletion(client, her, id, 'approved'), null);
+  assert.equal(await exists(), true);
+  assert.equal((await pg.query('select * from session_deletion_requests')).rows.length, 1); // Foreground cleanup removes the expired row.
 });
 
 test('handled requests disappear immediately; only the recipient can delete the unread outcome', async () => {
@@ -212,4 +212,12 @@ test('approved deletion leaves only an opaque restore-blocking hash after the re
   assert.equal(rows.length,1);
   assert.deepEqual(Object.keys(rows[0]),['key_hash']);
   assert.match(rows[0].key_hash,/^[0-9a-f]{64}$/);
+});
+
+test('a deletion request cannot delete its record after the seven-day deadline',async()=>{
+  const id=await request();
+  await pg.exec("update session_deletion_requests set created_at=now()-interval '7 days'");
+  assert.equal(await respondToSessionDeletion(client,her,id,'approved'),null);
+  assert.equal((await pg.query('select 1 from sessions where id=$1',[sessionId])).rows.length,1);
+  assert.equal((await pg.query('select 1 from session_deletion_outcomes')).rows.length,0);
 });

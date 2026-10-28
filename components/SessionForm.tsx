@@ -10,6 +10,7 @@ import { KindPicker } from './KindPicker';
 import {MapPinPicker} from './MapPinPicker';
 import type {GpsCoordinates} from '@/lib/gps';
 import type { SessionKind } from '@/lib/types';
+import {samePin, sharedFields, sameSharedField, type SharedValues, type SharedField} from '@/lib/shared-session';
 
 export type SessionFormValues = {
   kind: SessionKind;
@@ -27,6 +28,7 @@ export type SessionFormValues = {
   tags: string[];
   notes: string;
   hisRating:number|null;herRating:number|null;hisNotes:string;herNotes:string;
+  sharedFields?:SharedField[];
 };
 
 export function toLocalInput(d: Date) {
@@ -48,6 +50,7 @@ export function SessionForm({
   exactTiming,
   draftValues,
   onDraftChange,
+  originalPin,
 }: {
   mode: 'finish' | 'past' | 'edit';
   initial?: Partial<SessionFormValues>;
@@ -60,6 +63,7 @@ export function SessionForm({
   exactTiming?:{durationSec:number;breakSec:number};
   draftValues?:SessionFormValues;
   onDraftChange?:(values:SessionFormValues)=>void;
+  originalPin?:GpsCoordinates|null;
 }) {
   const { t, f } = useT();
   const [v, setV] = useState<SessionFormValues>({
@@ -84,14 +88,18 @@ export function SessionForm({
   const set = <K extends keyof SessionFormValues>(k: K, val: SessionFormValues[K]) => setV((s) => ({ ...s, [k]: val }));
 
   const base=initial;
-  const sharedChanged=mode==='edit' && !!base && (v.mapPin?.latitude!==base.mapPin?.latitude || v.mapPin?.longitude!==base.mapPin?.longitude || v.kind!==base.kind || Date.parse(v.startedAt)!==Date.parse(base.startedAt!) || Math.round(v.durationMin*60)!==Math.round((base.durationMin??0)*60) || Math.round(v.breakMin*60)!==Math.round((base.breakMin??0)*60) || v.place!==(base.place??'') || v.protection!==(base.protection??null) || JSON.stringify([...v.tags].sort())!==JSON.stringify([...(base.tags??[])].sort()));
+  const changedFields=mode==='edit'&&base?sharedFields.filter(key=>{
+    if(key==='location')return !samePin(v.mapPin,base.mapPin);
+    return !sameSharedField(key,v[key] as SharedValues[SharedField],base[key] as SharedValues[SharedField]);
+  }):[];
+  const sharedChanged=changedFields.length>0;
   return (
     <form
       className="space-y-5"
       data-session-editor={mode === 'edit' ? '' : undefined}
       onSubmit={(e) => {
         e.preventDefault();
-        onSubmit(mode==='edit' && exactTiming ? {...v,durationMin:v.durationMin===initial?.durationMin?exactTiming.durationSec/60:v.durationMin,breakMin:v.breakMin===initial?.breakMin?exactTiming.breakSec/60:v.breakMin}:v);
+        onSubmit(mode==='edit' ? {...v,sharedFields:changedFields,...(exactTiming?{durationMin:v.durationMin===initial?.durationMin?exactTiming.durationSec/60:v.durationMin,breakMin:v.breakMin===initial?.breakMin?exactTiming.breakSec/60:v.breakMin}:{})}:v);
       }}
     >
       <KindPicker value={v.kind} onChange={(k) => set('kind', k)} />
@@ -180,7 +188,7 @@ export function SessionForm({
             ))}
           </div>
         )}
-        {mode === 'edit' && <MapPinPicker value={v.mapPin} onChange={pin => set('mapPin',pin)}/>}
+        {mode === 'edit' && <MapPinPicker value={v.mapPin} originalValue={originalPin} onChange={pin => set('mapPin',pin)}/>}
       </div>
 
       {mode === 'past' && (

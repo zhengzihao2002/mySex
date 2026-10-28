@@ -267,6 +267,10 @@ create table if not exists session_edit_outcomes (
   created_at         timestamptz not null default now()
 );
 create index if not exists session_edit_outcomes_recipient on session_edit_outcomes (couple_id, recipient_id);
+-- Every authenticated visit sweeps the seven-day inbox limit.
+create index if not exists session_edit_requests_expiry on session_edit_requests(created_at);
+create index if not exists session_edit_outcomes_expiry on session_edit_outcomes(created_at);
+create index if not exists session_deletion_outcomes_expiry on session_deletion_outcomes(created_at);
 
 -- Each person owns their account of a session. Shared session deletion cascades to both.
 create table if not exists session_feelings (

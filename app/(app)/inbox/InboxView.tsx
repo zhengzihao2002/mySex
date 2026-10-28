@@ -1,19 +1,19 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Check, ChevronLeft, Inbox, RefreshCw } from 'lucide-react';
 import { markEditNoticeRead, cancelEditRequest, markEditOutcomeRead, respondToEditRequest, cancelDeletionRequest, markDeletionRequestRead, respondToDeletionRequest } from '@/app/actions';
 import { FormError } from '@/components/FormError';
-import {MapPinPreview} from '@/components/MapPinPicker';
+import {SessionEditDiff} from '@/components/SessionEditDiff';
+import {inboxTimeLeft,inboxUrgent} from '@/lib/inbox-retention';
 import { useT } from '@/components/I18nProvider';
 import { KIND_META } from '@/components/KindPicker';
 import { Sheet } from '@/components/Sheet';
 import { useTz } from '@/components/TzProvider';
 import { useRun } from '@/components/useRun';
 import { dayInTz } from '@/lib/tz';
-import { PROTECTION } from '@/lib/content';
 import type { SessionDeletionRequest, SessionEditNotice, SessionEditRequest } from '@/lib/types';
 
 export function InboxView({ requests, notices, edits, meId, partnerName }: {
@@ -22,6 +22,9 @@ export function InboxView({ requests, notices, edits, meId, partnerName }: {
   const { t } = useT();
   const router = useRouter();
   const [refreshing, refresh] = useTransition();
+  const [now,setNow]=useState(()=>Date.now());
+  useEffect(()=>{const timer=setInterval(()=>setNow(Date.now()),60000);return()=>clearInterval(timer);},[]);
+  const urgentFirst=<T extends {createdAt:string}>(items:T[])=>[...items].sort((a,b)=>Number(inboxUrgent(b.createdAt,now))-Number(inboxUrgent(a.createdAt,now))||new Date(a.createdAt).getTime()-new Date(b.createdAt).getTime());
   const incoming = requests.filter((r) => r.status === 'pending' && r.recipientId === meId);
   const outgoing = requests.filter((r) => r.status === 'pending' && r.requestedBy === meId);
   const history = requests.filter((r) => r.status !== 'pending');
@@ -35,7 +38,7 @@ export function InboxView({ requests, notices, edits, meId, partnerName }: {
         </button>
       </header>
       <p className="text-sm text-ink-2">{t('Shared sessions are changed or deleted only when both of you agree. Declining keeps the record as it is and notifies the requester.')}</p>
-      <p className="text-xs text-ink-3">{t('Handled requests are deleted immediately. Unread replies and edit notices stay until you mark them read, then are deleted from the database.')}</p>
+      <p className="text-xs text-ink-3">{t('Inbox items are deleted from the database after 7 days. Unanswered requests are cancelled without changing the record. Handled requests and read replies are deleted sooner.')}</p>
       {!requests.length && !notices.length && !edits.length && (
         <div className="card py-10 text-center text-ink-3">
           <Inbox className="mx-auto mb-3" size={30} />
@@ -43,8 +46,8 @@ export function InboxView({ requests, notices, edits, meId, partnerName }: {
           <p className="mt-1 text-sm">{t('Deletion requests and your partner’s replies will appear here.')}</p>
         </div>
       )}
-      {edits.length > 0 && <section className="space-y-3"><h2 className="px-1 text-sm font-semibold text-ink-2">{t('Edit requests')} · {edits.length}</h2>{edits.map(e => <EditRequestCard key={e.id} edit={e} meId={meId} partnerName={partnerName} />)}</section>}
-      {notices.length > 0 && <section className="space-y-3"><h2 className="px-1 text-sm font-semibold text-ink-2">{t('Shared record updates')}</h2>{notices.map(n => <EditNotice key={n.id} notice={n} partnerName={partnerName} />)}</section>}
+      {edits.length > 0 && <section className="space-y-3"><h2 className="px-1 text-sm font-semibold text-ink-2">{t('Edit requests')} · {edits.length}</h2>{urgentFirst(edits).map(e => <EditRequestCard key={e.id} edit={e} meId={meId} partnerName={partnerName} now={now}/>)}</section>}
+      {notices.length > 0 && <section className="space-y-3"><h2 className="px-1 text-sm font-semibold text-ink-2">{t('Shared record updates')}</h2>{urgentFirst(notices).map(n => <EditNotice key={n.id} notice={n} partnerName={partnerName} now={now}/>)}</section>}
       {[
         { title: t('Needs your agreement'), items: incoming },
         { title: t('Waiting for your partner'), items: outgoing },
@@ -52,15 +55,15 @@ export function InboxView({ requests, notices, edits, meId, partnerName }: {
       ].filter((group) => group.items.length).map((group) => (
         <section key={group.title} className="space-y-3">
           <h2 className="px-1 text-sm font-semibold text-ink-2">{group.title} · {group.items.length}</h2>
-          {group.items.map((r) => <RequestCard key={r.id} request={r} meId={meId} partnerName={partnerName} />)}
+          {urgentFirst(group.items).map((r) => <RequestCard key={r.id} request={r} meId={meId} partnerName={partnerName} now={now}/>)}
         </section>
       ))}
     </div>
   );
 }
 
-function RequestCard({ request: r, meId, partnerName }: {
-  request: SessionDeletionRequest; meId: string; partnerName: string;
+function RequestCard({ request: r, meId, partnerName, now }: {
+  request: SessionDeletionRequest; meId: string; partnerName: string; now:number;
 }) {
   const { t, f } = useT();
   const { tz } = useTz();
@@ -77,7 +80,8 @@ function RequestCard({ request: r, meId, partnerName }: {
     expired: t('The session changed after the request. Nothing was deleted. A new request is needed.'),
   }[r.status];
   return (
-    <article className={`card space-y-3 ${unread ? 'border-rose/60' : ''}`}>
+    <article className={`card space-y-3 ${inboxUrgent(r.createdAt,now)?'border-menstrual ring-1 ring-menstrual/40':unread ? 'border-rose/60' : ''}`}>
+      <InboxExpiry createdAt={r.createdAt} now={now}/>
       <div className="flex items-start gap-2">
         <span className="text-xl">{KIND_META[r.sessionKind].emoji}</span>
         <div className="min-w-0 flex-1">
@@ -131,11 +135,12 @@ function RequestCard({ request: r, meId, partnerName }: {
   );
 }
 
-function EditNotice({ notice: n, partnerName }: { notice: SessionEditNotice; partnerName: string }) {
+function EditNotice({ notice: n, partnerName,now }: { notice: SessionEditNotice; partnerName: string;now:number }) {
   const { t, f } = useT();
   const { tz } = useTz();
   const { run, pending, error } = useRun();
-  return <article className={`card space-y-3 ${!n.readAt ? 'border-rose/60' : ''}`}>
+  return <article className={`card space-y-3 ${inboxUrgent(n.createdAt,now)?'border-menstrual ring-1 ring-menstrual/40':!n.readAt ? 'border-rose/60' : ''}`}>
+    <InboxExpiry createdAt={n.createdAt} now={now}/>
     <p className="font-semibold">{t('{name} updated a shared session.', { name: partnerName })} {!n.readAt && <span className="text-xs text-rose-2">{t('New')}</span>}</p>
     <p className="text-xs text-ink-3">{f.dateTimeInTz(n.createdAt, tz)}</p>
     <details className="rounded-2xl bg-surface-2 p-3 text-sm"><summary className="cursor-pointer">{t('Review current session')}</summary>
@@ -150,7 +155,7 @@ function EditNotice({ notice: n, partnerName }: { notice: SessionEditNotice; par
   </article>;
 }
 
-function EditRequestCard({ edit: e, meId, partnerName }: { edit: SessionEditRequest; meId: string; partnerName: string }) {
+function EditRequestCard({ edit: e, meId, partnerName,now }: { edit: SessionEditRequest; meId: string; partnerName: string;now:number }) {
   const { t, f } = useT();
   const { tz } = useTz();
   const { run, pending, error } = useRun();
@@ -158,18 +163,6 @@ function EditRequestCard({ edit: e, meId, partnerName }: { edit: SessionEditRequ
   const answered = e.status !== 'pending';
   const s = e.session;
   const p = e.proposed;
-  const dash = '–';
-  const min = (sec: number) => f.formatDuration(Math.round(sec));
-  const protectionLabel = (k: string | null) => { const x = PROTECTION.find((q) => q.key === k); return x ? `${x.emoji} ${t(x.label)}` : dash; };
-  const rows: [string, string, string][] = p ? [
-    [t('Type'), t(KIND_META[s.kind].label), t(KIND_META[p.kind ?? s.kind].label)],
-    [t('When'), f.dateTimeInTz(s.startedAt, tz), f.dateTimeInTz(p.startedAt, tz)],
-    [t('Active time'), min(s.durationSec ?? 0), min(p.durationMin * 60)],
-    [t('Breaks'), min(s.pausedSec ?? 0), min(p.breakMin * 60)],
-    [t('Where'), s.place || dash, p.place || dash],
-    [t('Protection'), protectionLabel(s.protection), protectionLabel(p.protection)],
-    [t('What went down'), s.tags.map((x) => t(x)).join(', ') || dash, p.tags.map((x) => t(x)).join(', ') || dash],
-  ].filter((r): r is [string, string, string] => r[1] !== r[2]) : [];
   const status = {
     pending: mine ? t('Personal entries are saved. Shared changes wait for your partner’s agreement.') : t('{name} wants to change this session.', { name: partnerName }),
     approved: t('{name} agreed. The change was applied.', { name: partnerName }),
@@ -178,7 +171,8 @@ function EditRequestCard({ edit: e, meId, partnerName }: { edit: SessionEditRequ
     expired: t('The session changed after the request. Nothing was applied. Send the change again.'),
   }[e.status];
   return (
-    <article className={`card space-y-3 ${answered || !mine ? 'border-rose/60' : ''}`}>
+    <article className={`card space-y-3 ${inboxUrgent(e.createdAt,now)?'border-menstrual ring-1 ring-menstrual/40':answered || !mine ? 'border-rose/60' : ''}`}>
+      <InboxExpiry createdAt={e.createdAt} now={now}/>
       <div className="flex items-start gap-2">
         <span className="text-xl">{KIND_META[s.kind].emoji}</span>
         <div className="min-w-0 flex-1">
@@ -187,31 +181,25 @@ function EditRequestCard({ edit: e, meId, partnerName }: { edit: SessionEditRequ
         </div>
       </div>
       <p className="text-sm text-ink-2" role={answered ? 'status' : undefined}>{status}</p>
-      {p && (
-        <div className="space-y-2 rounded-2xl bg-surface-2 p-3 text-sm">
-          {rows.length ? rows.map(([label, from, to]) => (
-            <div key={label}>
-              <p className="text-xs text-ink-3">{label}</p>
-              <p className="break-words whitespace-pre-wrap"><span className="text-ink-3 line-through">{from}</span> → <b>{to}</b></p>
-            </div>
-          )) : !p.location && <p className="text-ink-3">{t('No visible differences.')}</p>}
-          {p.location && <div className="space-y-3">
-            <div><p className="text-xs text-ink-3">{t('Current location')}</p><p>{[s.city,s.region,s.country].filter(Boolean).join(', ') || (s.latitude!=null?t('Unnamed map location'):t('No recorded location'))}</p>{s.latitude!=null&&s.longitude!=null&&<MapPinPreview value={{latitude:s.latitude,longitude:s.longitude}}/>}</div>
-            <p aria-hidden="true" className="text-rose-2">↓</p>
-            <div><p className="text-xs text-ink-3">{t('Proposed location')}</p><p>{[p.location.city,p.location.region,p.location.country].filter(Boolean).join(', ') || t('Unnamed map location')}</p><MapPinPreview value={p.location}/></div>
-          </div>}
-        </div>
-      )}
+      {p&&<SessionEditDiff session={s} proposed={p}/>}
       {!answered && (mine ? (
         <button className="btn-ghost w-full" disabled={pending} onClick={() => run(() => cancelEditRequest(e.id))}>{t('Withdraw change')}</button>
       ) : (
         <div className="grid grid-cols-2 gap-2">
-          <button className="btn-ghost" disabled={pending} onClick={() => run(() => respondToEditRequest(e.id, 'declined'))}>{t('Decline & keep')}</button>
-          <button className="btn-primary" disabled={pending} onClick={() => run(() => respondToEditRequest(e.id, 'approved'))}>{t('Agree to change')}</button>
+          <button className="btn-ghost" disabled={pending} onClick={() => run(() => respondToEditRequest(e.id, 'declined',JSON.stringify(p)))}>{t('Decline & keep')}</button>
+          <button className="btn-primary" disabled={pending} onClick={() => run(() => respondToEditRequest(e.id, 'approved',JSON.stringify(p)))}>{t('Agree to change')}</button>
         </div>
       ))}
       {answered && <button className="btn-ghost w-full" disabled={pending} onClick={() => run(() => markEditOutcomeRead(e.id))}><Check size={16} /> {t('Mark read')}</button>}
       <FormError error={error} />
     </article>
   );
+}
+
+function InboxExpiry({createdAt,now}:{createdAt:string;now:number}) {
+  const {t}=useT();
+  const remaining=inboxTimeLeft(createdAt,now);
+  const urgent=inboxUrgent(createdAt,now);
+  const label=remaining===0?t('Expired — cancelled'):remaining<=3600000?t('Expires in {n} min',{n:Math.ceil(remaining/60000)}):urgent?t('Expires in {n} hours',{n:Math.ceil(remaining/3600000)}):t('Expires in {n} days',{n:Math.ceil(remaining/86400000)});
+  return <p className={urgent?'inline-flex rounded-full bg-menstrual/20 px-2.5 py-1 text-xs font-bold text-menstrual':'text-xs text-ink-3'}>{urgent&&<span aria-hidden="true">⚠︎&nbsp;</span>}{label}</p>;
 }

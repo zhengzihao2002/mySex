@@ -22,6 +22,8 @@ import { useTz } from './TzProvider';
 import { useRun } from './useRun';
 import { LocationPin } from './LocationPin';
 import { FormError } from './FormError';
+import {SessionEditDiff} from './SessionEditDiff';
+import {sharedValues} from '@/lib/shared-session';
 
 export function SessionCard({
   s,
@@ -45,6 +47,8 @@ export function SessionCard({
   const close=()=>{if(draft?.current?.sessionId===s.id)draft.current=null;setOpen(false);};
   const viewer=useSessionViewer();
   const experience={...viewer,reviews:s.feelings??[]};
+  const proposal=s.editRequest?.proposed;
+  const editor=sharedValues(s,proposal);
   const [confirm, setConfirm] = useState(false);
   const { run, pending, error } = useRun();
   const where = s.place || [s.city, s.region].filter(Boolean).join(', ');
@@ -103,7 +107,10 @@ export function SessionCard({
         </div>
         <SessionPersonality tags={s.tags} />
         {s.editRequest && (
-          <Link href="/inbox" className="btn-ghost mb-4 w-full">{t('A change to this session is waiting for agreement — open Inbox')}</Link>
+          <div className="mb-4 space-y-3">
+            {proposal&&<SessionEditDiff session={s} proposed={proposal}/>}
+            <Link href="/inbox" className="btn-ghost w-full">{t('A change to this session is waiting for agreement — open Inbox')}</Link>
+          </div>
         )}
         {open && experience && (
           <SessionForm
@@ -111,24 +118,25 @@ export function SessionCard({
             draftValues={remembered}
             onDraftChange={values=>{if(draft)draft.current={sessionId:s.id,version:s.updatedAt,values};}}
             isHer={experience.isHer}
-            exactTiming={{durationSec:s.durationSec??0,breakSec:s.pausedSec}}
+            exactTiming={{durationSec:Math.round(editor.durationMin*60),breakSec:Math.round(editor.breakMin*60)}}
+            originalPin={s.latitude!=null&&s.longitude!=null?{latitude:s.latitude,longitude:s.longitude}:null}
             places={places}
             initial={{
               hisRating:experience.reviews.find(r=>experience.isHer?r.userId!==experience.meId:r.userId===experience.meId)?.rating??null,
               herRating:experience.reviews.find(r=>experience.isHer?r.userId===experience.meId:r.userId!==experience.meId)?.rating??null,
               hisNotes:experience.reviews.filter(r=>experience.isHer?r.userId!==experience.meId:r.userId===experience.meId).map(r=>[r.feeling,r.highlight].filter(Boolean).join('\n')).join(''),
               herNotes:experience.reviews.filter(r=>experience.isHer?r.userId===experience.meId:r.userId!==experience.meId).map(r=>[r.feeling,r.highlight].filter(Boolean).join('\n')).join(''),
-              kind: s.kind,
-              startedAt: s.startedAt,
-              durationMin: Math.round((s.durationSec ?? 0) / 6) / 10,
-              breakMin: Math.round((s.pausedSec ?? 0) / 6) / 10,
-              place: s.place ?? '',
-              mapPin: s.latitude != null && s.longitude != null ? {latitude:s.latitude,longitude:s.longitude} : null,
+              kind: editor.kind??s.kind,
+              startedAt: editor.startedAt,
+              durationMin: Math.round(editor.durationMin*10)/10,
+              breakMin: Math.round(editor.breakMin*10)/10,
+              place: editor.place ?? '',
+              mapPin: editor.location,
               rating: s.rating,
-              protection: s.protection,
+              protection: editor.protection,
               hisOrgasms: s.hisOrgasms,
               herOrgasms: s.herOrgasms,
-              tags: s.tags,
+              tags: editor.tags,
               notes: s.notes ?? '',
             }}
             submitLabel={t('Send change for approval')}
@@ -147,6 +155,7 @@ export function SessionCard({
                   mapPin: v.mapPin ?? undefined,
                   protection: v.protection,
                   tags: v.tags,
+                  sharedFields:v.sharedFields,
                 }),
               );
               if (ok) close();

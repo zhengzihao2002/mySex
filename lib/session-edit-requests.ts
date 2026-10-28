@@ -40,7 +40,7 @@ export async function requestSessionEdit(client: Client, who: Participants, id: 
              and ((c.male_id = me.user_id and c.female_id = partner.user_id)
                or (c.female_id = me.user_id and c.male_id = partner.user_id)))
        on conflict (session_id) do update
-         set proposed = excluded.proposed, session_version = excluded.session_version, created_at = now()
+         set proposed = excluded.proposed, session_version = excluded.session_version
          where session_edit_requests.requested_by = excluded.requested_by`,
     tx`select id from session_edit_requests where session_id = ${id} and couple_id = ${coupleId}
        and requested_by = ${userId} and proposed = ${proposed}::jsonb`,
@@ -49,7 +49,7 @@ export async function requestSessionEdit(client: Client, who: Participants, id: 
 }
 
 /** Approve applies the edit in the same statement that answers it; a changed record only closes the request. */
-export async function respondToSessionEdit(client: Client, who: Participants, requestId: string, decision: 'approved' | 'declined'): Promise<string | null> {
+export async function respondToSessionEdit(client: Client, who: Participants, requestId: string, decision: 'approved' | 'declined', expectedProposal?:string): Promise<string | null> {
   const { coupleId, userId, partnerId } = who;
   const results = await client.transaction((tx) => [
     tx`select s.id from sessions s join session_edit_requests r on r.session_id = s.id
@@ -61,6 +61,8 @@ export async function respondToSessionEdit(client: Client, who: Participants, re
          join couples c on c.id = r.couple_id
          where r.id = ${requestId} and r.couple_id = ${coupleId} and r.recipient_id = ${userId}
            and r.requested_by = ${partnerId} and c.unpaired_at is null
+           and r.created_at > now() - interval '7 days'
+           and (not ${expectedProposal!==undefined} or r.proposed=${expectedProposal??'null'}::jsonb)
          for update of r
        ), resolved as (
          delete from session_edit_requests r using eligible e where r.id = e.id
