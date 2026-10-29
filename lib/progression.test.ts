@@ -21,7 +21,7 @@ test('harder v2 thresholds, exact caps, more time raises XP without changing cla
   assert.ok(sessionXp({...s,durationSec:600}).total<sessionXp({...s,durationSec:1800}).total);
   assert.equal(sessionXp({...s,status:'active'}).total,0);
   assert.equal(sessionXp({...s,durationSec:0}).total,0);
-  assert.equal(sessionXp({...s,scoreVersion:1}).total,0);
+  assert.equal(sessionXp({...s,scoreVersion:1}).total,105);
   assert.equal(sessionXp({...s,kind:'oral'}).total,0);
   assert.equal(scoreSession({...s,scoreVersion:1,durationSec:600},ctx).parts.find(p=>p.key==='duration')!.max,40);
   const old={...s,scoreVersion:1 as const,place:'Original'};
@@ -103,8 +103,8 @@ test('rank titles and thresholds stay distinct and increasingly demanding; skipp
 });
 
 
-test('level 100 requires exactly 500,000 XP with no record-count gate',()=>{
-  assert.equal(TOP_RANK_XP,500000);
+test('level 100 follows the natural curve without a fixed cap or record-count gate',()=>{
+  assert.equal(TOP_RANK_XP,499950);
   assert.equal(rankThreshold(RANKS.length-1),TOP_RANK_XP);
   assert.equal(coupleRank(TOP_RANK_XP-1).level,99);
   assert.equal(coupleRank(TOP_RANK_XP).level,100);
@@ -122,4 +122,20 @@ test('oral records and legacy oral invitations never create mission progress or 
  assert.equal(progression([{...s,kind:'oral'}],[oralRun],now).missionXp,0);
  assert.equal(progression([{...s,kind:'oral'}],[oralRun],now).quests.length,0);
  assert.equal(missionUnlocked(m('time10'),'oral',[],[],now),false);
+});
+
+
+test('classic and versionless history automatically earns XP exactly once without altering scores',()=>{
+ const classic={...s,scoreVersion:1 as const};
+ const unversioned={...s,id:'old',scoreVersion:undefined,durationSec:1200};
+ const untimed={...classic,id:'unknown-time',durationSec:null};
+ const before=scoreSession(classic,ctx);
+ const game=progression([classic,unversioned,untimed,classic],[],now);
+ assert.equal(game.recordXp,105+55+25);
+ assert.equal(game.rank.level,2);
+ assert.equal(game.missionXp,0);
+ assert.deepEqual(scoreSession(classic,ctx),before);
+ assert.equal(progression([{...untimed,kind:'oral'}],[],now).xp,0);
+ assert.equal(progression([{...classic,status:'active'}],[],now).xp,0);
+ for(let i=1;i<RANKS.length;i++)assert.equal(rankThreshold(i)-rankThreshold(i-1),150+(i-1)*100);
 });

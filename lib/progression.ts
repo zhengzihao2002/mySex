@@ -6,11 +6,11 @@ export function positionTags(s: Pick<SexSession,'kind'|'tags'>): string[] {
   return [...new Set(s.tags)].filter(tag=>allowed.has(tag));
 }
 export const endurancePoints=(seconds:number)=>Math.round(45*Math.pow(Math.min(Math.max(0,seconds)/2400,1),1.4));
-/** Derived from one canonical record, never an increment on Save. Legacy records earn no retroactive XP. */
+/** Derived from one canonical record, never an increment on Save. Historical and new completed intercourse records use the same XP rules. */
 export function sessionXp(s: Pick<SexSession,'status'|'scoreVersion'|'durationSec'|'kind'>) {
-  if(s.kind!=='intercourse'||s.status!=='done'||s.scoreVersion!==2||(s.durationSec??0)<=0)return {base:0,endurance:0,total:0};
+  if(s.kind!=='intercourse'||s.status!=='done'||(s.durationSec!=null&&s.durationSec<=0))return {base:0,endurance:0,total:0};
   const base=25;
-  const endurance=Math.round(80*Math.pow(Math.min(s.durationSec!/2400,1),1.4));
+  const endurance=Math.round(80*Math.pow(Math.min((s.durationSec??0)/2400,1),1.4));
   return {base,endurance,total:base+endurance};
 }
 // i18n:begin
@@ -117,14 +117,9 @@ export const RANKS=[
   "The Boundless Myth",
 ] as const;
 // i18n:end
-export const rankThreshold=(index:number)=>{
-  const last=RANKS.length-1;
-  const classic=50*index*index+100*index;
-  const finalClassic=50*last*last+100*last;
-  // Retain the introductory 150 XP step, then progressively widen the gaps.
-  const climb=index*index*Math.max(0,index-1)/(last*last*(last-1));
-  return Math.round((classic+(TOP_RANK_XP-finalClassic)*climb)/50)*50;
-};
+// Upgrade costs are 150, 250, 350, ... XP; every upgrade costs 100 XP more.
+export const rankThreshold=(index:number)=>50*index*index+100*index;
+export const TOP_RANK_XP=rankThreshold(RANKS.length-1);
 export function coupleRank(xp:number) {
   let index=0;while(index<RANKS.length-1&&xp>=rankThreshold(index+1))index++;
   const floor=rankThreshold(index),ceiling=index<RANKS.length-1?rankThreshold(index+1):null;
@@ -146,7 +141,6 @@ export const MISSIONS:Mission[]=[
   {key:'return',path:'rhythm',title:/*i18n*/'A favourite returns',description:/*i18n*/'Revisit the same position on three different days.',xp:150,target:3,rule:'return',requires:'days3'},
   {key:'finale',path:'finale',title:/*i18n*/'Chapter champions',description:/*i18n*/'After the three paths, record 20 active minutes and two positions in one session.',xp:300,target:1,rule:'finale'},
 ];
-export const TOP_RANK_XP=500000;
 export type MissionRun={id:string;key:string;kind:SessionKind;requestedBy:string;createdAt:string;acceptedAt:string|null;skippedAt?:string|null;timeZone:string};
 export type MissionProgress={value:number;target:number;complete:boolean;evidence:string[]};
 const timestamp=(s:string)=>new Date(s).getTime();

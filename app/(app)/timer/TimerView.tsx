@@ -89,7 +89,7 @@ export function TimerView({
             const next=[...done.filter(s=>s.id!==current.id),saved];
             const scores=scoreSessions(next,tz),s=scores.get(current.id);
             const before=progression(done,missions),after=progression(next,missions);
-            if(s)setReveal({score:s,times,reward:saved.scoreVersion===2&&saved.kind==='intercourse'?{xp:Math.max(0,after.xp-before.xp),level:after.rank.level,title:after.rank.title,levelUp:after.rank.level>before.rank.level,missions:after.quests.filter(q=>q.complete&&!before.quests.some(b=>b.run.id===q.run.id&&b.complete)).length}:undefined});
+            if(s)setReveal({score:s,times,reward:saved.kind==='intercourse'?{xp:Math.max(0,after.xp-before.xp),level:after.rank.level,title:after.rank.title,levelUp:after.rank.level>before.rank.level,missions:after.quests.filter(q=>q.complete&&!before.quests.some(b=>b.run.id===q.run.id&&b.complete)).length}:undefined});
           }}
         />
       ) : (
@@ -493,7 +493,7 @@ function LiveTimer({
         </div>
 
 
-        {session.scoreVersion===2&&session.kind==='intercourse'&&<div className="mb-2 w-full max-w-[300px] rounded-2xl border border-line bg-surface/40 px-3 py-2 text-center text-xs text-ink-2">
+        {session.kind==='intercourse'&&<div className="mb-2 w-full max-w-[300px] rounded-2xl border border-line bg-surface/40 px-3 py-2 text-center text-xs text-ink-2">
           <span className="font-semibold text-rose-2">{t('On save')}: +{liveXp.total} XP</span>
           {mission&&<p className="mt-1">{t(mission.mission.title)} · {Math.min(mission.target,Math.floor(minutes))}/{mission.target} {t('min')}{minutes>=mission.target?' ✓':''}</p>}
         </div>}

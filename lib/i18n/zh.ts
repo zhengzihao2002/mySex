@@ -1,6 +1,9 @@
 // Simplified Chinese. Keys are the English UI text (see lib/i18n/core.ts).
 // Run `node scripts/check-i18n.mjs --missing` to find untranslated keys.
 export const zh: Record<string, string> = {
+  "Each completed intercourse record earns 25 XP. Active time adds up to 80 XP: round(80 × (minutes / 40)^1.4), capped at 40 minutes. Oral records earn no XP.": "每条已完成的性交记录获得25点经验，有效时长最多增加80点：80 ×（分钟数 ÷ 40）^1.4，四舍五入，40分钟封顶。口交记录不获得经验。",
+  "Existing intercourse records count automatically. Their original session scores stay unchanged. Missing active time earns base XP only. Corrections and deletions update rewards.": "已有性交记录会自动计入经验，原有记录评分保持不变。未记录有效时长时只获得基础经验。修改或删除记录会重新计算奖励。",
+  "The first upgrade costs 150 XP. Every following upgrade costs 100 XP more than the previous one.": "首次升级需要150点经验，此后每次升级都比上一次多需要100点经验。",
   "Top rank requires {xp} XP. Only intercourse records and missions earn XP.": "最高段位需要 {xp} 点经验。只有性交记录和任务可获得经验。",
   "Heartfire Companions": "心火同行者",
   "Hidden Spark Duo": "藏焰双星",
