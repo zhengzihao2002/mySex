@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {zh} from './i18n/zh.ts';
-import {MISSIONS,RANKS,TOP_RANK_RECORD_TARGET,TOP_RANK_XP,rankThreshold,coupleRank,sessionXp,progression,missionProgress,missionUnlocked,endurancePoints,type MissionRun} from './progression.ts';
+import {MISSIONS,RANKS,TOP_RANK_XP,rankThreshold,coupleRank,sessionXp,progression,missionProgress,missionUnlocked,endurancePoints,type MissionRun} from './progression.ts';
 import {scoreSession,scoreAll} from './score.ts';
 import type {SexSession} from './types';
 const s:SexSession={id:'one',scoreVersion:2,kind:'intercourse',createdBy:'a',status:'done',startedAt:'2026-01-02T12:00:00Z',endedAt:'2026-01-02T12:40:00Z',durationSec:2400,pausedAt:null,pausedSec:0,ip:null,city:null,region:null,country:null,latitude:null,longitude:null,geoSource:null,place:null,rating:5,protection:null,hisOrgasms:1,herOrgasms:1,tags:['Missionary','Doggy','Seated'],notes:null,updatedAt:'2026-01-02T12:40:00Z',breaks:[]};
@@ -103,24 +103,19 @@ test('rank titles and thresholds stay distinct and increasingly demanding; skipp
 });
 
 
-test('highest rank needs 5000+ intercourse records and over half a million XP',()=>{
-  const allBonuses=MISSIONS.reduce((sum,m)=>sum+m.xp,0);
-  const perfect=sessionXp(s).total;
-  assert.equal(TOP_RANK_RECORD_TARGET,5000);
+test('level 100 requires exactly 500,000 XP with no record-count gate',()=>{
+  assert.equal(TOP_RANK_XP,500000);
   assert.equal(rankThreshold(RANKS.length-1),TOP_RANK_XP);
-  assert.equal(coupleRank(4999*perfect+allBonuses).level,RANKS.length-1);
-  assert.ok(TOP_RANK_XP>=530000);
-  assert.ok(coupleRank(5000*perfect+allBonuses).level<RANKS.length);
-  assert.equal(coupleRank(TOP_RANK_XP,4999).level,RANKS.length-1);
-  assert.equal(coupleRank(TOP_RANK_XP,5000).level,RANKS.length);
-  const oralOnly=Array.from({length:6000},(_,i)=>({...s,id:String(i),kind:'oral' as const}));
-  const oralProgress=progression(oralOnly,[],now);
-  assert.equal(oralProgress.intercourseRecords,0);
+  assert.equal(coupleRank(TOP_RANK_XP-1).level,99);
+  assert.equal(coupleRank(TOP_RANK_XP).level,100);
+  const records=Array.from({length:4800},(_,i)=>({...s,id:String(i)}));
+  const game=progression(records,[],now);
+  assert.equal(game.xp,504000);
+  assert.equal(game.rank.level,100);
+  const oralProgress=progression(records.map(r=>({...r,kind:'oral' as const})),[],now);
   assert.equal(oralProgress.xp,0);
   assert.equal(oralProgress.rank.level,1);
-  assert.ok(coupleRank(5000*sessionXp({...s,durationSec:600}).total+allBonuses).level<RANKS.length);
 });
-
 
 test('oral records and legacy oral invitations never create mission progress or rewards',()=>{
  const oralRun={...run,kind:'oral' as const};

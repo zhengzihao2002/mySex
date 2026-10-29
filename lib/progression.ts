@@ -125,11 +125,10 @@ export const rankThreshold=(index:number)=>{
   const climb=index*index*Math.max(0,index-1)/(last*last*(last-1));
   return Math.round((classic+(TOP_RANK_XP-finalClassic)*climb)/50)*50;
 };
-export function coupleRank(xp:number,intercourseRecords=Infinity) {
+export function coupleRank(xp:number) {
   let index=0;while(index<RANKS.length-1&&xp>=rankThreshold(index+1))index++;
-  if(index===RANKS.length-1&&intercourseRecords<TOP_RANK_RECORD_TARGET)index--;
   const floor=rankThreshold(index),ceiling=index<RANKS.length-1?rankThreshold(index+1):null;
-  return {recordsRemaining:index===RANKS.length-2?Math.max(0,TOP_RANK_RECORD_TARGET-intercourseRecords):0,level:index+1,title:RANKS[index],floor,ceiling,nextTitle:ceiling?RANKS[index+1]:null,progress:ceiling?Math.min(1,(xp-floor)/(ceiling-floor)):1};
+  return {level:index+1,title:RANKS[index],floor,ceiling,nextTitle:ceiling?RANKS[index+1]:null,progress:ceiling?Math.min(1,(xp-floor)/(ceiling-floor)):1};
 }
 export type Mission={key:string;path:'explorer'|'endurance'|'rhythm'|'finale';title:string;description:string;xp:number;target:number;rule:'new'|'positions'|'collection'|'minutes'|'days'|'return'|'finale';requires?:string};
 export const MISSIONS:Mission[]=[
@@ -147,9 +146,7 @@ export const MISSIONS:Mission[]=[
   {key:'return',path:'rhythm',title:/*i18n*/'A favourite returns',description:/*i18n*/'Revisit the same position on three different days.',xp:150,target:3,rule:'return',requires:'days3'},
   {key:'finale',path:'finale',title:/*i18n*/'Chapter champions',description:/*i18n*/'After the three paths, record 20 active minutes and two positions in one session.',xp:300,target:1,rule:'finale'},
 ];
-export const TOP_RANK_RECORD_TARGET=5000;
-// Round above the maximum rewards from 5,000 records and all finite missions.
-export const TOP_RANK_XP=Math.ceil((TOP_RANK_RECORD_TARGET*105+MISSIONS.reduce((sum,m)=>sum+m.xp,0))/10000)*10000;
+export const TOP_RANK_XP=500000;
 export type MissionRun={id:string;key:string;kind:SessionKind;requestedBy:string;createdAt:string;acceptedAt:string|null;skippedAt?:string|null;timeZone:string};
 export type MissionProgress={value:number;target:number;complete:boolean;evidence:string[]};
 const timestamp=(s:string)=>new Date(s).getTime();
@@ -186,9 +183,8 @@ export function progression(sessions:SexSession[],runs:MissionRun[],now=Date.now
   const quests=uniqueRuns.flatMap(run=>{const m=MISSIONS.find(m=>m.key===run.key);return m?[{...missionProgress(m,run,sessions,now),run,mission:m}]:[];});
   const validRecords=[...new Map(sessions.map(s=>[s.id,s])).values()].filter(s=>timestamp(s.startedAt)<=now&&(!s.endedAt||timestamp(s.endedAt)<=now));
   const recordXp=validRecords.reduce((sum,s)=>sum+sessionXp(s).total,0);
-  const intercourseRecords=validRecords.filter(s=>s.kind==='intercourse'&&sessionXp(s).total>0).length;
   const missionXp=quests.filter(q=>q.complete).reduce((sum,q)=>sum+q.mission.xp,0);
-  return {quests,recordXp,missionXp,intercourseRecords,xp:recordXp+missionXp,rank:coupleRank(recordXp+missionXp,intercourseRecords)};
+  return {quests,recordXp,missionXp,xp:recordXp+missionXp,rank:coupleRank(recordXp+missionXp)};
 }
 export function missionUnlocked(m:Mission,kind:SessionKind,runs:MissionRun[],sessions:SexSession[],now=Date.now()) {
   if(kind!=='intercourse')return false;

@@ -1,6 +1,7 @@
 // Simplified Chinese. Keys are the English UI text (see lib/i18n/core.ts).
 // Run `node scripts/check-i18n.mjs --missing` to find untranslated keys.
 export const zh: Record<string, string> = {
+  "Top rank requires {xp} XP. Only intercourse records and missions earn XP.": "最高段位需要 {xp} 点经验。只有性交记录和任务可获得经验。",
   "Heartfire Companions": "心火同行者",
   "Hidden Spark Duo": "藏焰双星",
   "Magnetic Partners": "引力拍档",

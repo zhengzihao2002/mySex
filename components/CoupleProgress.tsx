@@ -13,7 +13,6 @@ export function CoupleProgress({sessions,runs=[]}:{sessions:SexSession[];runs?:M
     <h2 className="mt-2 font-display text-xl font-bold">{t(game.rank.title)}</h2>
     <div className="my-2 h-1.5 overflow-hidden rounded-full bg-line"><div className="h-full rounded-full bg-gradient-to-r from-rose to-amber-300" style={{width:`${game.rank.progress*100}%`}}/></div>
     <p className="text-xs text-ink-2">{game.rank.ceiling?t('{n} XP to {title}',{n:Math.max(0,game.rank.ceiling-game.xp),title:t(game.rank.nextTitle!)}):t('Highest rank unlocked')}</p>
-    {game.rank.recordsRemaining>0&&<p className="mt-1 text-xs text-ink-2">{t('{n} more intercourse records for the top rank',{n:game.rank.recordsRemaining.toLocaleString()})}</p>}
     <p className="mt-3 text-sm">{invites?t('{n} mission invitations',{n:invites}):active?`${t(active.mission.title)} · ${Math.floor(active.value)}/${active.target}`:t('Choose your next mission')} <span aria-hidden>→</span></p>
   </Link>;
 }
