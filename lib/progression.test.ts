@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
+import {zh} from './i18n/zh.ts';
 import {MISSIONS,RANKS,rankThreshold,coupleRank,sessionXp,progression,missionProgress,missionUnlocked,endurancePoints,type MissionRun} from './progression.ts';
 import {scoreSession,scoreAll} from './score.ts';
 import type {SexSession} from './types';
@@ -83,7 +84,10 @@ test('one canonical reward, edited/deleted proof reevaluates, later short entrie
 });
 
 test('rank titles and thresholds stay distinct and increasingly demanding; skipping gives no reward',()=>{
+  assert.ok(RANKS.length>=50);
   assert.equal(new Set(RANKS).size,RANKS.length);
+  assert.ok(RANKS.every(title=>!!zh[title]));
+  assert.equal(new Set(RANKS.map(title=>zh[title])).size,RANKS.length);
   for(let i=1;i<RANKS.length;i++){
     assert.equal(coupleRank(rankThreshold(i)).level,i+1);
     assert.equal(coupleRank(rankThreshold(i)-1).level,i);
