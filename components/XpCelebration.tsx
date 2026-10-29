@@ -1,4 +1,5 @@
 'use client';
+import {progressFillStyle} from '@/lib/progress-style';
 import {useEffect,useRef,useState} from 'react';
 import {createPortal} from 'react-dom';
 import {coupleRank,RANKS,rankThreshold,MISSIONS} from '@/lib/progression';
@@ -76,7 +77,7 @@ export function XpCelebration({reward,onContinue}:{reward:XpReward;onContinue:()
       <div className="rounded-2xl border border-line bg-bg/40 p-4 text-left">
         <div className="mb-3 flex justify-between gap-2 text-sm"><span className="text-ink-2">{t('Total XP')}</span><b className="tabular-nums">{frame.xp.toLocaleString()} XP</b></div>
         <div role="progressbar" aria-label={t('Level progress')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress*100)} className="h-3 overflow-hidden rounded-full bg-line">
-          <div className="h-full rounded-full bg-gradient-to-r from-rose via-fuchsia-400 to-amber-300 shadow-[0_0_14px_rgba(255,61,127,0.5)]" style={{width:`${progress*100}%`}}/>
+          <div className="h-full rounded-full bg-gradient-to-r from-rose via-fuchsia-400 to-amber-300 shadow-[0_0_14px_rgba(255,61,127,0.5)]" style={progressFillStyle(progress)}/>
         </div>
         <p className="mt-2 min-h-4 text-xs text-ink-3">{ceiling?`${Math.max(0,frame.xp-floor).toLocaleString()} / ${(ceiling-floor).toLocaleString()} XP`:t('Highest rank unlocked')}</p>
       </div>
