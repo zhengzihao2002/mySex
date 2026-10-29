@@ -67,3 +67,9 @@ test('migration preserves old scores and assigns v2 only to new records, includi
  await pg.exec(schema);
  assert.deepEqual((await pg.query<{score_version:number}>('select score_version from sessions order by started_at')).rows.map(r=>r.score_version),[1,2]);
 });
+
+
+test('oral cannot have mission invitations',async()=>{
+ assert.equal(await inviteMission(client,me,'time10','oral','UTC'),false);
+ assert.equal((await getMissionRuns(client,coupleId)).length,0);
+});

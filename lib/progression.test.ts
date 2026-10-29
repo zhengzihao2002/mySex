@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {zh} from './i18n/zh.ts';
-import {MISSIONS,RANKS,rankThreshold,coupleRank,sessionXp,progression,missionProgress,missionUnlocked,endurancePoints,type MissionRun} from './progression.ts';
+import {MISSIONS,RANKS,TOP_RANK_RECORD_TARGET,TOP_RANK_XP,rankThreshold,coupleRank,sessionXp,progression,missionProgress,missionUnlocked,endurancePoints,type MissionRun} from './progression.ts';
 import {scoreSession,scoreAll} from './score.ts';
 import type {SexSession} from './types';
 const s:SexSession={id:'one',scoreVersion:2,kind:'intercourse',createdBy:'a',status:'done',startedAt:'2026-01-02T12:00:00Z',endedAt:'2026-01-02T12:40:00Z',durationSec:2400,pausedAt:null,pausedSec:0,ip:null,city:null,region:null,country:null,latitude:null,longitude:null,geoSource:null,place:null,rating:5,protection:null,hisOrgasms:1,herOrgasms:1,tags:['Missionary','Doggy','Seated'],notes:null,updatedAt:'2026-01-02T12:40:00Z',breaks:[]};
@@ -22,6 +22,7 @@ test('harder v2 thresholds, exact caps, more time raises XP without changing cla
   assert.equal(sessionXp({...s,status:'active'}).total,0);
   assert.equal(sessionXp({...s,durationSec:0}).total,0);
   assert.equal(sessionXp({...s,scoreVersion:1}).total,0);
+  assert.equal(sessionXp({...s,kind:'oral'}).total,0);
   assert.equal(scoreSession({...s,scoreVersion:1,durationSec:600},ctx).parts.find(p=>p.key==='duration')!.max,40);
   const old={...s,scoreVersion:1 as const,place:'Original'};
   const classic=scoreAll([old],iso=>iso.slice(0,10)).get(old.id);
@@ -84,7 +85,7 @@ test('one canonical reward, edited/deleted proof reevaluates, later short entrie
 });
 
 test('rank titles and thresholds stay distinct and increasingly demanding; skipping gives no reward',()=>{
-  assert.ok(RANKS.length>=50);
+  assert.ok(RANKS.length>=100);
   assert.equal(new Set(RANKS).size,RANKS.length);
   assert.ok(RANKS.every(title=>!!zh[title]));
   assert.equal(new Set(RANKS.map(title=>zh[title])).size,RANKS.length);
@@ -99,4 +100,31 @@ test('rank titles and thresholds stay distinct and increasingly demanding; skipp
   assert.equal(missionUnlocked(m('time15'),'intercourse',[skip],[],now),true);
   assert.equal(progression([],[skip],now).missionXp,0);
   assert.equal(missionUnlocked(m('time15'),'oral',[skip],[],now),false);
+});
+
+
+test('highest rank needs 5000+ intercourse records and over half a million XP',()=>{
+  const allBonuses=MISSIONS.reduce((sum,m)=>sum+m.xp,0);
+  const perfect=sessionXp(s).total;
+  assert.equal(TOP_RANK_RECORD_TARGET,5000);
+  assert.equal(rankThreshold(RANKS.length-1),TOP_RANK_XP);
+  assert.equal(coupleRank(4999*perfect+allBonuses).level,RANKS.length-1);
+  assert.ok(TOP_RANK_XP>=530000);
+  assert.ok(coupleRank(5000*perfect+allBonuses).level<RANKS.length);
+  assert.equal(coupleRank(TOP_RANK_XP,4999).level,RANKS.length-1);
+  assert.equal(coupleRank(TOP_RANK_XP,5000).level,RANKS.length);
+  const oralOnly=Array.from({length:6000},(_,i)=>({...s,id:String(i),kind:'oral' as const}));
+  const oralProgress=progression(oralOnly,[],now);
+  assert.equal(oralProgress.intercourseRecords,0);
+  assert.equal(oralProgress.xp,0);
+  assert.equal(oralProgress.rank.level,1);
+  assert.ok(coupleRank(5000*sessionXp({...s,durationSec:600}).total+allBonuses).level<RANKS.length);
+});
+
+
+test('oral records and legacy oral invitations never create mission progress or rewards',()=>{
+ const oralRun={...run,kind:'oral' as const};
+ assert.equal(progression([{...s,kind:'oral'}],[oralRun],now).missionXp,0);
+ assert.equal(progression([{...s,kind:'oral'}],[oralRun],now).quests.length,0);
+ assert.equal(missionUnlocked(m('time10'),'oral',[],[],now),false);
 });

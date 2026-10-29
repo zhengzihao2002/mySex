@@ -4,13 +4,14 @@ import type {SessionKind} from './types';
 type Client=NeonQueryFunction<false,false>;
 type Actor={coupleId:string;userId:string;partnerId:string};
 export async function getMissionRuns(client:Client,coupleId:string):Promise<MissionRun[]> {
-  const rows=await client`select * from couple_missions where couple_id=${coupleId}
+  const rows=await client`select * from couple_missions where couple_id=${coupleId} and kind='intercourse'
     and (accepted_at is not null or skipped_at is not null or created_at>now()-interval '7 days') order by created_at`;
   const iso=(v:Date|string)=>v instanceof Date?v.toISOString():String(v);
   return rows.map(r=>({id:r.id,key:r.mission_key,kind:r.kind,requestedBy:r.requested_by,createdAt:iso(r.created_at),acceptedAt:r.accepted_at?iso(r.accepted_at):null,skippedAt:r.skipped_at?iso(r.skipped_at):null,timeZone:r.time_zone}));
 }
 /** Actor/membership checked again inside each mutation; a stale invite cannot be accepted. */
 export async function inviteMission(client:Client,a:Actor,key:string,kind:SessionKind,timeZone:string,skip=false) {
+  if(kind!=='intercourse')return false;
   const result=await client.transaction(tx=>[
     tx`select user_id from profiles where user_id in (${a.userId},${a.partnerId}) order by user_id for share`,
     tx`delete from couple_missions where couple_id=${a.coupleId} and accepted_at is null and skipped_at is null and created_at<=now()-interval '7 days'`,

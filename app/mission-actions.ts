@@ -8,7 +8,7 @@ import {getMissionRuns,inviteMission,acceptMission,abandonMission} from '@/lib/m
 import type {ActionResult,SessionKind} from '@/lib/types';
 
 export async function changeMission(input:{action:'invite'|'accept'|'abandon'|'skip';key?:string;kind?:SessionKind;timeZone?:string;id?:string}):Promise<ActionResult> {
-  const p=z.object({action:z.enum(['invite','accept','abandon','skip']),key:z.string().max(30).optional(),kind:z.enum(['intercourse','oral']).optional(),timeZone:z.string().max(100).optional(),id:z.uuid().optional()}).safeParse(input);
+  const p=z.object({action:z.enum(['invite','accept','abandon','skip']),key:z.string().max(30).optional(),kind:z.literal('intercourse').optional(),timeZone:z.string().max(100).optional(),id:z.uuid().optional()}).safeParse(input);
   if(!p.success)return {ok:false,error:/*i18n*/'Invalid input'};
   const ctx=await requireCouple(),d=p.data;
   const actor={coupleId:ctx.couple.id,userId:ctx.me.userId,partnerId:ctx.partner.userId};
@@ -22,7 +22,7 @@ export async function changeMission(input:{action:'invite'|'accept'|'abandon'|'s
     ok=await inviteMission(db(),actor,m.key,d.kind,tz,d.action==='skip');
   }else{
     const run=runs.find(r=>r.id===d.id),m=MISSIONS.find(m=>m.key===run?.key);
-    if(!run||!m)return {ok:false,error:/*i18n*/'This mission changed. Refresh and try again.'};
+    if(!run||run.kind!=='intercourse'||!m)return {ok:false,error:/*i18n*/'This mission changed. Refresh and try again.'};
     if(d.action==='accept') {
       if(!missionUnlocked(m,run.kind,runs,sessions))return {ok:false,error:/*i18n*/'Complete the earlier mission first.'};
       ok=await acceptMission(db(),actor,run.id);

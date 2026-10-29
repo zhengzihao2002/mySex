@@ -312,3 +312,8 @@ create table if not exists couple_missions (
 create index if not exists couple_missions_expiry on couple_missions(created_at) where accepted_at is null;
 
 alter table couple_missions add column if not exists skipped_at timestamptz;
+
+-- Missions are for intercourse only; oral recording remains independent.
+delete from couple_missions where kind='oral';
+alter table couple_missions drop constraint if exists couple_missions_kind_check;
+alter table couple_missions add constraint couple_missions_kind_check check(kind='intercourse');
