@@ -1,6 +1,8 @@
 // Simplified Chinese. Keys are the English UI text (see lib/i18n/core.ts).
 // Run `node scripts/check-i18n.mjs --missing` to find untranslated keys.
 export const zh: Record<string, string> = {
+  "Existing records use the same current score and XP rules. Missing active time earns base XP only. Corrections and deletions update rewards.": "历史记录和新记录使用同一套现行评分及经验规则。缺少有效时长时只获得基础经验，修改和删除记录会更新奖励。",
+  "No recorded sessions yet.": "还没有记录。",
   "Lotus": "莲花坐式",
   "Butterfly": "蝴蝶式",
   "Coital alignment": "贴合式",

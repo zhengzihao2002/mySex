@@ -7,7 +7,7 @@ const s:SexSession={createdBy:'me',pausedAt:null,ip:null,region:null,country:nul
 const day=(iso:string)=>iso.slice(0,10),now=Date.parse('2026-02-01T00:00:00Z');
 test('save reward carries exact old/new XP and new quest bonuses with authoritative saved score',()=>{
   const snapshot=savedCelebration([s],s.id,day,now)!;
-  assert.equal(snapshot.score.total,100);
+  assert.equal(snapshot.score.total,75);
   assert.deepEqual(snapshot.reward,{beforeXp:0,afterXp:34,sessionXp:34,missionXp:0,completedMissions:[]});
   assert.deepEqual(savedCelebration([s,s],s.id,day,now),snapshot);
 });
@@ -31,5 +31,5 @@ test('long-session saves include the harder XP curve and only newly earned advan
   assert.equal(result.reward!.missionXp,2010);
   assert.equal(result.reward!.afterXp,34+105+2010);
   assert.deepEqual(savedCelebration([past,long,long],long.id,day,now),result);
-  assert.equal(result.score.total,100); // the separate informational v2 score is unchanged
+  assert.equal(result.score.total,100); // full current score at two hours, with no historical formula switch
 });

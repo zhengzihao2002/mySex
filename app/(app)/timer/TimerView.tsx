@@ -343,8 +343,8 @@ function LiveTimer({
   const minutes = secs / 60;
   const secFrac = (secs % 60) / 60;
   const minFrac = (minutes % 60) / 60;
-  const staminaMax=(session.scoreVersion??1)>=2?45:40;
-  const stamina=(session.scoreVersion??1)>=2?endurancePoints(secs,session.scoreVersion===3&&session.kind==='intercourse'?3:2):Math.round(40*(1-Math.exp(-minutes/15)));
+  const staminaMax=45;
+  const stamina=endurancePoints(secs);
   const liveXp=sessionXp({...session,status:'done',durationSec:secs});
   const mission=useMemo(()=>progression(sessions,missions).quests.find(q=>session.kind==='intercourse'&&!q.complete&&q.mission.path==='endurance'&&q.mission.rule==='session'),[sessions,missions,session.kind,session.startedAt]);
   const headAngle = secFrac * 2 * Math.PI - Math.PI / 2;
@@ -362,7 +362,7 @@ function LiveTimer({
   };
 
   return (
-    <div className="fixed inset-x-0 top-0 z-[45] flex h-dvh flex-col overflow-hidden bg-bg">
+    <div className="fixed inset-0 z-[45] flex flex-col overflow-hidden bg-bg">
       {/* Ambient light */}
       <div className={`pointer-events-none absolute inset-0 transition-opacity duration-1000 ${paused ? 'opacity-30' : 'opacity-100'}`}>
         <div className="absolute -top-1/4 -left-1/4 h-[80vh] w-[80vh] animate-[drift_22s_linear_infinite] rounded-full bg-rose/25 blur-[100px]" />

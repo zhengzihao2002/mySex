@@ -3,7 +3,7 @@ import { useT } from './I18nProvider';
 
 import { useEffect, useLayoutEffect, useState } from 'react';
 import {lockPageScroll} from '@/lib/page-scroll-lock';
-import {scoreVersionLabel,type Score} from '@/lib/score';
+import type {Score} from '@/lib/score';
 import type { Break } from '@/lib/types';
 import { SessionTimes } from './SessionTimes';
 
@@ -62,7 +62,7 @@ export function ScoreReveal({ score, times, reward, onClose }: { score: Score; t
   const R = 92;
   const C = 2 * Math.PI * R;
   return (
-    <div className="fixed inset-0 z-[60] flex animate-fade flex-col items-center overflow-y-auto bg-bg/95 px-6 py-8 backdrop-blur-2xl" onClick={onClose}>
+    <div className="fixed inset-0 z-[60] flex animate-fade flex-col items-center overflow-y-auto overscroll-contain bg-bg/95 px-6 py-8 backdrop-blur-2xl" onClick={onClose}>
       <button type="button" className="btn-ghost mb-3 shrink-0" onClick={onClose}>{t('Close')}</button>
       <p className="text-sm font-semibold tracking-[0.3em] text-ink-3 uppercase">{t('mySex Score')}</p>
       <div className="relative my-4 h-48 w-48 shrink-0">
@@ -88,7 +88,6 @@ export function ScoreReveal({ score, times, reward, onClose }: { score: Score; t
       <p className="font-display text-3xl font-bold">
         {score.emoji} {t(score.grade)}
       </p>
-      <p className="mt-1 text-xs text-ink-3">{t(scoreVersionLabel(score.version))}</p>
       {reward&&<div className="mt-3 w-full max-w-xs rounded-2xl border border-amber-300/40 bg-amber-300/5 p-3 text-center">
         <p className="text-xl font-bold text-amber-300">+{reward.xp} XP</p>
         <p className="font-semibold">{reward.levelUp?'✦ ':''}{t(reward.title)}</p>

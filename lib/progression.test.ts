@@ -10,11 +10,11 @@ const m=(key:string)=>MISSIONS.find(m=>m.key===key)!;
 const ctx={newPlace:true,roundOfDay:2};
 const now=Date.parse('2026-02-01T00:00:00Z');
 
-test('harder v2 thresholds, exact caps, more time raises XP without changing classic scores',()=>{
-  assert.deepEqual([5,10,15,20,30,40].map(n=>endurancePoints(n*60,2)),[2,6,11,17,30,45]);
-  assert.equal(scoreSession(s,ctx).total,100);
-  assert.equal(scoreSession({...s,durationSec:1200},ctx).total,72);
-  assert.equal(scoreSession({...s,durationSec:1800},ctx).total,85);
+test('one-hour endurance scoring and two-hour XP apply to every record generation',()=>{
+  assert.deepEqual([5,10,15,20,30,40].map(n=>endurancePoints(n*60)),[0,1,3,5,11,20]);
+  assert.equal(scoreSession(s,ctx).total,75);
+  assert.equal(scoreSession({...s,durationSec:1200},ctx).total,60);
+  assert.equal(scoreSession({...s,durationSec:1800},ctx).total,66);
   assert.equal(scoreSession({...s,durationSec:7200},ctx).total,100);
   assert.equal(sessionXp(s).total,34);
   assert.equal(sessionXp({...s,durationSec:7200}).total,105);
@@ -23,14 +23,14 @@ test('harder v2 thresholds, exact caps, more time raises XP without changing cla
   assert.equal(sessionXp({...s,durationSec:0}).total,0);
   assert.equal(sessionXp({...s,scoreVersion:1}).total,34);
   assert.equal(sessionXp({...s,kind:'oral'}).total,0);
-  assert.equal(scoreSession({...s,scoreVersion:1,durationSec:600},ctx).parts.find(p=>p.key==='duration')!.max,40);
+  assert.equal(scoreSession({...s,scoreVersion:1,durationSec:600},ctx).parts.find(p=>p.key==='duration')!.max,45);
   const old={...s,scoreVersion:1 as const,place:'Original'};
   const classic=scoreAll([old],iso=>iso.slice(0,10)).get(old.id);
   const inserted={...s,id:'new-past',startedAt:'2026-01-02T10:00:00Z',place:'New'};
   assert.deepEqual(scoreAll([inserted,old],iso=>iso.slice(0,10)).get(old.id),classic);
 });
 
-test('v2 only counts actual distinct positions, averages submitted ratings, and does not farm orgasms',()=>{
+test('the current score only counts actual distinct positions, averages submitted ratings, and does not farm orgasms',()=>{
   const points=(input:SexSession,key:string)=>scoreSession(input,ctx).parts.find(p=>p.key===key)!.points;
   assert.equal(points({...s,tags:['Missionary','Missionary','Morning','Toys','Massage']},'variety'),3);
   assert.equal(points({...s,tags:['Missionary','Doggy','Morning']},'variety'),8);
@@ -174,8 +174,8 @@ test('XP needs 120 active minutes for its ceiling while endurance score requires
   assert.equal(scoreSession({...modern,durationSec:3600},ctx).total,100);
   assert.equal(scoreSession({...modern,durationSec:5400},ctx).total,100);
   assert.equal(scoreSession({...modern,durationSec:7200},ctx).total,100);
-  assert.equal(scoreSession({...modern,kind:'oral'},ctx).parts[0].points,45);
-  assert.equal(scoreSession(s,ctx).total,100); // saved v2 records keep their formula
+  assert.equal(scoreSession({...modern,kind:'oral'},ctx).parts[0].points,20);
+  assert.equal(scoreSession(s,ctx).total,75); // imported metadata does not select another formula
 });
 
 test('new endurance tiers need the entire duration and positions in one record; no partial or split proof',()=>{

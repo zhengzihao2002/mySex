@@ -27,14 +27,16 @@ export function Sheet({open,onClose,title,children,viewKey,stableHeight=false}:{
     const node=root.current;
     const panel=dialog.current;
     const trigger=document.activeElement instanceof HTMLElement?document.activeElement:null;
+    // Measure the edge-anchored overlay itself, before acquiring the scroll lock.
+    let layoutWidth=document.documentElement.clientWidth;
+    let layoutHeight=node.clientHeight;
+    let panelHeight=panel.offsetHeight;
     const unlock=lockPageScroll();
     const top=()=>Array.from(document.querySelectorAll('[data-app-sheet]')).at(-1)===node;
     const viewport=window.visualViewport;
     // Session forms keep their panel height when the keyboard opens. Only the
     // inner scroll area follows the visible space; its background stays solid
     // behind the keyboard rather than exposing the page underneath.
-    let layoutWidth=document.documentElement.clientWidth;
-    let layoutHeight=window.innerHeight;
     let frame=0;
     const keepFocusVisible=()=>{
       if(!top()||!content.current)return;
@@ -46,28 +48,23 @@ export function Sheet({open,onClose,title,children,viewKey,stableHeight=false}:{
       else if(field.top<area.top+12)content.current.scrollTop+=field.top-area.top-12;
     };
     const resize=()=>{
-      if(stableHeight){
-        const width=document.documentElement.clientWidth;
-        if(width!==layoutWidth){layoutWidth=width;layoutHeight=window.innerHeight;}
-        const active=document.activeElement;
-        const typing=active instanceof HTMLElement&&panel.contains(active)&&active.matches('input,textarea,select,[contenteditable="true"]');
-        // Safari can report a slightly shorter visual viewport even without a
-        // keyboard. Do not turn that safe-area/browser inset into a bottom gap.
-        const keyboardOpen=typing&&layoutHeight-(viewport?.height??window.innerHeight)>120;
-        // Counter Safari's visual-viewport panning without moving the header
-        // above the screen. Keyboard resize never changes the panel height.
-        node.style.top=`${keyboardOpen?(viewport?.offsetTop??0):0}px`;
-        node.style.height=`${layoutHeight}px`;
-        if(content.current&&keyboardOpen){
+      const active=document.activeElement;
+      const typing=active instanceof HTMLElement&&panel.contains(active)&&active.matches('input,textarea,select,[contenteditable="true"]');
+      const width=document.documentElement.clientWidth;
+      if(width!==layoutWidth){layoutWidth=width;layoutHeight=node.clientHeight;panelHeight=Math.round(layoutHeight*.92);}
+      const keyboardOpen=typing&&layoutHeight-(viewport?.height??window.innerHeight)>120;
+      if(stableHeight&&keyboardOpen){
+        // Hold only the panel's size during typing. Never freeze the root/body
+        // viewport: its four fixed edges must continue to cover the screen.
+        Object.assign(panel.style,{position:'absolute',top:`${(viewport?.offsetTop??0)+layoutHeight-panelHeight}px`,height:`${panelHeight}px`,maxHeight:'none',marginBottom:''});
+        if(content.current){
           const visibleBottom=(viewport?.offsetTop??0)+(viewport?.height??window.innerHeight);
-          // Layout offsets exclude the opening animation's translateY.
-          const contentTop=(viewport?.offsetTop??0)+panel.offsetTop+content.current.offsetTop;
-          content.current.style.maxHeight=`${Math.max(0,visibleBottom-contentTop-12)}px`;
-        }else if(content.current)content.current.style.maxHeight='';
+          content.current.style.maxHeight=`${Math.max(0,visibleBottom-panel.offsetTop-content.current.offsetTop-12)}px`;
+        }
       }else{
-        node.style.top=`${viewport?.offsetTop??0}px`;
-        node.style.height=`${viewport?.height??window.innerHeight}px`;
+        Object.assign(panel.style,{position:'',top:'',height:'',maxHeight:keyboardOpen?`${(viewport?.height??window.innerHeight)*.92}px`:'',marginBottom:keyboardOpen?`${Math.max(0,node.clientHeight-(viewport?.offsetTop??0)-(viewport?.height??window.innerHeight))}px`:''});
         if(content.current)content.current.style.maxHeight='';
+        if(!keyboardOpen){layoutHeight=node.clientHeight;panelHeight=panel.offsetHeight;}
       }
       cancelAnimationFrame(frame);
       frame=requestAnimationFrame(keepFocusVisible);
@@ -101,8 +98,8 @@ export function Sheet({open,onClose,title,children,viewKey,stableHeight=false}:{
     };
   },[open,stableHeight]);
   if(!open||typeof document==='undefined')return null;
-  return createPortal(<div ref={root} data-app-sheet className="fixed inset-x-0 top-0 z-50 flex h-dvh items-end justify-center">
-    <div className="absolute inset-0 animate-fade bg-black/60 backdrop-blur-sm motion-reduce:animate-none" onClick={onClose}/>
+  return createPortal(<div ref={root} data-app-sheet className="fixed inset-0 z-50 flex items-end justify-center">
+    <div className="absolute inset-0 touch-none animate-fade bg-black/60 backdrop-blur-sm motion-reduce:animate-none" onClick={onClose}/>
     <div ref={dialog} role="dialog" aria-modal="true" aria-labelledby={title?titleId:undefined} aria-label={title?undefined:t('Details')} tabIndex={-1}
       className={`relative flex max-h-[92%] w-full max-w-lg animate-rise flex-col rounded-t-[32px] border-t border-line bg-surface pb-safe shadow-2xl outline-none motion-reduce:animate-none ${stableHeight?'h-[92%]':''}`}>
       <div className="mx-auto mt-2.5 h-1.5 w-10 shrink-0 rounded-full bg-line"/>

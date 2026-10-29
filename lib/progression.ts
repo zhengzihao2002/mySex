@@ -8,8 +8,8 @@ export function positionTags(s: Pick<SexSession,'kind'|'tags'>): string[] {
 const enduranceFraction=(seconds:number,target:number)=>Number.isFinite(seconds)?Math.pow(Math.min(Math.max(0,seconds)/target,1),2):0;
 // Reserve the final point for the full target instead of rounding up early.
 const enduranceReward=(seconds:number,max:number,target:number)=>Math.min(seconds>=target?max:max-1,Math.round(max*enduranceFraction(seconds,target)));
-// Preserve v2 saved scores; v3 intercourse reaches its score ceiling at one active hour.
-export const endurancePoints=(seconds:number,version:2|3=3)=>version===2?Math.round(45*Math.pow(Math.min(Math.max(0,seconds)/2400,1),1.4)):enduranceReward(seconds,45,3600);
+// Every record reaches the full endurance score only at one active hour.
+export const endurancePoints=(seconds:number)=>enduranceReward(seconds,45,3600);
 /** The same harder 120-minute curve applies to XP from all completed intercourse history. */
 export function enduranceXp(seconds:number) {
   return enduranceReward(seconds,80,7200);

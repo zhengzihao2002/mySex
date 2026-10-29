@@ -44,7 +44,7 @@ XP is derived from current distinct saved IDs and deterministic goal definitions
 
 ## Save celebration and navigation
 
-Edit, finish-save and record-detail sheets retain their layout height while the keyboard opens; their inner scroll area follows the usable keyboard space. A smaller Safari visual viewport without a keyboard does not lift the panel above the bottom edge. Edit and Save buttons stay in normal document flow. Sheets, the XP modal and the saved-score overlay share one page-scroll lock, so closing them in different orders cannot leave another overlay's temporary body/root styles behind. A brief viewport recovery restores the original page scroll as Safari's keyboard settles, stops on the next user gesture, and removes its listeners after 500 milliseconds.
+Edit, finish-save and record-detail sheets anchor to all four native screen edges instead of fixing their root to JavaScript pixel heights or dynamic viewport units. Scroll locks change only body overflow; they do not change body positioning, width, top, or root overflow, which can alter the viewport in the installed iOS app before a keyboard opens. During typing, only the panel size and inner scroll area are constrained. Edit and Save stay in normal document flow. Sheets and save overlays retain shared ownership of the overflow lock and restore the previous page scroll after closing.
 
 Live completion and both manual-entry paths return the authoritative saved session, its score, and a reward snapshot. The previous XP is reconstructed from the current history excluding that record; the new XP includes it. This identifies the new session's XP and newly completed goals without trusting a client clock estimate or stale rank.
 
@@ -52,23 +52,21 @@ For intercourse, a native modal first shows the previous level, title, XP total 
 
 The Home progression card opens Couple quests. Its counterpart on that page is a button that scrolls to and focuses quest progress. The page's back link returns to Home. The rank ladder remains available from the board.
 
-## Informational scores
+## One current score
 
-Existing saved v1 and v2 records keep their original formulas. The current v3 endurance score uses the requested one-hour maximum, independently of the two-hour XP maximum. A migration defaults only newly inserted records to v3 and preserves all existing version values on reruns. Signed backups preserve all three versions. Analytics compare scores within one version rather than averaging different formulas together.
-
-New v3 intercourse records use:
+Every historical, restored and new record uses the same current calculation. Stored legacy version metadata is retained only for backup compatibility and never chooses a formula. There are no Classic/v2/v3 labels or score selectors in records, save summaries, Insights or place averages. Insights averages and best records include all eligible records together.
 
 | Contribution | Maximum | Rule |
 |---|---:|---|
 | Active time | 45 | `round(45 × min(activeMinutes / 60, 1)²)` |
-| Heat ratings | 20 | Four times the mean submitted partner rating, rounded |
-| Recorded pleasure | 20 | Ten points per partner with a recorded orgasm; extra orgasms add no points |
+| Heat ratings | 20 | Four times the mean submitted partner rating, rounded; stored heat is the fallback for older records |
+| Recorded pleasure | 20 | Intercourse: ten points per partner with a recorded orgasm; oral: divide equally among selected recipients; extra orgasms add no points |
 | Position variety | 15 | One distinct position: 3; two: 8; three or more: 15 |
 
-The active-time contribution is 1/5/11/20/45 points at 10/20/30/40/60 minutes. The final score point requires the full 60 minutes instead of rounding up early. Endurance XP separately retains its 120-minute maximum. Breaks never contribute. New oral records retain their previous 40-minute informational time curve and recipient-based pleasure calculation; the intercourse progression change does not add oral quests or XP.
+The endurance contribution is 1/5/11/20/45 points at 10/20/30/40/60 minutes. The final score point requires all 60 minutes instead of rounding up early. Breaks never contribute. This one-hour score applies to both activity types; oral records still earn no XP or quest rewards. Endurance XP separately retains its 120-minute maximum.
 
-The score stays read-only, with a prominent version label and expandable calculation. Existing saved scores remain unchanged when XP recalculates under the harder curve.
+Scores stay read-only, with the existing expandable calculation. Older record scores recalculate under this same formula rather than retaining their old calculation.
 
 ## Verification
 
-Checks cover automatic history progress without acceptance, legacy skips having no effect, one award per goal, excluded oral/unfinished/future records, actual positions, UTC day boundaries, strict single-session thresholds, advanced position/time combinations, finale chronology, edited/deleted proof, unchanged classic scores, rank boundaries and authoritative reward snapshots. Browser verification covers both navigation fixes, multiple animated level crossings, old/new XP, full-bar reset, early-dismissal prevention, Continue, original score access, live/manual save integration, Simplified Chinese, reduced motion and narrow screens. Existing record editing, calendar navigation and nested modal behavior are regression checked.
+Checks cover automatic history progress without acceptance, legacy skips having no effect, one award per goal, excluded oral/unfinished/future records, actual positions, UTC day boundaries, strict single-session thresholds, advanced position/time combinations, finale chronology, edited/deleted proof, one formula across all historical metadata, rank boundaries and authoritative reward snapshots. Browser verification covers both navigation fixes, multiple animated level crossings, old/new XP, full-bar reset, early-dismissal prevention, Continue, original score access, live/manual save integration, Simplified Chinese, reduced motion and narrow screens. Existing record editing, calendar navigation and nested modal behavior are regression checked.

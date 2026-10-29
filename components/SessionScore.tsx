@@ -1,7 +1,7 @@
 'use client';
 
 import {useId,useState} from 'react';
-import {scoreVersionLabel,type Score} from '@/lib/score';
+import type {Score} from '@/lib/score';
 import type {SexSession} from '@/lib/types';
 import {useT} from './I18nProvider';
 import {positionTags,sessionXp} from '@/lib/progression';
@@ -20,23 +20,15 @@ export function SessionScore({score,session:s}:{score:Score;session:SexSession})
   const part=score.parts.find(p=>p.key===selected);
   let offset=0;
   const explanations:Record<string,string>={
-    duration:t('Active time adds up to 40 points with diminishing returns: 40 × (1 − e^(−minutes / 15)), rounded.'),
-    her:t('First orgasm: 12 points. Each additional orgasm: 4 points, up to 20.'),
-    his:t('First orgasm: 6 points. Each additional orgasm: 2 points, up to 8.'),
-    heat:t('The average partner heat rating is multiplied by 3, up to 15 points.'),
-    variety:t('Each recorded tag adds 2 points, up to 8.'),
-    adventure:t('3 points each for a new location, an adventurous activity, and a second or later session that day.'),
-  };
-  if((score.version??1)>=2)Object.assign(explanations,{
-    duration:score.version===3&&s.kind==='intercourse'?t('Active time: round(45 × min(minutes / 60, 1)²). Breaks do not count; the full 45 points requires 60 active minutes.'):t('Active time: round(45 × min(minutes / 40, 1)^1.4). Breaks do not count; 40 minutes reaches the cap.'),
+    duration:t('Active time: round(45 × min(minutes / 60, 1)²). Breaks do not count; the full 45 points requires 60 active minutes.'),
     heat:t('Mean of submitted partner ratings × 4, rounded. Maximum 20 points.'),
     pleasure:s.kind==='oral'?t('20 points divided equally between the selected recipients. A recorded orgasm earns that recipient’s share. Extra orgasms do not add points.'):t('10 points per partner with a recorded orgasm. Extra orgasms do not add points.'),
     variety:t('One position: 3 points. Two: 8. Three or more: 15. Mood and setting tags do not count.'),
-  });
+  };
   const xp=sessionXp(s);
-  const input=part?.key==='duration'?f.formatDuration(s.durationSec??0):part?.key==='her'?`${s.herOrgasms??0} · ${t('Her orgasms 💦')}`:part?.key==='his'?`${s.hisOrgasms??0} · ${t('His orgasms 🍆')}`:part?.key==='heat'?`${s.rating??'–'}/5`:part?.key==='variety'?((score.version??1)>=2?positionTags(s):s.tags).map(x=>t(x)).join(' · ')||t('None'):null;
+  const input=part?.key==='duration'?f.formatDuration(s.durationSec??0):part?.key==='heat'?`${s.rating??'–'}/5`:part?.key==='variety'?positionTags(s).map(x=>t(x)).join(' · ')||t('None'):null;
   return <section className="mb-4 rounded-3xl border border-line bg-gradient-to-br from-surface-2 to-surface p-4" aria-label={t('Score breakdown')}>
-    <div className="flex items-center justify-between gap-2"><h3 className="font-semibold">{t('mySex Score')}</h3><span className="text-xs text-ink-3">{t(scoreVersionLabel(score.version))}</span></div>
+    <div className="flex items-center justify-between gap-2"><h3 className="font-semibold">{t('mySex Score')}</h3></div>
     <div className="relative mx-auto my-2 h-44 w-44">
       <svg viewBox="0 0 176 176" className="h-full w-full -rotate-90" aria-label={t('Score breakdown')}>
         <circle cx="88" cy="88" r={R} fill="none" stroke="var(--color-line)" strokeWidth="14"/>
@@ -62,11 +54,9 @@ export function SessionScore({score,session:s}:{score:Score;session:SexSession})
     <div id={detailId} className="mt-3 rounded-2xl bg-surface/60 p-3 text-xs text-ink-2" aria-live="polite">
       {part?<><p className="mb-1 font-semibold text-ink">{t(part.label)} · +{part.points}% <span className="font-normal text-ink-3">{t('Maximum {n}%',{n:part.max})}</span></p>
         {input&&<p className="mb-1">{input}</p>}
-        {(score.version??1)>=2&&part.key==='heat'&&<p className="mb-1">{t('{n} of 2 partner ratings submitted',{n:(s.feelings??[]).filter(f=>f.rating!=null).length})}</p>}
+        {part.key==='heat'&&<p className="mb-1">{t('{n} of 2 partner ratings submitted',{n:(s.feelings??[]).filter(f=>f.rating!=null).length})}</p>}
         {part.key==='pleasure'&&<p className="mb-1">{t('His orgasms 🍆')}: {s.hisOrgasms??t('Not recorded')} · {t('Her orgasms 💦')}: {s.herOrgasms??t('Not recorded')}</p>}<p>{explanations[part.key]}</p>
-        {part.key==='adventure'&&score.context&&<ul className="mt-2 space-y-1">
-          {[[t('New location'),score.context.newPlace],[t('Adventurous activity'),score.context.adventurousActivity],[t('Second or later round'),score.context.roundOfDay>=2]].map(([label,earned])=><li key={String(label)} className="flex justify-between gap-2"><span>{label}</span><b>{earned?'+3%':'0%'}</b></li>)}
-        </ul>}
+
       </>:<p>{t('Tap a segment or category to see how it is calculated.')}</p>}
     </div>
     <p className="text-center text-xs text-ink-3">{t('Contributions add up to {n}%.',{n:score.total})}</p>

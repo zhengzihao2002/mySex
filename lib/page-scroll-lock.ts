@@ -3,7 +3,7 @@
 // Sheets and save overlays must share ownership. Independent overflow snapshots
 // can otherwise restore another overlay's temporary lock after it has closed.
 const owners=new Set<symbol>();
-type Snapshot={overflow:string;position:string;top:string;width:string;rootOverflow:string;x:number;y:number};
+type Snapshot={overflow:string;x:number;y:number};
 let original:Snapshot|null=null;
 let stopRecovery=()=>{};
 
@@ -36,17 +36,17 @@ function restoreViewport(x:number,y:number){
 export function lockPageScroll(){
   stopRecovery();
   if(!owners.size){
-    const body=document.body.style,root=document.documentElement.style;
-    original={overflow:body.overflow,position:body.position,top:body.top,width:body.width,rootOverflow:root.overflow,x:window.scrollX,y:window.scrollY};
-    root.overflow='hidden';
-    Object.assign(body,{overflow:'hidden',position:'fixed',top:`${-original.y}px`,width:'100%'});
+    const body=document.body.style;
+    original={overflow:body.overflow,x:window.scrollX,y:window.scrollY};
+    // Changing body positioning or root overflow can shrink the standalone
+    // iOS viewport before any keyboard is shown. Keep the document geometry.
+    body.overflow='hidden';
   }
   const owner=Symbol();owners.add(owner);
   return ()=>{
     if(!owners.delete(owner)||owners.size||!original)return;
     const saved=original;original=null;
-    Object.assign(document.body.style,{overflow:saved.overflow,position:saved.position,top:saved.top,width:saved.width});
-    document.documentElement.style.overflow=saved.rootOverflow;
+    document.body.style.overflow=saved.overflow;
     restoreViewport(saved.x,saved.y);
   };
 }
