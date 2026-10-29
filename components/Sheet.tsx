@@ -8,6 +8,10 @@ import {useT} from './I18nProvider';
 // Only populated by client effects; nested sheets share one body scroll lock.
 const locks=new Set<HTMLElement>();
 let previousOverflow='';
+let previousPosition='';
+let previousTop='';
+let previousWidth='';
+let pageScrollY=0;
 
 export function Sheet({open,onClose,title,children,viewKey,stableHeight=false}:{open:boolean;onClose:()=>void;title?:React.ReactNode;children:React.ReactNode;viewKey?:string;stableHeight?:boolean}) {
   const {t}=useT();
@@ -18,34 +22,65 @@ export function Sheet({open,onClose,title,children,viewKey,stableHeight=false}:{
   const dialog=useRef<HTMLDivElement>(null);
   const close=useRef(onClose);
   useEffect(()=>{close.current=onClose;},[onClose]);
-  useEffect(()=>{
+  useLayoutEffect(()=>{
     if(!open||!root.current||!dialog.current)return;
     const node=root.current;
     const panel=dialog.current;
     const trigger=document.activeElement instanceof HTMLElement?document.activeElement:null;
-    if(!locks.size){previousOverflow=document.body.style.overflow;document.body.style.overflow='hidden';}
+    if(!locks.size){
+      previousOverflow=document.body.style.overflow;
+      previousPosition=document.body.style.position;
+      previousTop=document.body.style.top;
+      previousWidth=document.body.style.width;
+      pageScrollY=window.scrollY;
+      // overflow:hidden alone still lets iOS pan the page behind the keyboard.
+      Object.assign(document.body.style,{overflow:'hidden',position:'fixed',top:`${-pageScrollY}px`,width:'100%'});
+    }
     locks.add(node);
     const top=()=>Array.from(document.querySelectorAll('[data-app-sheet]')).at(-1)===node;
     const viewport=window.visualViewport;
-    // Editing keeps the layout viewport captured before typing. iOS shrinks/pans
-    // the visual viewport for its keyboard; that must not resize the sheet.
+    // Session forms keep their panel height when the keyboard opens. Only the
+    // inner scroll area follows the visible space; its background stays solid
+    // behind the keyboard rather than exposing the page underneath.
     let layoutWidth=document.documentElement.clientWidth;
     let layoutHeight=window.innerHeight;
+    let frame=0;
+    const keepFocusVisible=()=>{
+      if(!top()||!content.current)return;
+      const active=document.activeElement;
+      if(!(active instanceof HTMLElement)||!active.matches('input,textarea,select,[contenteditable="true"]')||!content.current.contains(active))return;
+      const field=active.getBoundingClientRect(),area=content.current.getBoundingClientRect();
+      const bottom=Math.min(area.bottom,(viewport?.offsetTop??0)+(viewport?.height??window.innerHeight))-12;
+      if(field.bottom>bottom)content.current.scrollTop+=field.bottom-bottom;
+      else if(field.top<area.top+12)content.current.scrollTop+=field.top-area.top-12;
+    };
     const resize=()=>{
       if(stableHeight){
         const width=document.documentElement.clientWidth;
         if(width!==layoutWidth){layoutWidth=width;layoutHeight=window.innerHeight;}
-        node.style.top='0px';
+        // Counter Safari's visual-viewport panning without moving the header
+        // above the screen. Keyboard resize never changes the panel height.
+        node.style.top=`${viewport?.offsetTop??0}px`;
         node.style.height=`${layoutHeight}px`;
+        if(content.current){
+          const visibleBottom=(viewport?.offsetTop??0)+(viewport?.height??window.innerHeight);
+          // Layout offsets exclude the opening animation's translateY.
+          const contentTop=(viewport?.offsetTop??0)+panel.offsetTop+content.current.offsetTop;
+          content.current.style.maxHeight=`${Math.max(0,visibleBottom-contentTop-12)}px`;
+        }
       }else{
         node.style.top=`${viewport?.offsetTop??0}px`;
         node.style.height=`${viewport?.height??window.innerHeight}px`;
+        if(content.current)content.current.style.maxHeight='';
       }
+      cancelAnimationFrame(frame);
+      frame=requestAnimationFrame(keepFocusVisible);
     };
     resize();
     viewport?.addEventListener('resize',resize);
     viewport?.addEventListener('scroll',resize);
     window.addEventListener('resize',resize);
+    panel.addEventListener('focusin',resize);
     panel.focus({preventScroll:true});
     const onKey=(e:KeyboardEvent)=>{
       if(!top())return;
@@ -60,7 +95,12 @@ export function Sheet({open,onClose,title,children,viewKey,stableHeight=false}:{
     window.addEventListener('keydown',onKey);
     return ()=>{
       locks.delete(node);
-      if(!locks.size)document.body.style.overflow=previousOverflow;
+      if(!locks.size){
+        Object.assign(document.body.style,{overflow:previousOverflow,position:previousPosition,top:previousTop,width:previousWidth});
+        window.scrollTo(0,pageScrollY);
+      }
+      cancelAnimationFrame(frame);
+      panel.removeEventListener('focusin',resize);
       window.removeEventListener('keydown',onKey);
       viewport?.removeEventListener('resize',resize);
       viewport?.removeEventListener('scroll',resize);
@@ -72,13 +112,13 @@ export function Sheet({open,onClose,title,children,viewKey,stableHeight=false}:{
   return createPortal(<div ref={root} data-app-sheet className="fixed inset-x-0 top-0 z-50 flex h-dvh items-end justify-center">
     <div className="absolute inset-0 animate-fade bg-black/60 backdrop-blur-sm motion-reduce:animate-none" onClick={onClose}/>
     <div ref={dialog} role="dialog" aria-modal="true" aria-labelledby={title?titleId:undefined} aria-label={title?undefined:t('Details')} tabIndex={-1}
-      className="relative flex max-h-[92%] w-full max-w-lg animate-rise flex-col rounded-t-[32px] border-t border-line bg-surface pb-safe shadow-2xl outline-none motion-reduce:animate-none">
+      className={`relative flex max-h-[92%] w-full max-w-lg animate-rise flex-col rounded-t-[32px] border-t border-line bg-surface pb-safe shadow-2xl outline-none motion-reduce:animate-none ${stableHeight?'h-[92%]':''}`}>
       <div className="mx-auto mt-2.5 h-1.5 w-10 shrink-0 rounded-full bg-line"/>
       <div className="flex shrink-0 items-center justify-between gap-3 px-5 pt-3 pb-2">
         <div id={titleId} className="min-w-0 text-lg font-bold">{title}</div>
         <button type="button" onClick={onClose} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface-2 text-ink-2" aria-label={t('Close')}><X size={18}/></button>
       </div>
-      <div ref={content} className="min-h-0 overflow-y-auto overscroll-contain px-5 pb-6">{children}</div>
+      <div ref={content} data-sheet-scroll className={`min-h-0 overflow-y-auto overscroll-contain px-5 pb-6 ${stableHeight?'flex-1':''}`}>{children}</div>
     </div>
   </div>,document.body);
 }

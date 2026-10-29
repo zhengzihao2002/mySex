@@ -200,9 +200,8 @@ export function SessionForm({
 
 
       <FormError error={error} />
-      {/* Replace the sticky paint layer when its label changes. Safari can otherwise
-          retain half of the old text after map results collapse above it. */}
-      <div key={buttonLabel} className="sticky bottom-0 z-10 -mx-1 bg-surface px-1 pt-3 pb-1"><button className="btn-primary w-full" disabled={pending}>
+      {/* Keep submission in the form's normal flow, below every field. */}
+      <div className="pt-3 pb-1"><button key={buttonLabel} type="submit" className="btn-primary w-full" disabled={pending}>
         <span>{buttonLabel}</span>
       </button></div>
     </form>

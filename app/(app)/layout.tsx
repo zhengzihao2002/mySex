@@ -3,7 +3,6 @@ import {ViewMemory} from '@/components/ViewMemory';
 import {SessionViewer} from '@/components/SessionViewer';
 import { InboxProvider } from '@/components/InboxLink';
 import { TabBar } from '@/components/TabBar';
-import { PinLock } from '@/components/PinLock';
 import { RefreshOnFocus } from '@/components/RefreshOnFocus';
 import { TzProvider } from '@/components/TzProvider';
 import { getToday } from '@/lib/today';
@@ -26,7 +25,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (device.revoked) redirect('/auth/revoked');
   return (
     <TzProvider tz={tz} today={today}>
-    <ViewMemory key={`${ctx.me.userId}:${ctx.couple.id}`}><SessionViewer meId={ctx.me.userId} isHer={ctx.me.sex==='female'}><PinLock>
+    <ViewMemory key={`${ctx.me.userId}:${ctx.couple.id}`}><SessionViewer meId={ctx.me.userId} isHer={ctx.me.sex==='female'}>
       <RefreshOnFocus />
       <InboxProvider initial={inboxCount}>
       <div className="mx-auto min-h-dvh max-w-lg px-4 pt-safe pb-[calc(env(safe-area-inset-bottom)+96px)]">
@@ -34,7 +33,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       </div>
       <TabBar unread={unread} live={!!active} />
       </InboxProvider>
-    </PinLock></SessionViewer></ViewMemory>
+    </SessionViewer></ViewMemory>
     </TzProvider>
   );
 }

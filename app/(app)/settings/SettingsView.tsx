@@ -2,13 +2,11 @@
 import { useT } from '@/components/I18nProvider';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { ChevronLeft, Download, HeartCrack, Lock, LogOut, Share, SquarePlus } from 'lucide-react';
+import { useState } from 'react';
+import { ChevronLeft, Download, HeartCrack, LogOut, Share, SquarePlus } from 'lucide-react';
 import { saveSettings, signOutAction, unpair } from '@/app/actions';
 import { FormError } from '@/components/FormError';
-import { Keypad, usePin } from '@/components/PinLock';
 import { Sheet } from '@/components/Sheet';
-import { Toggle } from '@/components/SessionForm';
 import { useRun } from '@/components/useRun';
 import { RestoreBackup } from './RestoreBackup';
 import { LanguageSwitch } from '@/components/LanguageSwitch';
@@ -108,8 +106,6 @@ export function SettingsView({
         <LanguageSwitch />
       </section>
 
-      <PinSection />
-
       {devices}
 
       <section className="card space-y-3">
@@ -166,61 +162,5 @@ export function SettingsView({
         </div>
       </Sheet>
     </div>
-  );
-}
-
-function PinSection() {
-  const { t, f } = useT();
-  const { hasPin, setPin } = usePin();
-  const [step, setStep] = useState<null | 'new' | 'confirm'>(null);
-  const [first, setFirst] = useState('');
-  const [digits, setDigits] = useState('');
-  const [shake, setShake] = useState(false);
-
-  useEffect(() => {
-    if (digits.length !== 4) return;
-    const t = setTimeout(async () => {
-      if (step === 'new') {
-        setFirst(digits);
-        setDigits('');
-        setStep('confirm');
-      } else if (digits === first) {
-        await setPin(digits);
-        setStep(null);
-        setDigits('');
-      } else {
-        setShake(true);
-        setTimeout(() => {
-          setShake(false);
-          setDigits('');
-          setStep('new');
-        }, 400);
-      }
-    }, 120);
-    return () => clearTimeout(t);
-  }, [digits, step, first, setPin]);
-
-  return (
-    <section className="card">
-      <Toggle
-        on={hasPin}
-        onChange={(on) => (on ? setStep('new') : setPin(null))}
-        icon={<Lock size={16} />}
-        title={t('Passcode lock')}
-        sub={t('Ask for a 4-digit code when opening mySex on this phone')}
-      />
-      {step && (
-        <Keypad
-          title={step === 'new' ? t('Choose a passcode') : t('Confirm passcode')}
-          digits={digits}
-          setDigits={setDigits}
-          shake={shake}
-          onCancel={() => {
-            setStep(null);
-            setDigits('');
-          }}
-        />
-      )}
-    </section>
   );
 }

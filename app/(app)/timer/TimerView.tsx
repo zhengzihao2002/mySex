@@ -201,7 +201,7 @@ function IdleTimer({
         )}
       </div>
 
-      <Sheet open={pastOpen} onClose={() => setPastOpen(false)} title={t('Log a past session')}>
+      <Sheet open={pastOpen} onClose={() => setPastOpen(false)} stableHeight title={t('Log a past session')}>
         <SessionForm
           mode="past"
           places={places}
@@ -575,6 +575,7 @@ function LiveTimer({
       <Sheet
         open={finishOpen}
         onClose={() => setFinishOpen(false)}
+        stableHeight
         title={
           <span>
             {formatClock(frozenAt.current || secs)} <span className="text-sm font-normal text-ink-3">· {t('spill the details')}</span>

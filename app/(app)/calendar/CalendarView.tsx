@@ -396,7 +396,7 @@ function DayPanel({
         </div>
       )}
 
-      <Sheet open={logOpen} onClose={() => setLogOpen(false)} title={`${t('Log sex')} · ${f.prettyDate(date)}`}>
+      <Sheet open={logOpen} onClose={() => setLogOpen(false)} stableHeight title={`${t('Log sex')} · ${f.prettyDate(date)}`}>
         {logOpen && (
           <SessionForm
             mode="past"
