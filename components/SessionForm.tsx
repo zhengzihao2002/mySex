@@ -110,6 +110,7 @@ export function SessionForm({
     return !sameSharedField(key,v[key] as SharedValues[SharedField],base[key] as SharedValues[SharedField]);
   }):[];
   const sharedChanged=changedFields.length>0;
+  const buttonLabel=pending?t('Saving…'):mode==='edit'?(sharedChanged?t('Send change for approval'):t('Save')):submitLabel;
   const activeSec=exactTiming&&v.durationMin===initial?.durationMin?exactTiming.durationSec:Math.round(v.durationMin*60);
   const breakSec=exactTiming&&v.breakMin===initial?.breakMin?exactTiming.breakSec:Math.round(v.breakMin*60);
   const unchangedTiming=v.durationMin===initial?.durationMin&&v.breakMin===initial?.breakMin&&Date.parse(v.startedAt)===Date.parse(initial?.startedAt??'');
@@ -199,8 +200,10 @@ export function SessionForm({
 
 
       <FormError error={error} />
-      <div className="sticky bottom-0 z-10 -mx-1 bg-surface/95 px-1 pt-3 pb-1 backdrop-blur-xl"><button className="btn-primary w-full" disabled={pending}>
-        {pending ? t('Saving…') : mode==='edit' ? sharedChanged?t('Send change for approval'):t('Save'):submitLabel}
+      {/* Replace the sticky paint layer when its label changes. Safari can otherwise
+          retain half of the old text after map results collapse above it. */}
+      <div key={buttonLabel} className="sticky bottom-0 z-10 -mx-1 bg-surface px-1 pt-3 pb-1"><button className="btn-primary w-full" disabled={pending}>
+        <span>{buttonLabel}</span>
       </button></div>
     </form>
   );

@@ -9,7 +9,7 @@ import {useT} from './I18nProvider';
 const locks=new Set<HTMLElement>();
 let previousOverflow='';
 
-export function Sheet({open,onClose,title,children,viewKey}:{open:boolean;onClose:()=>void;title?:React.ReactNode;children:React.ReactNode;viewKey?:string}) {
+export function Sheet({open,onClose,title,children,viewKey,stableHeight=false}:{open:boolean;onClose:()=>void;title?:React.ReactNode;children:React.ReactNode;viewKey?:string;stableHeight?:boolean}) {
   const {t}=useT();
   const titleId=useId();
   const content=useRef<HTMLDivElement>(null);
@@ -27,9 +27,20 @@ export function Sheet({open,onClose,title,children,viewKey}:{open:boolean;onClos
     locks.add(node);
     const top=()=>Array.from(document.querySelectorAll('[data-app-sheet]')).at(-1)===node;
     const viewport=window.visualViewport;
+    // Editing keeps the layout viewport captured before typing. iOS shrinks/pans
+    // the visual viewport for its keyboard; that must not resize the sheet.
+    let layoutWidth=document.documentElement.clientWidth;
+    let layoutHeight=window.innerHeight;
     const resize=()=>{
-      node.style.top=`${viewport?.offsetTop??0}px`;
-      node.style.height=`${viewport?.height??window.innerHeight}px`;
+      if(stableHeight){
+        const width=document.documentElement.clientWidth;
+        if(width!==layoutWidth){layoutWidth=width;layoutHeight=window.innerHeight;}
+        node.style.top='0px';
+        node.style.height=`${layoutHeight}px`;
+      }else{
+        node.style.top=`${viewport?.offsetTop??0}px`;
+        node.style.height=`${viewport?.height??window.innerHeight}px`;
+      }
     };
     resize();
     viewport?.addEventListener('resize',resize);
@@ -56,7 +67,7 @@ export function Sheet({open,onClose,title,children,viewKey}:{open:boolean;onClos
       window.removeEventListener('resize',resize);
       if(trigger?.isConnected)trigger.focus({preventScroll:true});
     };
-  },[open]);
+  },[open,stableHeight]);
   if(!open||typeof document==='undefined')return null;
   return createPortal(<div ref={root} data-app-sheet className="fixed inset-x-0 top-0 z-50 flex h-dvh items-end justify-center">
     <div className="absolute inset-0 animate-fade bg-black/60 backdrop-blur-sm motion-reduce:animate-none" onClick={onClose}/>
