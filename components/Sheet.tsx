@@ -4,22 +4,22 @@ import {useEffect,useLayoutEffect,useId,useRef} from 'react';
 import {createPortal} from 'react-dom';
 import {X} from 'lucide-react';
 import {useT} from './I18nProvider';
-
-// Only populated by client effects; nested sheets share one body scroll lock.
-const locks=new Set<HTMLElement>();
-let previousOverflow='';
-let previousPosition='';
-let previousTop='';
-let previousWidth='';
-let pageScrollY=0;
+import {lockPageScroll} from '@/lib/page-scroll-lock';
 
 export function Sheet({open,onClose,title,children,viewKey,stableHeight=false}:{open:boolean;onClose:()=>void;title?:React.ReactNode;children:React.ReactNode;viewKey?:string;stableHeight?:boolean}) {
   const {t}=useT();
   const titleId=useId();
   const content=useRef<HTMLDivElement>(null);
-  useLayoutEffect(()=>{if(open&&content.current)content.current.scrollTop=0;},[open,viewKey]);
   const root=useRef<HTMLDivElement>(null);
   const dialog=useRef<HTMLDivElement>(null);
+  const previousView=useRef(viewKey);
+  useLayoutEffect(()=>{
+    if(open&&content.current){
+      content.current.scrollTop=0;
+      if(previousView.current!==viewKey)dialog.current?.focus({preventScroll:true});
+    }
+    previousView.current=viewKey;
+  },[open,viewKey]);
   const close=useRef(onClose);
   useEffect(()=>{close.current=onClose;},[onClose]);
   useLayoutEffect(()=>{
@@ -27,16 +27,7 @@ export function Sheet({open,onClose,title,children,viewKey,stableHeight=false}:{
     const node=root.current;
     const panel=dialog.current;
     const trigger=document.activeElement instanceof HTMLElement?document.activeElement:null;
-    if(!locks.size){
-      previousOverflow=document.body.style.overflow;
-      previousPosition=document.body.style.position;
-      previousTop=document.body.style.top;
-      previousWidth=document.body.style.width;
-      pageScrollY=window.scrollY;
-      // overflow:hidden alone still lets iOS pan the page behind the keyboard.
-      Object.assign(document.body.style,{overflow:'hidden',position:'fixed',top:`${-pageScrollY}px`,width:'100%'});
-    }
-    locks.add(node);
+    const unlock=lockPageScroll();
     const top=()=>Array.from(document.querySelectorAll('[data-app-sheet]')).at(-1)===node;
     const viewport=window.visualViewport;
     // Session forms keep their panel height when the keyboard opens. Only the
@@ -58,16 +49,21 @@ export function Sheet({open,onClose,title,children,viewKey,stableHeight=false}:{
       if(stableHeight){
         const width=document.documentElement.clientWidth;
         if(width!==layoutWidth){layoutWidth=width;layoutHeight=window.innerHeight;}
+        const active=document.activeElement;
+        const typing=active instanceof HTMLElement&&panel.contains(active)&&active.matches('input,textarea,select,[contenteditable="true"]');
+        // Safari can report a slightly shorter visual viewport even without a
+        // keyboard. Do not turn that safe-area/browser inset into a bottom gap.
+        const keyboardOpen=typing&&layoutHeight-(viewport?.height??window.innerHeight)>120;
         // Counter Safari's visual-viewport panning without moving the header
         // above the screen. Keyboard resize never changes the panel height.
-        node.style.top=`${viewport?.offsetTop??0}px`;
+        node.style.top=`${keyboardOpen?(viewport?.offsetTop??0):0}px`;
         node.style.height=`${layoutHeight}px`;
-        if(content.current){
+        if(content.current&&keyboardOpen){
           const visibleBottom=(viewport?.offsetTop??0)+(viewport?.height??window.innerHeight);
           // Layout offsets exclude the opening animation's translateY.
           const contentTop=(viewport?.offsetTop??0)+panel.offsetTop+content.current.offsetTop;
           content.current.style.maxHeight=`${Math.max(0,visibleBottom-contentTop-12)}px`;
-        }
+        }else if(content.current)content.current.style.maxHeight='';
       }else{
         node.style.top=`${viewport?.offsetTop??0}px`;
         node.style.height=`${viewport?.height??window.innerHeight}px`;
@@ -94,11 +90,7 @@ export function Sheet({open,onClose,title,children,viewKey,stableHeight=false}:{
     };
     window.addEventListener('keydown',onKey);
     return ()=>{
-      locks.delete(node);
-      if(!locks.size){
-        Object.assign(document.body.style,{overflow:previousOverflow,position:previousPosition,top:previousTop,width:previousWidth});
-        window.scrollTo(0,pageScrollY);
-      }
+      unlock();
       cancelAnimationFrame(frame);
       panel.removeEventListener('focusin',resize);
       window.removeEventListener('keydown',onKey);

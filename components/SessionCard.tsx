@@ -86,7 +86,7 @@ export function SessionCard({
         </div>
       </button>
 
-      <Sheet open={open} onClose={close} stableHeight={editing} viewKey={editing?'edit':'details'} title={editing?t('Edit session'):t('Session details')}>
+      <Sheet open={open} onClose={close} stableHeight viewKey={editing?'edit':'details'} title={editing?t('Edit session'):t('Session details')}>
         {open&&<>
         {score&&<SessionScore score={score} session={s}/>}
         <SessionPersonality tags={s.tags} />
@@ -96,7 +96,7 @@ export function SessionCard({
             <Link href="/inbox" className="btn-ghost w-full">{t('A change to this session is waiting for agreement — open Inbox')}</Link>
           </div>
         )}
-        {!editing&&<><SessionDetails session={s} byName={byName}/><button type="button" className="btn-primary sticky bottom-0 z-10 mt-4 w-full" onClick={()=>setEditing(true)}>{t('Edit session')}</button>{s.editRequest&&<Link href="/inbox" className="btn-ghost mt-3 w-full">{t('A change to this session is waiting for agreement — open Inbox')}</Link>}</>}
+        {!editing&&<><SessionDetails session={s} byName={byName}/><button type="button" className="btn-primary mt-4 w-full" onClick={()=>setEditing(true)}>{t('Edit session')}</button>{s.editRequest&&<Link href="/inbox" className="btn-ghost mt-3 w-full">{t('A change to this session is waiting for agreement — open Inbox')}</Link>}</>}
         {editing && experience && (
           <SessionForm
             mode="edit"

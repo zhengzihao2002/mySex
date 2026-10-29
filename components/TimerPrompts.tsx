@@ -14,6 +14,22 @@ export function TimerPrompts({paused,kind}:{paused:boolean;kind:'intercourse'|'o
  '69':t('Lie on your sides in opposite directions, each head near the other’s hips.'),
  'Side by side':t('Lie on your sides, facing each other.'),
  Seated:t('One partner sits securely; the other sits on their lap, facing them.'),
+ Lotus:t('Sit face to face, with legs wrapped around each other.'),
+ Butterfly:t('One partner lies near the bed edge; the other stands facing them.'),
+ 'Coital alignment':t('Lie face to face, with the upper partner positioned slightly higher.'),
+ Prone:t('One partner lies face down; the other stays close behind.'),
+ 'Legs raised':t('One partner lies back with knees raised.'),
+ 'Legs over shoulders':t('One partner lies back with legs resting on the other’s shoulders.'),
+ 'Kneeling face to face':t('Both kneel upright, facing each other.'),
+ 'Kneeling from behind':t('One partner kneels upright; the other kneels behind.'),
+ 'Edge of bed':t('One partner sits at a sturdy bed edge; the other faces them.'),
+ 'Reverse seated':t('One partner sits securely; the other sits on their lap, facing away.'),
+ 'Side saddle':t('One partner lies back; the other sits sideways across their lap.'),
+ Scissors:t('Lie on your sides with your legs comfortably interlaced.'),
+ Bridge:t('One partner lies back with knees bent and hips comfortably raised.'),
+ Squatting:t('One partner lies back; the other squats above, using support.'),
+ 'Standing from behind':t('Both stand close, facing the same direction.'),
+ 'Seated leaning back':t('Sit face to face, with one partner leaning back on their hands.'),
  };
  const position=index>=0?TIMER_PROMPTS[index]:null;
  useEffect(()=>{if(!front)return;const timer=setTimeout(()=>{lockedUntil.current=Date.now()+450;setFront(false)},30450);return()=>clearTimeout(timer)},[front]);

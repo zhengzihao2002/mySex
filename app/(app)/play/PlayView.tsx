@@ -6,14 +6,15 @@ import Link from 'next/link';
 import { Dice5, Lock, Shuffle, Sparkles } from 'lucide-react';
 import { answerDesire, resetDesires } from '@/app/actions';
 import { useRun } from '@/components/useRun';
-import { DARES, DESIRES, TAGS } from '@/lib/content';
+import { DARES, DESIRES } from '@/lib/content';
+import {INTERCOURSE_POSITIONS} from '@/lib/activity-details';
 
 // i18n:begin
 const ACTIONS = ['Kiss', 'Lick', 'Nibble', 'Massage', 'Suck', 'Tease', 'Blow on', 'Spank', 'Caress', 'Bite'];
 const PARTS = ['Neck', 'Lips', 'Inner thighs', 'Ears', 'Chest', 'Back', 'Butt', 'Stomach', 'Feet', 'Your choice 😈'];
 const TIMES = ['30 sec', '1 min', '2 min', 'until they beg'];
 // i18n:end
-const POSITIONS = TAGS.slice(0, 7);
+const POSITIONS = [...INTERCOURSE_POSITIONS,'69'];
 
 function pick<T>(list: readonly T[], not?: T) {
   let v = list[Math.floor(Math.random() * list.length)];

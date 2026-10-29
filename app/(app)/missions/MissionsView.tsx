@@ -47,7 +47,7 @@ export function MissionsView({sessions}:{sessions:SexSession[];runs?:MissionRun[
       <p className="mb-2 text-sm text-ink-2">{t('Total session XP: 40 min → 34; 60 min → 45; 90 min → 70; 120 min → 105. Quest bonuses are added separately.')}</p>
       <p className="mb-4 text-xs text-ink-3">{t('Existing intercourse records count automatically. Their original session scores stay unchanged. Missing active time earns base XP only. Corrections and deletions update rewards.')}</p>
       <p className="mb-4 text-sm text-rose-2">{t('Top rank requires {xp} XP. Only intercourse records and missions earn XP.',{xp:TOP_RANK_XP.toLocaleString()})}</p>
-      <p className="mb-4 text-xs text-ink-3">{t('The first upgrade costs 150 XP. Every following upgrade costs 100 XP more than the previous one.')}</p>
+      <p className="mb-4 text-xs text-ink-3">{t('There are 25 ranks. The first upgrade costs 1,300 XP. Every following upgrade costs 1,700 XP more than the previous one.')}</p>
       <ol className="space-y-2">{RANKS.map((title,i)=><li key={title} className={`flex items-center gap-3 rounded-2xl border p-3 ${game.rank.level===i+1?'border-rose bg-rose/10':'border-line'}`}><span className="text-lg font-bold text-rose-2">{i+1}</span><div className="flex-1"><p className="font-semibold">{t(title)}</p><p className="text-xs text-ink-3">{rankThreshold(i).toLocaleString()} XP</p></div>{game.rank.level>i?'✦':'◇'}</li>)}</ol>
     </Sheet>
 

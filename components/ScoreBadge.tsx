@@ -1,7 +1,8 @@
 'use client';
 import { useT } from './I18nProvider';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
+import {lockPageScroll} from '@/lib/page-scroll-lock';
 import {scoreVersionLabel,type Score} from '@/lib/score';
 import type { Break } from '@/lib/types';
 import { SessionTimes } from './SessionTimes';
@@ -43,6 +44,7 @@ export type RevealTimes = { startedAt: string; activeSec: number; breakSec: numb
 export type RewardReveal={xp:number;level:number;title:string;levelUp:boolean;missions:number};
 
 export function ScoreReveal({ score, times, reward, onClose }: { score: Score; times?: RevealTimes; reward?:RewardReveal; onClose: () => void }) {
+  useLayoutEffect(()=>lockPageScroll(),[]);
   const { t } = useT();
   const [shown, setShown] = useState(0);
   useEffect(() => {

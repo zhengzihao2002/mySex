@@ -1,6 +1,8 @@
-export const TIMER_PROMPTS = ['Missionary', 'Doggy', 'Cowgirl', 'Reverse cowgirl', 'Spooning', 'Standing', '69', 'Side by side', 'Seated'] as const;
+import {ACTIVITY_GROUPS,INTERCOURSE_POSITIONS} from './activity-details.ts';
+export const TIMER_PROMPTS = [...INTERCOURSE_POSITIONS,'69'] as const;
 export function nextPrompt(previous: number, random = Math.random, positions = true) {
-  const choices = TIMER_PROMPTS.map((_,i)=>i).filter(i=>i!==previous && (positions || i>=6));
+  const oral=new Set(ACTIVITY_GROUPS.oral.find(g=>g.key==='positions')!.tags);
+  const choices = TIMER_PROMPTS.map((_,i)=>i).filter(i=>i!==previous && (positions?TIMER_PROMPTS[i]!=='69':oral.has(TIMER_PROMPTS[i])));
   return choices[Math.min(choices.length-1,Math.floor(random()*choices.length))];
 }
 export function sessionPersonality(tags: string[]) {

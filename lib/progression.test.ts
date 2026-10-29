@@ -100,6 +100,9 @@ test('atlas needs all positions, enough qualifying records and enough days',()=>
   const complete=missionProgress(m('atlas'),records,now);
   assert.equal(complete.complete,true);assert.equal(complete.value,1);
   assert.equal(missionProgress(m('atlas'),records.map(s=>({...s,tags:positions.slice(0,7)})),now).complete,false);
+  const expanded=['Lotus','Butterfly','Prone','Legs raised','Bridge','Squatting','Scissors','Side saddle'];
+  assert.equal(missionProgress(m('atlas'),records.map(s=>({...s,tags:expanded})),now).complete,true);
+  assert.equal(scoreSession({...s,tags:['Lotus','Butterfly','Bridge']},ctx).parts.find(p=>p.key==='variety')!.points,15);
 });
 
 test('combination quests require distinct sets and days, not reordered copies',()=>{
@@ -128,15 +131,19 @@ test('the finale needs all other goals and a separate qualifying session afterwa
 });
 
 test('rank titles and upgrade costs remain unique and increasingly demanding',()=>{
-  assert.ok(RANKS.length>=100);assert.equal(new Set(RANKS).size,RANKS.length);
+  assert.equal(RANKS.length,25);assert.equal(new Set(RANKS).size,RANKS.length);
   assert.ok(RANKS.every(title=>!!zh[title]));assert.equal(new Set(RANKS.map(title=>zh[title])).size,RANKS.length);
   for(let i=1;i<RANKS.length;i++){
     assert.equal(coupleRank(rankThreshold(i)).level,i+1);
     assert.equal(coupleRank(rankThreshold(i)-1).level,i);
-    assert.equal(rankThreshold(i)-rankThreshold(i-1),150+(i-1)*100);
+    assert.equal(rankThreshold(i)-rankThreshold(i-1),1300+(i-1)*1700);
   }
-  assert.equal(TOP_RANK_XP,499950);
-  assert.equal(coupleRank(TOP_RANK_XP).level,100);
+  assert.equal(TOP_RANK_XP,500400);
+  assert.equal(coupleRank(TOP_RANK_XP).level,25);
+  assert.equal(coupleRank(TOP_RANK_XP).title,'The Boundless Myth');
+  assert.equal(zh[coupleRank(TOP_RANK_XP).title],'无垠神话');
+  assert.equal(coupleRank(TOP_RANK_XP-1).level,24);
+  assert.deepEqual(coupleRank(TOP_RANK_XP+1000),coupleRank(TOP_RANK_XP));
 });
 
 test('existing session XP is independent of the advanced quest requirements and score version',()=>{
@@ -148,23 +155,24 @@ test('existing session XP is independent of the advanced quest requirements and 
   assert.deepEqual(scoreSession(classic,ctx),before);
   assert.equal(progression([{...untimed,kind:'oral'}],[],now).xp,0);
   const large=progression(Array.from({length:4800},(_,i)=>({...s,id:String(i),durationSec:7200})),[],now);
-  assert.equal(large.rank.level,100);
+  assert.equal(large.rank.level,25);
 });
 
 
-test('short sessions earn much less XP; the quadratic curve reaches its ceiling only at 120 active minutes',()=>{
+test('XP needs 120 active minutes for its ceiling while endurance score requires exactly 60',()=>{
   assert.deepEqual([10,20,30,40,60,90,120,180].map(n=>sessionXp({...s,durationSec:n*60}).total),[26,27,30,34,45,70,105,105]);
-  assert.deepEqual([10,20,30,40,60,90,120,180].map(n=>endurancePoints(n*60)),[0,1,3,5,11,25,45,45]);
+  assert.deepEqual([10,20,30,40,60,90,120,180].map(n=>endurancePoints(n*60)),[1,5,11,20,45,45,45,45]);
   let previous=0;for(let minutes=1;minutes<=1440;minutes++){const current=enduranceXp(minutes*60);assert.ok(current>=previous&&current<=80);previous=current;}
   assert.equal(enduranceXp(Infinity),0);assert.equal(enduranceXp(NaN),0);assert.equal(enduranceXp(-1),0);
   assert.equal(enduranceXp(7199),79);assert.equal(enduranceXp(7200),80);
-  assert.equal(endurancePoints(7199),44);assert.equal(endurancePoints(7200),45);
+  assert.equal(endurancePoints(3599),44);assert.equal(endurancePoints(3600),45);
   const classic={...s,scoreVersion:1 as const,durationSec:7200};
   assert.equal(progression([classic],[],now).recordXp,105);
   assert.equal(sessionXp({...classic,kind:'oral'}).total,0);
   const modern={...s,scoreVersion:3 as const};
-  assert.equal(scoreSession(modern,ctx).total,60);
-  assert.equal(scoreSession({...modern,durationSec:5400},ctx).total,80);
+  assert.equal(scoreSession(modern,ctx).total,75);
+  assert.equal(scoreSession({...modern,durationSec:3600},ctx).total,100);
+  assert.equal(scoreSession({...modern,durationSec:5400},ctx).total,100);
   assert.equal(scoreSession({...modern,durationSec:7200},ctx).total,100);
   assert.equal(scoreSession({...modern,kind:'oral'},ctx).parts[0].points,45);
   assert.equal(scoreSession(s,ctx).total,100); // saved v2 records keep their formula

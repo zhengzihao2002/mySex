@@ -16,7 +16,7 @@ Endurance goals now start at 60 active minutes:
 | Three summits | Three distinct days, each with a 90-minute/five-position session | 600 |
 | The crown circuit | Five distinct days, each with a 120-minute/six-position session | 1,000 |
 
-Explorer and Rhythm goals retain their position collections, distinct combinations and qualifying days. Actual position-library tags count; extra labels, duplicate tags, reordered combinations, oral records, unfinished recordings and future records cannot supply proof. Breaks never add to active minutes. Multi-day goals use UTC dates and have no deadlines.
+The intercourse library contains 24 positions, including all eight original labels. The form keeps the original eight visible, supports expanding the rest, shows selected new positions even when collapsed, and searches both English and Simplified Chinese. Timer cards and the Play dice use the expanded library too. Oral choices remain separate. The atlas still needs eight distinct positions, now chosen from all 24, so existing atlas proof stays valid. Explorer and Rhythm goals retain their position collections, distinct combinations and qualifying days. Actual position-library tags count; extra labels, duplicate tags, reordered combinations, oral records, unfinished recordings and future records cannot supply proof. Breaks never add to active minutes. Multi-day goals use UTC dates and have no deadlines.
 
 The finale requires all twelve other quests, followed by a separate session starting after their supporting records finish, with 120 active minutes and six positions. Completing the catalogue awards 10,710 quest XP. Quest bonuses and proof are reevaluated against these harder requirements.
 
@@ -38,11 +38,13 @@ Every completed intercourse record earns 25 base XP plus `round(80 × min(active
 
 Quest bonuses are separate. This curve applies to existing and new intercourse history, so previous records still count, while XP totals and levels can decrease under the harder rules. Unknown historical duration earns base XP without an invented time bonus. Unfinished recordings and explicit zero-duration records earn none; oral records and breaks earn none.
 
-The 100 unique rank titles and threshold curve remain unchanged: at zero-based index `i`, cumulative XP is `50i² + 100i`. Upgrade costs start at 150 XP and increase by 100 XP each level. Level 100 naturally requires 499,950 XP, with no minimum record-count gate.
+The ladder has 25 distinct rank titles selected across the full original title range, ending at The Boundless Myth. At zero-based index `i`, cumulative XP is `850i² + 450i`. Upgrade costs start at 1,300 XP and increase by 1,700 XP each level: 1,300, 3,000, 4,700, and so on. Level 25 naturally requires 500,400 XP, with no fixed-total override or minimum record-count gate. Condensing the ranks does not change earned XP; the displayed level and title are derived from the same XP total under the new thresholds.
 
 XP is derived from current distinct saved IDs and deterministic goal definitions, never incremented by clicking Save or Claim. Repeated reads and duplicate IDs cannot double-award XP. Corrections/deletions reevaluate proof and rewards. Personal edits save directly; shared edits and deletion retain partner approval. Legacy mission invitations/skips cannot affect rewards, and the existing inbox retention remains unchanged.
 
 ## Save celebration and navigation
+
+Edit, finish-save and record-detail sheets retain their layout height while the keyboard opens; their inner scroll area follows the usable keyboard space. A smaller Safari visual viewport without a keyboard does not lift the panel above the bottom edge. Edit and Save buttons stay in normal document flow. Sheets, the XP modal and the saved-score overlay share one page-scroll lock, so closing them in different orders cannot leave another overlay's temporary body/root styles behind. A brief viewport recovery restores the original page scroll as Safari's keyboard settles, stops on the next user gesture, and removes its listeners after 500 milliseconds.
 
 Live completion and both manual-entry paths return the authoritative saved session, its score, and a reward snapshot. The previous XP is reconstructed from the current history excluding that record; the new XP includes it. This identifies the new session's XP and newly completed goals without trusting a client clock estimate or stale rank.
 
@@ -52,18 +54,18 @@ The Home progression card opens Couple quests. Its counterpart on that page is a
 
 ## Informational scores
 
-Existing saved v1 and v2 records keep their original formulas. A migration defaults only newly inserted records to v3 and preserves all existing version values on reruns. Signed backups preserve all three versions. Analytics compare scores within one version rather than averaging different formulas together.
+Existing saved v1 and v2 records keep their original formulas. The current v3 endurance score uses the requested one-hour maximum, independently of the two-hour XP maximum. A migration defaults only newly inserted records to v3 and preserves all existing version values on reruns. Signed backups preserve all three versions. Analytics compare scores within one version rather than averaging different formulas together.
 
 New v3 intercourse records use:
 
 | Contribution | Maximum | Rule |
 |---|---:|---|
-| Active time | 45 | `round(45 × min(activeMinutes / 120, 1)²)` |
+| Active time | 45 | `round(45 × min(activeMinutes / 60, 1)²)` |
 | Heat ratings | 20 | Four times the mean submitted partner rating, rounded |
 | Recorded pleasure | 20 | Ten points per partner with a recorded orgasm; extra orgasms add no points |
 | Position variety | 15 | One distinct position: 3; two: 8; three or more: 15 |
 
-The active-time contribution is 0/1/3/5/11/25/45 points at 10/20/30/40/60/90/120 minutes. As with XP, the final point requires the full 120 minutes instead of rounding up early. Breaks never contribute. New oral records retain their previous 40-minute informational time curve and recipient-based pleasure calculation; the intercourse progression change does not add oral quests or XP.
+The active-time contribution is 1/5/11/20/45 points at 10/20/30/40/60 minutes. The final score point requires the full 60 minutes instead of rounding up early. Endurance XP separately retains its 120-minute maximum. Breaks never contribute. New oral records retain their previous 40-minute informational time curve and recipient-based pleasure calculation; the intercourse progression change does not add oral quests or XP.
 
 The score stays read-only, with a prominent version label and expandable calculation. Existing saved scores remain unchanged when XP recalculates under the harder curve.
 

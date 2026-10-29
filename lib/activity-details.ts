@@ -2,13 +2,18 @@ import type {SessionKind} from './types';
 
 export type ActivityGroup={key:string;label:string;emoji:string;tags:readonly string[]};
 // i18n:begin
-const positions=['Missionary','Doggy','Cowgirl','Reverse cowgirl','Spooning','Standing','Side by side','Seated'];
+export const INTERCOURSE_POSITIONS=[
+  'Missionary','Doggy','Cowgirl','Reverse cowgirl','Spooning','Standing','Side by side','Seated',
+  'Lotus','Butterfly','Coital alignment','Prone','Legs raised','Legs over shoulders',
+  'Kneeling face to face','Kneeling from behind','Edge of bed','Reverse seated',
+  'Side saddle','Scissors','Bridge','Squatting','Standing from behind','Seated leaning back',
+] as const;
 const pace=['Slow & sensual','Gentle','Teasing','Playful','Eye contact','Quickie'];
 const extras=['Toys','Lingerie','Blindfold','Mirror','Roleplay'];
 
 export const ACTIVITY_GROUPS:Record<SessionKind,ActivityGroup[]>={
   intercourse:[
-    {key:'positions',label:'Positions',emoji:'🃏',tags:positions},
+    {key:'positions',label:'Positions',emoji:'🃏',tags:INTERCOURSE_POSITIONS},
     {key:'warmup',label:'Warm-up',emoji:'💋',tags:['Oral (her)','Oral (him)','69','Massage']},
     {key:'pace',label:'Pace & mood',emoji:'🎚️',tags:[...pace,'Rough','Makeup sex']},
     {key:'extras',label:'Extras',emoji:'✨',tags:extras},

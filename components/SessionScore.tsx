@@ -28,7 +28,7 @@ export function SessionScore({score,session:s}:{score:Score;session:SexSession})
     adventure:t('3 points each for a new location, an adventurous activity, and a second or later session that day.'),
   };
   if((score.version??1)>=2)Object.assign(explanations,{
-    duration:score.version===3&&s.kind==='intercourse'?t('Active time: round(45 × min(minutes / 120, 1)²). Breaks do not count; 120 active minutes reaches the cap.'):t('Active time: round(45 × min(minutes / 40, 1)^1.4). Breaks do not count; 40 minutes reaches the cap.'),
+    duration:score.version===3&&s.kind==='intercourse'?t('Active time: round(45 × min(minutes / 60, 1)²). Breaks do not count; the full 45 points requires 60 active minutes.'):t('Active time: round(45 × min(minutes / 40, 1)^1.4). Breaks do not count; 40 minutes reaches the cap.'),
     heat:t('Mean of submitted partner ratings × 4, rounded. Maximum 20 points.'),
     pleasure:s.kind==='oral'?t('20 points divided equally between the selected recipients. A recorded orgasm earns that recipient’s share. Extra orgasms do not add points.'):t('10 points per partner with a recorded orgasm. Extra orgasms do not add points.'),
     variety:t('One position: 3 points. Two: 8. Three or more: 15. Mood and setting tags do not count.'),

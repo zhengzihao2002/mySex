@@ -10,6 +10,7 @@ import {useT} from './I18nProvider';
 export function ActivityFields({kind,value,onChange,disabled=false}:{kind:SessionKind;value:string[];onChange:(tags:string[])=>void;disabled?:boolean}){
   const {t}=useT();
   const [searchOpen,setSearchOpen]=useState(false),[query,setQuery]=useState('');
+  const [expandedPositions,setExpandedPositions]=useState(false);
   const searchId=useId();
   const known=new Set(tagsForKind(kind));
   const earlier=value.filter(tag=>!known.has(tag));
@@ -21,10 +22,15 @@ export function ActivityFields({kind,value,onChange,disabled=false}:{kind:Sessio
     <div className="flex items-center gap-2"><h3 className="label mb-0 flex-1">{t('What went down')}</h3><span className="text-xs text-ink-3">{t('{n} selected',{n:value.length})}</span>
       <button type="button" disabled={disabled} className="rounded-full bg-surface-2 p-2 text-ink-2" aria-label={t(searchOpen?'Close activity search':'Search activities')} aria-expanded={searchOpen} onClick={()=>{setSearchOpen(!searchOpen);setQuery('');}}>{searchOpen?<X size={15}/>:<Search size={15}/>}</button></div>
     {searchOpen&&<input id={searchId} className="input" aria-label={t('Search activities')} placeholder={t('Find a position, mood, or extra…')} value={query} disabled={disabled} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();e.stopPropagation();}}}/>}
-    {filtered.map(group=><fieldset key={group.key} className="rounded-2xl border border-line/60 bg-surface-2/30 p-3" disabled={disabled}>
+    {filtered.map(group=>{
+      const expandable=kind==='intercourse'&&group.key==='positions'&&!query.trim();
+      const visible=expandable&&!expandedPositions?group.tags.filter((tag,i)=>i<8||value.includes(tag)):group.tags;
+      const hidden=group.tags.length-visible.length;
+      return <fieldset key={group.key} className="rounded-2xl border border-line/60 bg-surface-2/30 p-3" disabled={disabled}>
       <legend className="px-1 text-xs font-semibold text-ink-2">{group.emoji} {t(group.label)}</legend>
-      <div className="flex flex-wrap gap-2">{group.tags.map(tag=>{const on=value.includes(tag);return <button type="button" key={tag} data-tag={tag} aria-pressed={on} disabled={!on&&value.length>=20} onClick={()=>toggle(tag)} className={`chip transition-colors disabled:opacity-40 ${on?'chip-on':''}`}>{t(tag)}</button>;})}</div>
-    </fieldset>)}
+      <div className="flex flex-wrap gap-2">{visible.map(tag=>{const on=value.includes(tag);return <button type="button" key={tag} data-tag={tag} aria-pressed={on} disabled={!on&&value.length>=20} onClick={()=>toggle(tag)} className={`chip transition-colors disabled:opacity-40 ${on?'chip-on':''}`}>{t(tag)}</button>;})}</div>
+      {expandable&&(hidden>0||expandedPositions)&&<button type="button" className="mt-2 min-h-11 text-sm text-rose-2" aria-expanded={expandedPositions} onClick={()=>setExpandedPositions(!expandedPositions)}>{expandedPositions?t('Fewer positions'):t('More positions ({n})',{n:hidden})}</button>}
+    </fieldset>})}
     {!filtered.length&&<p role="status" className="text-sm text-ink-3">{t('No matching activities.')}</p>}
     {value.length>=20&&<p className="text-xs text-ink-3">{t('Up to {n} selections',{n:20})}</p>}
   </section>;

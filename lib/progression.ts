@@ -5,14 +5,14 @@ export function positionTags(s: Pick<SexSession,'kind'|'tags'>): string[] {
   const allowed=new Set(ACTIVITY_GROUPS[s.kind].find(g=>g.key==='positions')!.tags);
   return [...new Set(s.tags)].filter(tag=>allowed.has(tag));
 }
-const enduranceFraction=(seconds:number)=>Number.isFinite(seconds)?Math.pow(Math.min(Math.max(0,seconds)/7200,1),2):0;
+const enduranceFraction=(seconds:number,target:number)=>Number.isFinite(seconds)?Math.pow(Math.min(Math.max(0,seconds)/target,1),2):0;
 // Reserve the final point for the full target instead of rounding up early.
-const enduranceReward=(seconds:number,max:number)=>Math.min(seconds>=7200?max:max-1,Math.round(max*enduranceFraction(seconds)));
-// Preserve v2 saved scores; v3 intercourse reaches its ceiling at two active hours.
-export const endurancePoints=(seconds:number,version:2|3=3)=>version===2?Math.round(45*Math.pow(Math.min(Math.max(0,seconds)/2400,1),1.4)):enduranceReward(seconds,45);
+const enduranceReward=(seconds:number,max:number,target:number)=>Math.min(seconds>=target?max:max-1,Math.round(max*enduranceFraction(seconds,target)));
+// Preserve v2 saved scores; v3 intercourse reaches its score ceiling at one active hour.
+export const endurancePoints=(seconds:number,version:2|3=3)=>version===2?Math.round(45*Math.pow(Math.min(Math.max(0,seconds)/2400,1),1.4)):enduranceReward(seconds,45,3600);
 /** The same harder 120-minute curve applies to XP from all completed intercourse history. */
 export function enduranceXp(seconds:number) {
-  return enduranceReward(seconds,80);
+  return enduranceReward(seconds,80,7200);
 }
 /** Derived from one canonical record, never an increment on Save. Historical and new completed intercourse records use the same XP rules. */
 export function sessionXp(s: Pick<SexSession,'status'|'scoreVersion'|'durationSec'|'kind'>) {
@@ -24,109 +24,34 @@ export function sessionXp(s: Pick<SexSession,'status'|'scoreVersion'|'durationSe
 // i18n:begin
 export const RANKS=[
   "Spark Starters",
-  "Heartfire Companions",
-  "Secret Allies",
-  "Hidden Spark Duo",
   "Chemistry Seekers",
-  "Magnetic Partners",
-  "Moonlight Adventurers",
-  "Midnight Pathfinders",
   "Flame Keepers",
-  "Blazing Promise",
   "Daring Duo",
-  "Boldhearted Partners",
   "Rhythm Masters",
-  "Harmony Virtuosos",
-  "Velvet Trailblazers",
-  "Silken Dreamseekers",
-  "Ember Cavaliers",
-  "Ruby Lancers",
-  "Scarlet Champions",
-  "Rosefire Victors",
   "Crimson Legends",
-  "Garnet Oathbound",
-  "Tempest Riders",
-  "Stormcrest Companions",
   "Thunderbound Partners",
-  "Lightning Vanguards",
-  "Eclipse Vanguard",
-  "Shadowmoon Ascendants",
-  "Aurora Ascendants",
-  "Polar Radiance",
   "Twin Phoenixes",
-  "Phoenix Heartbound",
-  "Supernova Sovereigns",
-  "Nova Flame Regents",
-  "Solar Crown Bearers",
-  "Helios Luminaries",
-  "Starfire Conquerors",
-  "Meteor Crowned",
-  "Moonfall Monarchs",
-  "Lunar Apex",
   "Astral Paladins",
-  "Astral Crestbearers",
-  "Nebula Navigators",
-  "Nebula Flamebound",
-  "Cometforged Heroes",
-  "Cometwing Champions",
-  "Galaxy Sentinels",
-  "Galactic Luminaries",
+  "Starfire Conquerors",
+  "Supernova Sovereigns",
   "Celestial Regents",
-  "Skyvault Sovereigns",
-  "Stardust Alchemists",
+  "Galaxy Sentinels",
   "Cosmic Transmuters",
-  "Constellation Weavers",
-  "Zodiac Dreamkeepers",
-  "Orbit Breakers",
-  "Gravity Unbound",
   "Horizon Transcenders",
-  "Eventide Transcendents",
-  "Infinity Voyagers",
-  "Limitless Wayfarers",
   "Dreamrealm Architects",
-  "Reverie Realmkeepers",
-  "Mythic Oathkeepers",
-  "Epic Covenant",
   "Destiny Forgemasters",
-  "Fateweaving Paragons",
-  "Empyrean Luminaries",
-  "Heavenfire Ascendants",
   "Radiant Immortals",
-  "Deathless Radiance",
   "Eternal Flamebearers",
-  "Timeless Heartflame",
-  "Chronicle Sovereigns",
-  "Saga Crowned",
-  "Era Definers",
-  "Epoch Trailmakers",
   "Aeon Ascendants",
-  "Aeon Crownkeepers",
-  "Worldheart Guardians",
-  "Worldsoul Concord",
-  "Boundless Paragons",
-  "Transcendent Unity",
-  "Voidlight Emperors",
-  "Voidstar Crowned",
-  "Cosmic Lawmakers",
-  "Celestial Order Forgers",
   "Reality Shapers",
-  "Worldweaving Sovereigns",
   "Origin Flamekeepers",
-  "Primal Radiance",
-  "Primordial Crown Bearers",
-  "Firstlight Architects",
   "Genesis Dreamforgers",
-  "Creation Oathbound",
   "Omniverse Overlords",
-  "Allrealm Ascendants",
-  "Beyond Eternity",
-  "Everlasting Apex",
-  "The Unwritten Legend",
   "The Boundless Myth",
 ] as const;
 // i18n:end
-// Upgrade costs are 150, 250, 350, ... XP; every upgrade costs 100 XP more.
-export const rankThreshold=(index:number)=>50*index*index+100*index;
+// Upgrade costs are 1,300, 3,000, 4,700, ... XP; each upgrade costs 1,700 XP more.
+export const rankThreshold=(index:number)=>850*index*index+450*index;
 export const TOP_RANK_XP=rankThreshold(RANKS.length-1);
 export function coupleRank(xp:number) {
   let index=0;while(index<RANKS.length-1&&xp>=rankThreshold(index+1))index++;
@@ -138,7 +63,7 @@ export const MISSIONS:Mission[]=[
   {key:'choreography',path:'explorer',title:/*i18n*/'Four-part choreography',description:/*i18n*/'In ONE session: at least 30 active minutes and four different positions.',xp:250,target:1,rule:'session',minMinutes:30,minPositions:4},
   {key:'fivefold',path:'explorer',title:/*i18n*/'Fivefold expedition',description:/*i18n*/'In ONE session: at least 35 active minutes and five different positions.',xp:400,target:1,rule:'session',minMinutes:35,minPositions:5},
   {key:'grand-tour',path:'explorer',title:/*i18n*/'The grand tour',description:/*i18n*/'In ONE session: at least 40 active minutes and six different positions.',xp:600,target:1,rule:'session',minMinutes:40,minPositions:6},
-  {key:'atlas',path:'explorer',title:/*i18n*/'Master the atlas',description:/*i18n*/'Collect all eight positions across at least 12 sessions on eight different days. Every qualifying session needs 25 active minutes and three positions.',xp:1000,target:1,rule:'atlas',minMinutes:25,minPositions:3,minDays:8,minSessions:12},
+  {key:'atlas',path:'explorer',title:/*i18n*/'Master the atlas',description:/*i18n*/'Explore eight different positions across at least 12 sessions on eight different days. Every qualifying session needs 25 active minutes and three positions.',xp:1000,target:8,rule:'atlas',minMinutes:25,minPositions:3,minDays:8,minSessions:12},
   {key:'thirty',path:'endurance',title:/*i18n*/'The iron hour',description:/*i18n*/'In ONE session: at least 60 active minutes and four different positions.',xp:120,target:1,rule:'session',minMinutes:60,minPositions:4},
   {key:'thirty-five',path:'endurance',title:/*i18n*/'The ninety-minute ascent',description:/*i18n*/'In ONE session: at least 90 active minutes and five different positions.',xp:240,target:1,rule:'session',minMinutes:90,minPositions:5},
   {key:'forty',path:'endurance',title:/*i18n*/'The two-hour legend',description:/*i18n*/'In ONE session: at least 120 active minutes and six different positions.',xp:400,target:1,rule:'session',minMinutes:120,minPositions:6},
@@ -166,7 +91,7 @@ export function missionProgress(m:Mission,sessions:SexSession[],now=Date.now()):
   }
   if(m.rule==='days')return {value:Math.min(perDay.size,m.target),target:m.target,complete:perDay.size>=m.target,evidence:[...perDay.values()].slice(0,m.target)};
   const checks:MissionCheck[]=m.rule==='atlas'?[
-    {label:/*i18n*/'Distinct positions',value:Math.min(8,positions.size),target:8},
+    {label:/*i18n*/'Distinct positions',value:Math.min(m.target,positions.size),target:m.target},
     {label:/*i18n*/'Qualifying sessions',value:Math.min(m.minSessions!,eligible.length),target:m.minSessions!},
     {label:/*i18n*/'Qualifying days',value:Math.min(m.minDays!,perDay.size),target:m.minDays!},
   ]:[
@@ -178,7 +103,7 @@ export function missionProgress(m:Mission,sessions:SexSession[],now=Date.now()):
   [...perDay.values()].slice(0,m.minDays!).forEach(id=>proof.add(id));
   if(m.rule==='atlas'){
     const witnessed=new Set<string>();
-    for(const s of eligible){const before=witnessed.size;positionTags(s).forEach(tag=>witnessed.add(tag));if(witnessed.size>before)proof.add(s.id);if(witnessed.size>=8)break;}
+    for(const s of eligible){const before=witnessed.size;positionTags(s).forEach(tag=>witnessed.add(tag));if(witnessed.size>before)proof.add(s.id);if(witnessed.size>=m.target)break;}
   }else [...combinations.values()].slice(0,m.minSessions!).forEach(id=>proof.add(id));
   return {value,target:1,complete:value>=1,evidence:[...proof],checks};
 }

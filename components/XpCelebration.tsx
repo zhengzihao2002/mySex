@@ -1,6 +1,7 @@
 'use client';
 import {progressFillStyle} from '@/lib/progress-style';
-import {useEffect,useRef,useState} from 'react';
+import {useEffect,useLayoutEffect,useRef,useState} from 'react';
+import {lockPageScroll} from '@/lib/page-scroll-lock';
 import {createPortal} from 'react-dom';
 import {coupleRank,RANKS,rankThreshold,MISSIONS} from '@/lib/progression';
 import type {SaveCelebration,XpReward} from '@/lib/session-rewards';
@@ -21,11 +22,11 @@ export function XpCelebration({reward,onContinue}:{reward:XpReward;onContinue:()
   const {t}=useT();const dialog=useRef<HTMLDialogElement>(null);
   const [frame,setFrame]=useState(()=>({xp:reward.beforeXp,level:coupleRank(reward.beforeXp).level,ready:false}));
   const initial=coupleRank(reward.beforeXp),final=coupleRank(reward.afterXp);
-  useEffect(()=>{
+  useLayoutEffect(()=>{
     const node=dialog.current;if(!node)return;
-    const overflow=document.body.style.overflow;document.body.style.overflow='hidden';
+    const unlock=lockPageScroll();
     node.showModal();node.focus({preventScroll:true});
-    return()=>{node.close();document.body.style.overflow=overflow;};
+    return()=>{node.close();unlock();};
   },[]);
   useEffect(()=>{
     const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;

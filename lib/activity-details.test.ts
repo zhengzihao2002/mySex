@@ -32,3 +32,19 @@ test('a type correction includes its dependent cleanup in the proposal while his
   const away=mergeSharedProposal(legacy,null,{kind:'intercourse'})!;
   assert.equal(mergeSharedProposal(legacy,away,{kind:'oral',tags:legacy.tags,protection:legacy.protection}),null);
 });
+
+test('expanded positions retain all original controls and can be saved and proposed in every intercourse form',async()=>{
+  const {INTERCOURSE_POSITIONS}=await import('./activity-details.ts');
+  const {zh}=await import('./i18n/zh.ts');
+  assert.equal(INTERCOURSE_POSITIONS.length,24);
+  assert.equal(new Set(INTERCOURSE_POSITIONS).size,24);
+  assert.deepEqual(INTERCOURSE_POSITIONS.slice(0,8),['Missionary','Doggy','Cowgirl','Reverse cowgirl','Spooning','Standing','Side by side','Seated']);
+  assert.ok(INTERCOURSE_POSITIONS.every(tag=>!!zh[tag]));
+  for(const tag of INTERCOURSE_POSITIONS){
+    assert.deepEqual(activityDetails('intercourse',{tags:[tag]}).tags,[tag]);
+    if(!tagsForKind('oral').includes(tag))assert.deepEqual(activityDetails('oral',{tags:[tag]}).tags,[]);
+  }
+  const saved={kind:'intercourse',startedAt:'2026-10-01T10:00:00Z',durationSec:600,pausedSec:0,place:null,protection:null,tags:['Missionary'],latitude:null,longitude:null,rating:4,hisOrgasms:1,herOrgasms:1,notes:null} as SexSession;
+  assert.deepEqual(mergeSharedProposal(saved,null,{tags:['Lotus','Butterfly']})?.tags,['Lotus','Butterfly']);
+  assert.deepEqual(saved.tags,['Missionary']);
+});
