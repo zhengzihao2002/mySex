@@ -125,57 +125,68 @@ export function coupleRank(xp:number) {
   const floor=rankThreshold(index),ceiling=index<RANKS.length-1?rankThreshold(index+1):null;
   return {level:index+1,title:RANKS[index],floor,ceiling,nextTitle:ceiling?RANKS[index+1]:null,progress:ceiling?Math.min(1,(xp-floor)/(ceiling-floor)):1};
 }
-export type Mission={key:string;path:'explorer'|'endurance'|'rhythm'|'finale';title:string;description:string;xp:number;target:number;rule:'new'|'positions'|'collection'|'minutes'|'days'|'return'|'finale';requires?:string};
+export type Mission={key:string;path:'explorer'|'endurance'|'rhythm'|'finale';title:string;description:string;xp:number;target:number;rule:'session'|'days'|'atlas'|'combinations';minMinutes:number;minPositions:number;minDays?:number;minSessions?:number;finale?:boolean};
 export const MISSIONS:Mission[]=[
-  {key:'new',path:'explorer',title:/*i18n*/'Uncharted territory',description:/*i18n*/'Record your first position in the library.',xp:50,target:1,rule:'new'},
-  {key:'duet',path:'explorer',title:/*i18n*/'The switch-up',description:/*i18n*/'Record two different positions in one session.',xp:100,target:2,rule:'positions',requires:'new'},
-  {key:'trio',path:'explorer',title:/*i18n*/'Three-act adventure',description:/*i18n*/'Record three different positions in one session.',xp:150,target:3,rule:'positions',requires:'duet'},
-  {key:'collection',path:'explorer',title:/*i18n*/'The position atlas',description:/*i18n*/'Collect four different positions across your sessions.',xp:150,target:4,rule:'collection',requires:'trio'},
-  {key:'time10',path:'endurance',title:/*i18n*/'Find your rhythm',description:/*i18n*/'Record 10 active minutes in one session.',xp:50,target:10,rule:'minutes'},
-  {key:'time15',path:'endurance',title:/*i18n*/'Hold the flame',description:/*i18n*/'Record 15 active minutes in one session.',xp:100,target:15,rule:'minutes',requires:'time10'},
-  {key:'time20',path:'endurance',title:/*i18n*/'Beyond the familiar',description:/*i18n*/'Record 20 active minutes in one session.',xp:100,target:20,rule:'minutes',requires:'time15'},
-  {key:'time30',path:'endurance',title:/*i18n*/'The long game',description:/*i18n*/'Record 30 active minutes in one session.',xp:150,target:30,rule:'minutes',requires:'time20'},
-  {key:'time40',path:'endurance',title:/*i18n*/'Endurance crown',description:/*i18n*/'Record 40 active minutes in one session. Optional summit; no extra time rewards beyond it.',xp:150,target:40,rule:'minutes',requires:'time30'},
-  {key:'days2',path:'rhythm',title:/*i18n*/'Encore together',description:/*i18n*/'Record sessions on two different days. No deadline.',xp:50,target:2,rule:'days'},
-  {key:'days3',path:'rhythm',title:/*i18n*/'Our recurring adventure',description:/*i18n*/'Record sessions on three different days. No deadline.',xp:100,target:3,rule:'days',requires:'days2'},
-  {key:'return',path:'rhythm',title:/*i18n*/'A favourite returns',description:/*i18n*/'Revisit the same position on three different days.',xp:150,target:3,rule:'return',requires:'days3'},
-  {key:'finale',path:'finale',title:/*i18n*/'Chapter champions',description:/*i18n*/'Complete the three paths through 30 minutes, plus a session with 20 active minutes and two positions.',xp:300,target:1,rule:'finale'},
+  {key:'choreography',path:'explorer',title:/*i18n*/'Four-part choreography',description:/*i18n*/'In ONE session: at least 30 active minutes and four different positions.',xp:250,target:1,rule:'session',minMinutes:30,minPositions:4},
+  {key:'fivefold',path:'explorer',title:/*i18n*/'Fivefold expedition',description:/*i18n*/'In ONE session: at least 35 active minutes and five different positions.',xp:400,target:1,rule:'session',minMinutes:35,minPositions:5},
+  {key:'grand-tour',path:'explorer',title:/*i18n*/'The grand tour',description:/*i18n*/'In ONE session: at least 40 active minutes and six different positions.',xp:600,target:1,rule:'session',minMinutes:40,minPositions:6},
+  {key:'atlas',path:'explorer',title:/*i18n*/'Master the atlas',description:/*i18n*/'Collect all eight positions across at least 12 sessions on eight different days. Every qualifying session needs 25 active minutes and three positions.',xp:1000,target:1,rule:'atlas',minMinutes:25,minPositions:3,minDays:8,minSessions:12},
+  {key:'thirty',path:'endurance',title:/*i18n*/'The endurance trial',description:/*i18n*/'In ONE session: at least 30 active minutes and three different positions.',xp:200,target:1,rule:'session',minMinutes:30,minPositions:3},
+  {key:'thirty-five',path:'endurance',title:/*i18n*/'Beyond the plateau',description:/*i18n*/'In ONE session: at least 35 active minutes and three different positions.',xp:300,target:1,rule:'session',minMinutes:35,minPositions:3},
+  {key:'forty',path:'endurance',title:/*i18n*/'The forty-minute summit',description:/*i18n*/'In ONE session: at least 40 active minutes and three different positions.',xp:450,target:1,rule:'session',minMinutes:40,minPositions:3},
+  {key:'triple-summit',path:'endurance',title:/*i18n*/'Three summits',description:/*i18n*/'On three different days, record a session with 40 active minutes and three positions each time.',xp:700,target:3,rule:'days',minMinutes:40,minPositions:3},
+  {key:'five-summits',path:'endurance',title:/*i18n*/'The crown circuit',description:/*i18n*/'On five different days, record a session with 40 active minutes and four positions each time.',xp:1000,target:5,rule:'days',minMinutes:40,minPositions:4},
+  {key:'ten-days',path:'rhythm',title:/*i18n*/'Ten-day odyssey',description:/*i18n*/'On ten different days, record a session with 25 active minutes and three positions each time. No deadline.',xp:800,target:10,rule:'days',minMinutes:25,minPositions:3},
+  {key:'twenty-days',path:'rhythm',title:/*i18n*/'Twenty-day legend',description:/*i18n*/'On twenty different days, record a session with 30 active minutes and four positions each time. No deadline.',xp:1400,target:20,rule:'days',minMinutes:30,minPositions:4},
+  {key:'twelve-routes',path:'rhythm',title:/*i18n*/'Twelve original routes',description:/*i18n*/'Record 12 different position combinations across at least 12 different days. Each session needs 30 active minutes and at least four positions.',xp:1400,target:1,rule:'combinations',minMinutes:30,minPositions:4,minDays:12,minSessions:12},
+  {key:'finale',path:'finale',title:/*i18n*/'The ultimate chapter',description:/*i18n*/'Complete all 12 other quests, then qualify with ONE session containing 40 active minutes and five different positions.',xp:2500,target:1,rule:'session',minMinutes:40,minPositions:5,finale:true},
 ];
 export type MissionRun={id:string;key:string;kind:SessionKind;requestedBy:string;createdAt:string;acceptedAt:string|null;skippedAt?:string|null;timeZone:string};
-export type MissionProgress={value:number;target:number;complete:boolean;evidence:string[]};
+export type MissionCheck={label:string;value:number;target:number};
+export type MissionProgress={value:number;target:number;complete:boolean;evidence:string[];checks?:MissionCheck[]};
 const timestamp=(s:string)=>new Date(s).getTime();
 const day=(iso:string)=>new Date(iso).toISOString().slice(0,10);
-/** Automatic, one-time goals: current saved evidence is the source of truth. */
+/** Only whole records satisfying every session condition can advance these advanced goals. */
 export function missionProgress(m:Mission,sessions:SexSession[],now=Date.now()):MissionProgress {
-  const eligible=[...new Map(sessions.map(s=>[s.id,s])).values()].filter(s=>s.kind==='intercourse'&&s.status==='done'&&(s.durationSec==null||s.durationSec>0)&&timestamp(s.startedAt)<=now&&(!s.endedAt||timestamp(s.endedAt)<=now)).sort((a,b)=>a.startedAt.localeCompare(b.startedAt)||a.id.localeCompare(b.id));
-  let value=0;let evidence:string[]=[];
-  const collected=new Set<string>();const days=new Set<string>();const revisits=new Map<string,Map<string,string>>();
+  const eligible=[...new Map(sessions.map(s=>[s.id,s])).values()].filter(s=>s.kind==='intercourse'&&s.status==='done'&&(s.durationSec??0)>=m.minMinutes*60&&positionTags(s).length>=m.minPositions&&timestamp(s.startedAt)<=now&&(!s.endedAt||timestamp(s.endedAt)<=now)).sort((a,b)=>a.startedAt.localeCompare(b.startedAt)||a.id.localeCompare(b.id));
+  if(m.rule==='session')return {value:eligible.length?1:0,target:1,complete:eligible.length>0,evidence:eligible.length?[eligible[0].id]:[]};
+  const perDay=new Map<string,string>(),positions=new Set<string>(),combinations=new Map<string,string>();
   for(const s of eligible){
-    const positions=positionTags(s);let candidate=0;
-    if(m.rule==='minutes')candidate=(s.durationSec??0)/60;
-    if(m.rule==='positions')candidate=positions.length;
-    if(m.rule==='new')candidate=positions.length?1:0;
-    if(m.rule==='finale')candidate=(s.durationSec??0)>=1200&&positions.length>=2?1:0;
-    if(['minutes','positions','new','finale'].includes(m.rule)){
-      if(candidate>value){value=candidate;evidence=[s.id];}
-    }else if(m.rule==='collection'){
-      const old=collected.size;positions.forEach(p=>collected.add(p));if(collected.size>old)evidence.push(s.id);value=collected.size;
-    }else if(m.rule==='days'){
-      const d=day(s.startedAt);if(!days.has(d)){days.add(d);evidence.push(s.id);}value=days.size;
-    }else if(m.rule==='return'){
-      for(const p of positions){const entries=revisits.get(p)??new Map<string,string>();entries.set(day(s.startedAt),s.id);revisits.set(p,entries);if(entries.size>value){value=entries.size;evidence=[...entries.values()];}}
-    }
-    if(value>=m.target)break;
+    if(!perDay.has(day(s.startedAt)))perDay.set(day(s.startedAt),s.id);
+    const tags=positionTags(s);tags.forEach(tag=>positions.add(tag));
+    const combo=[...tags].sort().join('|');if(!combinations.has(combo))combinations.set(combo,s.id);
   }
-  return {value:Math.min(value,m.target),target:m.target,complete:value>=m.target,evidence};
+  if(m.rule==='days')return {value:Math.min(perDay.size,m.target),target:m.target,complete:perDay.size>=m.target,evidence:[...perDay.values()].slice(0,m.target)};
+  const checks:MissionCheck[]=m.rule==='atlas'?[
+    {label:/*i18n*/'Distinct positions',value:Math.min(8,positions.size),target:8},
+    {label:/*i18n*/'Qualifying sessions',value:Math.min(m.minSessions!,eligible.length),target:m.minSessions!},
+    {label:/*i18n*/'Qualifying days',value:Math.min(m.minDays!,perDay.size),target:m.minDays!},
+  ]:[
+    {label:/*i18n*/'Distinct combinations',value:Math.min(m.minSessions!,combinations.size),target:m.minSessions!},
+    {label:/*i18n*/'Qualifying days',value:Math.min(m.minDays!,perDay.size),target:m.minDays!},
+  ];
+  const value=Math.min(...checks.map(c=>c.value/c.target));
+  const proof=new Set(eligible.slice(0,m.minSessions!).map(s=>s.id));
+  [...perDay.values()].slice(0,m.minDays!).forEach(id=>proof.add(id));
+  if(m.rule==='atlas'){
+    const witnessed=new Set<string>();
+    for(const s of eligible){const before=witnessed.size;positionTags(s).forEach(tag=>witnessed.add(tag));if(witnessed.size>before)proof.add(s.id);if(witnessed.size>=8)break;}
+  }else [...combinations.values()].slice(0,m.minSessions!).forEach(id=>proof.add(id));
+  return {value,target:1,complete:value>=1,evidence:[...proof],checks};
 }
 // Legacy invitations are ignored: neither acceptance nor a stored skip can alter rewards.
 export function progression(sessions:SexSession[],_legacyRuns:MissionRun[]=[],now=Date.now()) {
   const quests=MISSIONS.map(mission=>({...missionProgress(mission,sessions,now),mission}));
-  const finale=quests.find(q=>q.mission.rule==='finale')!;
-  const prerequisites=['collection','time30','return'].map(key=>quests.find(q=>q.mission.key===key)!);
-  finale.complete=finale.complete&&prerequisites.every(q=>q.complete);
-  if(finale.complete)finale.evidence=[...new Set([...finale.evidence,...prerequisites.flatMap(q=>q.evidence)])];
+  const finale=quests.find(q=>q.mission.finale)!;
+  const prerequisites=quests.filter(q=>!q.mission.finale);
+  const records=new Map(sessions.map(s=>[s.id,s]));
+  const finishedAt=(s:SexSession)=>s.endedAt?timestamp(s.endedAt):timestamp(s.startedAt)+((s.durationSec??0)+s.pausedSec)*1000;
+  const allPassed=prerequisites.every(q=>q.complete);
+  const cutoff=allPassed?Math.max(...prerequisites.flatMap(q=>q.evidence.map(id=>finishedAt(records.get(id)!)))):Infinity;
+  const finalRecord=sessions.filter(s=>timestamp(s.startedAt)>=cutoff&&missionProgress(finale.mission,[s],now).complete).sort((a,b)=>a.startedAt.localeCompare(b.startedAt))[0];
+  finale.complete=allPassed&&!!finalRecord;
+  finale.value=finale.complete?1:0;
+  finale.evidence=finalRecord?[...new Set([finalRecord.id,...prerequisites.flatMap(q=>q.evidence)])]:[];
   const validRecords=[...new Map(sessions.map(s=>[s.id,s])).values()].filter(s=>timestamp(s.startedAt)<=now&&(!s.endedAt||timestamp(s.endedAt)<=now));
   const recordXp=validRecords.reduce((sum,s)=>sum+sessionXp(s).total,0);
   const missionXp=quests.filter(q=>q.complete).reduce((sum,q)=>sum+q.mission.xp,0);

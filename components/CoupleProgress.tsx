@@ -14,7 +14,7 @@ export function CoupleProgress({sessions,runs=[],onExplore}:{sessions:SexSession
     <h2 className="mt-2 font-display text-xl font-bold">{t(game.rank.title)}</h2>
     <div className="my-2 h-1.5 overflow-hidden rounded-full bg-line"><div className="h-full rounded-full bg-gradient-to-r from-rose to-amber-300" style={progressFillStyle(game.rank.progress)}/></div>
     <p className="text-xs text-ink-2">{game.rank.ceiling?t('{n} XP to {title}',{n:Math.max(0,game.rank.ceiling-game.xp),title:t(game.rank.nextTitle!)}):t('Highest rank unlocked')}</p>
-    <p className="mt-3 text-sm">{onExplore?t('View quest progress'):active?`${t(active.mission.title)} · ${Math.floor(active.value)}/${active.target}`:t('All quests completed')} <span aria-hidden>↓</span></p>
+    <p className="mt-3 text-sm">{onExplore?t('View quest progress'):active?`${t(active.mission.title)} · ${active.mission.rule==='atlas'||active.mission.rule==='combinations'?`${Math.round(active.value*100)}%`:`${active.value}/${active.target}`}`:t('All quests completed')} <span aria-hidden>↓</span></p>
   </>;
   return onExplore?<button type="button" className={className} onClick={onExplore}>{content}</button>:<Link href="/missions" className={className}>{content}</Link>;
 }

@@ -8,7 +8,7 @@ const day=(iso:string)=>iso.slice(0,10),now=Date.parse('2026-02-01T00:00:00Z');
 test('save reward carries exact old/new XP and new quest bonuses with authoritative saved score',()=>{
   const snapshot=savedCelebration([s],s.id,day,now)!;
   assert.equal(snapshot.score.total,100);
-  assert.deepEqual(snapshot.reward,{beforeXp:0,afterXp:955,sessionXp:105,missionXp:850,completedMissions:['new','duet','trio','time10','time15','time20','time30','time40']});
+  assert.deepEqual(snapshot.reward,{beforeXp:0,afterXp:1055,sessionXp:105,missionXp:950,completedMissions:['thirty','thirty-five','forty']});
   assert.deepEqual(savedCelebration([s,s],s.id,day,now),snapshot);
 });
 test('already-earned goals do not award again and classic records still count',()=>{
@@ -16,8 +16,8 @@ test('already-earned goals do not award again and classic records still count',(
   const result=savedCelebration([past,s],s.id,day,now)!;
   assert.equal(result.reward!.beforeXp,progression([past],[],now).xp);
   assert.equal(result.reward!.afterXp,progression([past,s],[],now).xp);
-  assert.equal(result.reward!.missionXp,50); // second recorded day
-  assert.deepEqual(result.reward!.completedMissions,['days2']);
+  assert.equal(result.reward!.missionXp,0); // second day does not meet an advanced multi-day goal
+  assert.deepEqual(result.reward!.completedMissions,[]);
   assert.equal(savedCelebration([{...s,kind:'oral'}],s.id,day,now)!.reward,undefined);
   assert.equal(savedCelebration([{...s,status:'active'}],s.id,day,now),undefined);
 });

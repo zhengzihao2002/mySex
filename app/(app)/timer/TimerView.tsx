@@ -346,7 +346,7 @@ function LiveTimer({
   const staminaMax=session.scoreVersion===2?45:40;
   const stamina=session.scoreVersion===2?endurancePoints(secs):Math.round(40*(1-Math.exp(-minutes/15)));
   const liveXp=sessionXp({...session,status:'done',durationSec:secs});
-  const mission=useMemo(()=>progression(sessions,missions).quests.find(q=>session.kind==='intercourse'&&!q.complete&&q.mission.rule==='minutes'),[sessions,missions,session.kind,session.startedAt]);
+  const mission=useMemo(()=>progression(sessions,missions).quests.find(q=>session.kind==='intercourse'&&!q.complete&&q.mission.path==='endurance'&&q.mission.rule==='session'),[sessions,missions,session.kind,session.startedAt]);
   const headAngle = secFrac * 2 * Math.PI - Math.PI / 2;
   const { tz } = useTz();
   const startedLabel = f.timeInTz(session.startedAt, tz);
@@ -499,7 +499,7 @@ function LiveTimer({
 
         {session.kind==='intercourse'&&<div className="mb-2 w-full max-w-[300px] rounded-2xl border border-line bg-surface/40 px-3 py-2 text-center text-xs text-ink-2">
           <span className="font-semibold text-rose-2">{t('On save')}: +{liveXp.total} XP</span>
-          {mission&&<p className="mt-1">{t(mission.mission.title)} · {Math.min(mission.target,Math.floor(minutes))}/{mission.target} {t('min')}{minutes>=mission.target?' ✓':''}</p>}
+          {mission&&<p className="mt-1">{t(mission.mission.title)} · {Math.min(mission.mission.minMinutes,Math.floor(minutes))}/{mission.mission.minMinutes} {t('min')} · {mission.mission.minPositions} {t('Positions')}</p>}
         </div>}
         {session.kind === 'intercourse' && <div className="my-3 w-full max-w-[300px] shrink-0"><TimerPrompts paused={paused || pendingStart} kind={session.kind} /></div>}
         <div className="mt-4 w-full max-w-[300px]">

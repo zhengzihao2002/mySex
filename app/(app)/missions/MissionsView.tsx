@@ -32,10 +32,11 @@ export function MissionsView({sessions}:{sessions:SexSession[];runs?:MissionRun[
         return <article key={m.key} className={`rounded-3xl border p-4 ${complete?'border-amber-300/40 bg-amber-300/5':'border-line bg-surface'}`}>
           <div className="flex items-start justify-between gap-3"><div><p className={`text-xs ${complete?'text-amber-300':'text-rose-2'}`}>{complete?'🏆 ':''}{status}</p><h3 className="mt-1 font-semibold">{t(m.title)}</h3></div><span className="shrink-0 rounded-full bg-surface-2 px-2.5 py-1 text-xs font-bold">+{m.xp} XP</span></div>
           <p className="mt-2 text-sm text-ink-2">{t(m.description)}</p>
-          {quest&&<div className="mt-3"><div className="mb-1 flex justify-between text-xs text-ink-2"><span>{t('Progress')}</span><b>{Math.floor(quest.value)}/{quest.target}{m.rule==='minutes'?` ${t('min')}`:''}</b></div><div className="h-2 overflow-hidden rounded-full bg-line"><div className="h-full rounded-full bg-gradient-to-r from-rose to-amber-300 transition-all motion-reduce:transition-none" style={progressFillStyle(quest.value/quest.target)}/></div></div>}
+          {quest&&<div className="mt-3"><div className="mb-1 flex justify-between text-xs text-ink-2"><span>{t('Progress')}</span><b>{m.rule==='atlas'||m.rule==='combinations'?`${Math.round(quest.value*100)}%`:`${quest.value}/${quest.target}`}</b></div><div className="h-2 overflow-hidden rounded-full bg-line"><div className="h-full rounded-full bg-gradient-to-r from-rose to-amber-300 transition-all motion-reduce:transition-none" style={progressFillStyle(quest.value/quest.target)}/></div></div>}
+          {quest.checks&&<div className="mt-2 space-y-1 text-xs text-ink-3">{quest.checks.map(c=><p key={c.label} className="flex justify-between gap-2"><span>{t(c.label)}</span><b className="tabular-nums">{c.value}/{c.target}</b></p>)}</div>}
           {complete&&!!quest.evidence.length&&<details className="mt-3 text-xs text-ink-2"><summary className="cursor-pointer py-2">{t('Saved record proof')} · {quest.evidence.length}</summary><div className="flex flex-wrap gap-2">{quest.evidence.map(id=>{const s=sessions.find(s=>s.id===id);return s?<Link className="chip" key={id} href={`/insights?session=${id}`}>{f.prettyDate(s.startedAt.slice(0,10))} · {f.formatDuration(s.durationSec??0)}</Link>:null;})}</div></details>}
-          {!complete&&m.rule==='finale'&&<p className="mt-2 text-xs text-ink-3">{t('Finish Explorer, Rhythm and the 30-minute goal to earn the crown.')}</p>}
-          {complete&&m.rule==='finale'&&<p className="mt-3 text-sm text-amber-300">✦ {t('Chapter crown unlocked')}</p>}
+          {!complete&&m.finale&&<p className="mt-2 text-xs text-ink-3">{t('All 12 other quests must be completed before the crown is awarded.')}</p>}
+          {complete&&m.finale&&<p className="mt-3 text-sm text-amber-300">✦ {t('Chapter crown unlocked')}</p>}
         </article>;
       })}
     </section>)}
