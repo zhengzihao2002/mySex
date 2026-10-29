@@ -1,62 +1,46 @@
-# Couple missions, progression and versioned session scoring
+# Automatic couple quests, XP and versioned scoring
 
-Status: approved by the user and implemented. Existing achievements and the original recording controls remain available.
+Status: implemented according to the approved product direction and subsequent user corrections.
 
-## Product direction
+## Automatic intercourse quests
 
-An opt-in cooperative game for the two partners: choose a challenge together, record what actually happened, earn XP, and unlock the next chapter. The missions encourage exploration, longer active sessions, and returning to the app. There are no public rankings, notifications, loss streaks, or penalties for stopping or taking a break.
+The board has 12 goals across Explorer, Endurance and Rhythm, plus a chapter finale. All goals track saved intercourse records automatically, including existing history. There are no invitations, acceptance, skipping, abandonment, or manual claims. Goals award their XP once when their saved evidence meets the requirements.
 
-## Quest board
+Explorer rewards the first recorded library position, two/three positions in one record, and four distinct positions across records. Endurance rewards 10, 15, 20, 30 and 40 active minutes; pauses never count. Rhythm rewards two/three distinct UTC dates and revisiting a position on three dates. UTC boundaries keep progress identical for both partners. The finale requires the collection, 30-minute and revisit goals plus a saved session containing 20 active minutes and two positions. The 40-minute summit is optional for the finale. Revealing a timer card supplies no proof: only selected, saved positions count. Mood and setting labels are not positions.
 
-Add a Missions destination from Home and Play without replacing the existing dice, dares, private preferences, or achievements. A compact Home card shows the accepted mission and progress. Three paths:
+Oral recording remains available, with its separate activity choices and informational score; it has no quests or XP. Existing dice, dares, preferences and achievements remain available. No reminders, public rankings or penalties for stopping or taking breaks were added.
 
-- Explorer: learn and revisit different positions. Example sequence: record a position absent from your history; record two different positions in one session; complete a three-position session; complete a chapter containing several distinct positions across sessions.
-- Endurance: active-time milestones of 10, 15, 20, 30, then an optional 40 minutes. Breaks never count toward active time and never reset earned time. Targets are chosen before starting, remain optional, and are capped rather than escalating indefinitely.
-- Rhythm: complete a chosen number of sessions on distinct days in a self-started chapter. Show progress without a daily streak that resets. An optional seven-day challenge can be restarted with no XP debt or loss of previous chapter rewards.
+## XP and levels
 
-A chapter culminates in a combined challenge, such as a 20-minute active session with two positions. Start with 12 carefully written missions rather than many renamed count thresholds. Missions apply only to intercourse; oral recording remains available without side quests or timer position cards.
+Existing and new completed intercourse records earn 25 base XP plus `round(80 × min(activeMinutes / 40, 1)^1.4)` endurance XP. A historical record with unknown active duration earns base XP without an invented time bonus. Unfinished recordings and explicit zero-duration records earn none. Additional time past 40 minutes gives no additional duration XP.
 
-Both partners accept the mission; either can skip or abandon it. Suggestions respect exclusions and mutual preferences. Historical Yes/Maybe answers do not automatically accept a new mission. One phone can support the initial recording as it does now, but must not impersonate the other account's mission acceptance.
+Session XP plus completed-goal XP determines the couple's rank. There are 100 distinct English and Simplified Chinese titles. At zero-based rank index `i`, the cumulative threshold is `50i² + 100i`. Upgrade costs start at 150 XP and grow by 100 XP each time: 150, 250, 350, 450, etc. Level 100 naturally requires 499,950 XP. There is no fixed-total override or minimum record count.
 
-## Rewards and proof
+XP is derived from distinct saved record IDs and deterministic goal definitions, never incremented by clicking Save or Claim. Repeated reads and duplicate IDs cannot double-award a goal. A deleted record or approved correction reevaluates its proof; adding a shorter record does not subtract valid previous rewards. Personal edits still save directly, while shared edits and record deletion retain their partner-approval rules.
 
-Suggested base rewards: 50 XP for an introductory mission, 100 for an intermediate mission, 150 for an advanced mission, and a chapter-completion reward. Reward chapter completion with a badge or optional card-back/ring accent, preserving the original theme by default.
+Legacy `couple_missions` rows are no longer used to determine progress or rewards. Old-client acceptance/skip actions return an automatic-quests message without changing progress. The existing seven-day request/inbox retention remains unchanged.
 
-Show concrete requirements before accepting, and exact saved-record evidence afterwards. New sessions after acceptance qualify; no retroactive instant campaign completion. One mission reward per mission instance, atomically awarded. Duration uses saved active seconds; positions use explicitly selected position tags. Revealing a random card does not prove it was performed. Existing data cannot prove time spent in an individual position, so do not offer that requirement without a separately approved segment-timing feature.
+## Save celebration and navigation
 
-Manual past entries can qualify when their actual recorded start follows acceptance. They remain honestly self-reported. No extra GPS tracking or new recording permissions. Personal-only edits remain immediate; shared changes still need approval. Corrected or deleted proof is reevaluated so duplicate or invalid records cannot permanently inflate rewards. A subsequent short session does not subtract XP.
+Live completion and both manual-entry paths return the authoritative saved session, its score, and a reward snapshot. The previous XP is reconstructed from the current history excluding that record; the new XP includes it. This identifies the new session's XP and newly completed goals without trusting a client clock estimate or stale rank.
 
-Mission progress is separate from the inbox's seven-day request retention. Any mission invitations placed in Inbox follow that retention policy. Accepting an invitation records mission membership independently; expiring an unanswered invitation never auto-accepts it.
+For intercourse, a native modal first shows the previous level, title, XP total and bar. The bar fills in segments, pauses at a full bar, then resets and changes the level/title at each crossed threshold. The final state shows earned session/quest XP and completed-goal chips. Continue becomes available only when the visible animation ends. Escape and backdrop taps do not dismiss it; hidden-tab time does not advance it. Reduced-motion mode shows the original and final states without a sweep. Continue reveals the existing saved-score summary. Oral saves show the score summary without an XP celebration.
 
-## Proposed score v2: 100 informational points
+The Home progression card opens Couple quests. Its counterpart on that page is a button that scrolls to and focuses quest progress. The page's back link returns to Home. The rank ladder remains available from the board.
 
-Keep session score and lifetime XP separate. The score cannot be directly edited.
+## Informational score v2
 
-| Contribution | Maximum | Proposed rule |
+Classic records keep their original calculation, even though they now earn XP. New records use v2:
+
+| Contribution | Maximum | Rule |
 |---|---:|---|
-| Active time | 45 | round(45 × min(activeMinutes / 40, 1)^1.4) |
-| Partner heat ratings | 20 | 4 × mean of submitted 1–5 ratings, rounded; clearly show when only one rated |
-| Recorded pleasure | 20 | Intercourse: 10 points for each partner recording at least one orgasm; oral: divide 20 across explicitly recorded recipients; additional orgasms do not add points |
-| Position variety | 15 | One distinct position: 3; two: 8; three or more: 15; ordinary mood/setting tags do not count |
+| Active time | 45 | `round(45 × min(activeMinutes / 40, 1)^1.4)` |
+| Heat ratings | 20 | Four times the mean submitted partner rating, rounded |
+| Recorded pleasure | 20 | Intercourse: 10 points per partner with a recorded orgasm; oral: divide 20 among explicit recipients; no bonus for extra orgasms |
+| Position variety | 15 | One distinct position: 3; two: 8; three or more: 15 |
 
-Time examples: 5 minutes = 2/45; 10 = 6; 15 = 11; 20 = 17; 30 = 30; 40 = 45. With all other contributions maximized, 20 minutes reaches 72%, 30 reaches 85%, and 40 reaches 100%. Additional time beyond 40 adds no points. Missing orgasm data remains unknown rather than displaying zero; it earns no provisional contribution. Oral recipient selection must be unambiguous before allocating that contribution.
+Time contributes 2/6/11/17/30/45 points at 5/10/15/20/30/40 minutes. Missing ratings or orgasm data earns no provisional contribution. The score cannot be edited directly. Version-aware analytics and signed backup version preservation remain in place.
 
-This makes high scores harder and makes duration matter more while preventing score farming by adding descriptive tags or ever-higher orgasm counts. The timer may show the chosen milestone and active-time progress, but Pause, Finish, and Discard remain available at every score.
+## Verification
 
-## Implemented progression
-
-The board has 12 missions plus a chapter finale for intercourse. Explorer, Endurance and Rhythm unlock sequentially within their paths. Either partner can skip without XP; an unfinished mission can be abandoned and invited again. Rhythm uses untimed progress, not streak resets. The 40-minute summit is optional for reaching the finale. Completion awards the chapter crown on the board.
-
-Existing and new completed intercourse records with positive active duration earn 25 base XP plus `round(80 × min(activeMinutes / 40, 1)^1.4)` endurance XP. Oral earns no XP. Classic records automatically earn the same session XP while keeping their original session scores. Historical records with unknown active duration earn 25 base XP without an invented time bonus. Session XP and mission XP feed 100 ranks with localized titles, including 月蚀领航者、极光登峰者、双生凤凰、超新星双皇 and 无上未竟神话; every level has its own title. The final threshold follows the level curve, with no fixed total override or record-count requirement. Only intercourse earns session or mission XP; oral records earn neither. For zero-based rank index `i`, the cumulative threshold is `50i² + 100i`. Upgrade costs start at 150 XP and increase by 100 XP on every subsequent upgrade, naturally reaching 499,950 XP at level 100. Each subsequent level takes more additional XP. The last rank remains a title while lifetime XP continues to grow.
-
-The Home card shows the current rank, total XP, next threshold, and an active mission or pending invitations. The full ladder and XP explanation open from Missions. Live recordings show projected session XP and an accepted endurance goal, and the save reveal shows XP and level-ups. Scores remain informational, with per-category explanations in record details.
-
-## Persistence and verification boundaries
-
-`couple_missions` has a unique `(couple_id, kind, mission_key)` row and a server-generated ID. The proposer accepts by inviting; only the other authenticated account can activate that exact invitation. A withdrawn/replaced ID cannot activate a newer invitation. Pending invitations are physically removed after seven days by the existing authenticated-visit cleanup. Accepted/skipped mission state persists separately from inbox retention. Invitations are on the mission board, not in the record-approval inbox.
-
-XP is derived from distinct current saved record IDs and canonical mission rows rather than an incrementing balance or claimed-award table. Repeated requests cannot double-award XP. Deletion or an approved correction reevaluates evidence and removes invalid rewards; a later short record cannot erase a valid earlier reward. Records and their active durations are self-reported; the app does not verify what happened physically. Mission day boundaries use the timezone saved with the invitation.
-
-The schema adds score version 1 to existing rows before setting the default for newly created records to 2. Classic scoring uses only classic records for its history-dependent context, so new past entries cannot silently alter old adventure bonuses. Analytics compare average/best scores within a selected version, and location averages label each version separately. Signed backups preserve the session score version; older backups restore as classic. Mission acceptance remains in the live database and is not replayed by a one-person backup restore.
-
-Automated checks cover migration reruns, unchanged classic scores, v2 thresholds, recipient handling, position filtering, rating averages, dual acceptance, duplicate invitations/acceptance, expiry, unpairing, abandoned/replaced IDs, local-day evidence, skipped goals, corrected/deleted proof, and backup score-version integrity. Browser checks cover the board, rank ladder, read-only score chart, timer, Simplified Chinese and narrow screens.
+Checks cover automatic history progress without acceptance, legacy skips having no effect, one award per goal, excluded oral/unfinished/future records, actual positions, UTC day boundaries, finale requirements, edited/deleted proof, unchanged classic scores, rank boundaries and authoritative reward snapshots. Browser verification covers both navigation fixes, multiple animated level crossings, old/new XP, full-bar reset, early-dismissal prevention, Continue, original score access, live/manual save integration, Simplified Chinese, reduced motion and narrow screens. Existing record editing, calendar navigation and nested modal behavior are regression checked.

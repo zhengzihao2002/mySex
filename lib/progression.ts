@@ -127,7 +127,7 @@ export function coupleRank(xp:number) {
 }
 export type Mission={key:string;path:'explorer'|'endurance'|'rhythm'|'finale';title:string;description:string;xp:number;target:number;rule:'new'|'positions'|'collection'|'minutes'|'days'|'return'|'finale';requires?:string};
 export const MISSIONS:Mission[]=[
-  {key:'new',path:'explorer',title:/*i18n*/'Uncharted territory',description:/*i18n*/'Record a position you had never recorded before accepting this mission.',xp:50,target:1,rule:'new'},
+  {key:'new',path:'explorer',title:/*i18n*/'Uncharted territory',description:/*i18n*/'Record your first position in the library.',xp:50,target:1,rule:'new'},
   {key:'duet',path:'explorer',title:/*i18n*/'The switch-up',description:/*i18n*/'Record two different positions in one session.',xp:100,target:2,rule:'positions',requires:'new'},
   {key:'trio',path:'explorer',title:/*i18n*/'Three-act adventure',description:/*i18n*/'Record three different positions in one session.',xp:150,target:3,rule:'positions',requires:'duet'},
   {key:'collection',path:'explorer',title:/*i18n*/'The position atlas',description:/*i18n*/'Collect four different positions across your sessions.',xp:150,target:4,rule:'collection',requires:'trio'},
@@ -139,50 +139,45 @@ export const MISSIONS:Mission[]=[
   {key:'days2',path:'rhythm',title:/*i18n*/'Encore together',description:/*i18n*/'Record sessions on two different days. No deadline.',xp:50,target:2,rule:'days'},
   {key:'days3',path:'rhythm',title:/*i18n*/'Our recurring adventure',description:/*i18n*/'Record sessions on three different days. No deadline.',xp:100,target:3,rule:'days',requires:'days2'},
   {key:'return',path:'rhythm',title:/*i18n*/'A favourite returns',description:/*i18n*/'Revisit the same position on three different days.',xp:150,target:3,rule:'return',requires:'days3'},
-  {key:'finale',path:'finale',title:/*i18n*/'Chapter champions',description:/*i18n*/'After the three paths, record 20 active minutes and two positions in one session.',xp:300,target:1,rule:'finale'},
+  {key:'finale',path:'finale',title:/*i18n*/'Chapter champions',description:/*i18n*/'Complete the three paths through 30 minutes, plus a session with 20 active minutes and two positions.',xp:300,target:1,rule:'finale'},
 ];
 export type MissionRun={id:string;key:string;kind:SessionKind;requestedBy:string;createdAt:string;acceptedAt:string|null;skippedAt?:string|null;timeZone:string};
 export type MissionProgress={value:number;target:number;complete:boolean;evidence:string[]};
 const timestamp=(s:string)=>new Date(s).getTime();
-const day=(iso:string,tz:string)=>new Intl.DateTimeFormat('en-CA',{timeZone:tz,year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(iso));
-export function missionProgress(m:Mission,run:MissionRun,sessions:SexSession[],now=Date.now()):MissionProgress {
-  if(run.kind!=='intercourse'||!run.acceptedAt||run.skippedAt)return {value:0,target:m.target,complete:false,evidence:[]};
-  const start=timestamp(run.acceptedAt);
-  const unique=[...new Map(sessions.map(s=>[s.id,s])).values()];
-  const eligible=unique.filter(s=>s.kind===run.kind&&s.status==='done'&&(s.durationSec??0)>0&&timestamp(s.startedAt)>=start&&timestamp(s.startedAt)<=now&&(!s.endedAt||timestamp(s.endedAt)<=now)).sort((a,b)=>a.startedAt.localeCompare(b.startedAt));
-  const baseline=new Set(unique.filter(s=>s.kind===run.kind&&s.status==='done'&&timestamp(s.startedAt)<start).flatMap(positionTags));
+const day=(iso:string)=>new Date(iso).toISOString().slice(0,10);
+/** Automatic, one-time goals: current saved evidence is the source of truth. */
+export function missionProgress(m:Mission,sessions:SexSession[],now=Date.now()):MissionProgress {
+  const eligible=[...new Map(sessions.map(s=>[s.id,s])).values()].filter(s=>s.kind==='intercourse'&&s.status==='done'&&(s.durationSec==null||s.durationSec>0)&&timestamp(s.startedAt)<=now&&(!s.endedAt||timestamp(s.endedAt)<=now)).sort((a,b)=>a.startedAt.localeCompare(b.startedAt)||a.id.localeCompare(b.id));
   let value=0;let evidence:string[]=[];
   const collected=new Set<string>();const days=new Set<string>();const revisits=new Map<string,Map<string,string>>();
   for(const s of eligible){
     const positions=positionTags(s);let candidate=0;
     if(m.rule==='minutes')candidate=(s.durationSec??0)/60;
     if(m.rule==='positions')candidate=positions.length;
-    if(m.rule==='new')candidate=positions.some(p=>!baseline.has(p))?1:0;
+    if(m.rule==='new')candidate=positions.length?1:0;
     if(m.rule==='finale')candidate=(s.durationSec??0)>=1200&&positions.length>=2?1:0;
     if(['minutes','positions','new','finale'].includes(m.rule)){
       if(candidate>value){value=candidate;evidence=[s.id];}
     }else if(m.rule==='collection'){
       const old=collected.size;positions.forEach(p=>collected.add(p));if(collected.size>old)evidence.push(s.id);value=collected.size;
     }else if(m.rule==='days'){
-      const d=day(s.startedAt,run.timeZone);if(!days.has(d)){days.add(d);evidence.push(s.id);}value=days.size;
+      const d=day(s.startedAt);if(!days.has(d)){days.add(d);evidence.push(s.id);}value=days.size;
     }else if(m.rule==='return'){
-      for(const p of positions){const entries=revisits.get(p)??new Map<string,string>();entries.set(day(s.startedAt,run.timeZone),s.id);revisits.set(p,entries);if(entries.size>value){value=entries.size;evidence=[...entries.values()];}}
+      for(const p of positions){const entries=revisits.get(p)??new Map<string,string>();entries.set(day(s.startedAt),s.id);revisits.set(p,entries);if(entries.size>value){value=entries.size;evidence=[...entries.values()];}}
     }
     if(value>=m.target)break;
   }
   return {value:Math.min(value,m.target),target:m.target,complete:value>=m.target,evidence};
 }
-export function progression(sessions:SexSession[],runs:MissionRun[],now=Date.now()) {
-  const uniqueRuns=[...new Map(runs.filter(r=>r.kind==='intercourse').map(r=>[`${r.kind}:${r.key}`,r])).values()];
-  const quests=uniqueRuns.flatMap(run=>{const m=MISSIONS.find(m=>m.key===run.key);return m?[{...missionProgress(m,run,sessions,now),run,mission:m}]:[];});
+// Legacy invitations are ignored: neither acceptance nor a stored skip can alter rewards.
+export function progression(sessions:SexSession[],_legacyRuns:MissionRun[]=[],now=Date.now()) {
+  const quests=MISSIONS.map(mission=>({...missionProgress(mission,sessions,now),mission}));
+  const finale=quests.find(q=>q.mission.rule==='finale')!;
+  const prerequisites=['collection','time30','return'].map(key=>quests.find(q=>q.mission.key===key)!);
+  finale.complete=finale.complete&&prerequisites.every(q=>q.complete);
+  if(finale.complete)finale.evidence=[...new Set([...finale.evidence,...prerequisites.flatMap(q=>q.evidence)])];
   const validRecords=[...new Map(sessions.map(s=>[s.id,s])).values()].filter(s=>timestamp(s.startedAt)<=now&&(!s.endedAt||timestamp(s.endedAt)<=now));
   const recordXp=validRecords.reduce((sum,s)=>sum+sessionXp(s).total,0);
   const missionXp=quests.filter(q=>q.complete).reduce((sum,q)=>sum+q.mission.xp,0);
   return {quests,recordXp,missionXp,xp:recordXp+missionXp,rank:coupleRank(recordXp+missionXp)};
-}
-export function missionUnlocked(m:Mission,kind:SessionKind,runs:MissionRun[],sessions:SexSession[],now=Date.now()) {
-  if(kind!=='intercourse')return false;
-  const complete=(key:string)=>{const run=runs.find(r=>r.kind===kind&&r.key===key);const mission=MISSIONS.find(x=>x.key===key);return !!run&&!!mission&&(!!run.skippedAt||missionProgress(mission,run,sessions,now).complete);};
-  // The 40-minute summit is optional for the finale.
-  return m.rule==='finale'?['collection','time30','return'].every(complete):!m.requires||complete(m.requires);
 }

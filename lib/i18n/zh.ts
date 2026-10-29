@@ -1,6 +1,23 @@
 // Simplified Chinese. Keys are the English UI text (see lib/i18n/core.ts).
 // Run `node scripts/check-i18n.mjs --missing` to find untranslated keys.
 export const zh: Record<string, string> = {
+  "Quests complete automatically from your saved intercourse records. No acceptance or skipping. Different UTC dates count as different days.": "任务根据已保存的性交记录自动完成，无需接受，也不能跳过。不同的UTC日期计为不同天。",
+  "Finish Explorer, Rhythm and the 30-minute goal to earn the crown.": "完成探索、默契路线及30分钟目标即可争夺王冠。",
+  "View quest progress": "查看任务进度",
+  "All quests completed": "全部任务已完成",
+  "Intercourse saved": "性交记录已保存",
+  "Your story levels up": "我们的故事，升级了",
+  "Started at level {level} · {xp} XP": "原等级 {level} · {xp} 点经验",
+  "Total XP": "总经验",
+  "Level progress": "等级进度",
+  "{session} session XP · {quests} quest XP": "记录经验 {session} · 任务经验 {quests}",
+  "XP added. Level {level}: {title}": "经验已增加。等级 {level}：{title}",
+  "Adding earned XP…": "正在累积经验…",
+  "Continue": "继续",
+  "Quests now complete automatically from saved records. Refresh to see your progress.": "任务现在会根据已保存的记录自动完成。刷新即可查看进度。",
+  "Record your first position in the library.": "记录姿势库中的第一种姿势。",
+  "Complete the three paths through 30 minutes, plus a session with 20 active minutes and two positions.": "完成探索、默契路线和30分钟目标，并在一次记录中达到20分钟有效时长及两种姿势。",
+
   "Each completed intercourse record earns 25 XP. Active time adds up to 80 XP: round(80 × (minutes / 40)^1.4), capped at 40 minutes. Oral records earn no XP.": "每条已完成的性交记录获得25点经验，有效时长最多增加80点：80 ×（分钟数 ÷ 40）^1.4，四舍五入，40分钟封顶。口交记录不获得经验。",
   "Existing intercourse records count automatically. Their original session scores stay unchanged. Missing active time earns base XP only. Corrections and deletions update rewards.": "已有性交记录会自动计入经验，原有记录评分保持不变。未记录有效时长时只获得基础经验。修改或删除记录会重新计算奖励。",
   "The first upgrade costs 150 XP. Every following upgrade costs 100 XP more than the previous one.": "首次升级需要150点经验，此后每次升级都比上一次多需要100点经验。",

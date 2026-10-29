@@ -5,13 +5,16 @@ import {storeSessionFeeling} from '@/lib/session-feelings';
 import {isUnverified} from '@/lib/auth-errors';
 import {initializeExperiences,submitSessionChanges} from '@/lib/session-experiences';
 import {completeRecording} from '@/lib/session-recording';
+import {savedCelebration,type SessionSaveResult} from '@/lib/session-rewards';
+import {getTz} from '@/lib/today';
+import {dayInTz} from '@/lib/tz';
 import {activityDetails} from '@/lib/activity-details';
 import { randomInt, timingSafeEqual } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { getAuth } from '@/lib/auth/server';
-import { getCoupleContext, getViewer, hasCoupleHistory, toSession } from '@/lib/data';
+import { getCoupleContext, getViewer, hasCoupleHistory, toSession, getSessions } from '@/lib/data';
 import {mergeSharedProposal, samePin, sharedFields, sharedValues, type SharedValues} from '@/lib/shared-session';
 import { db, sql } from '@/lib/db';
 import { getGpsArea } from '@/lib/gps-area';
@@ -332,7 +335,7 @@ const detailsSchema = z.object({
   notes: z.string().trim().max(500).nullable().optional(),
 });
 
-export async function finishSession(id: string, input: z.input<typeof detailsSchema>): Promise<ActionResult> {
+export async function finishSession(id: string, input: z.input<typeof detailsSchema>): Promise<SessionSaveResult> {
   const ctx = await couple();
   const p = detailsSchema.safeParse(input);
   if (!p.success) return fail('Invalid input');
@@ -341,7 +344,9 @@ export async function finishSession(id: string, input: z.input<typeof detailsSch
   if (!await initializeExperiences(db(),{coupleId:ctx.couple.id,userId:ctx.me.userId},id,{...d,hisOrgasms:d.hisOrgasms??null,herOrgasms:d.herOrgasms??null})) {
     if(!completed)return fail('This session was already saved. Open it to edit your own experience.');
   }
-  return done();
+  const [sessions,tz]=await Promise.all([getSessions(ctx.couple.id),getTz()]);
+  revalidatePath('/','layout');
+  return {ok:true,celebration:savedCelebration(sessions,id,iso=>dayInTz(iso,tz))};
 }
 
 export async function discardActiveSession(id: string, version: string): Promise<ActionResult> {
@@ -359,7 +364,7 @@ const pastSchema = detailsSchema.extend({
   gps: coords,
 });
 
-export async function logPastSession(input: z.input<typeof pastSchema>): Promise<ActionResult> {
+export async function logPastSession(input: z.input<typeof pastSchema>): Promise<SessionSaveResult> {
   const ctx = await couple();
   const p = pastSchema.safeParse(input);
   if (!p.success) return fail(p.error.issues[0]?.message ?? 'Invalid input');
@@ -377,7 +382,9 @@ export async function logPastSession(input: z.input<typeof pastSchema>): Promise
       ${d.tags ?? []}, null, false) returning id`;
 
   await initializeExperiences(db(),{coupleId:ctx.couple.id,userId:ctx.me.userId},created[0].id,{...d,hisOrgasms:d.hisOrgasms??null,herOrgasms:d.herOrgasms??null});
-  return done();
+  const [sessions,tz]=await Promise.all([getSessions(ctx.couple.id),getTz()]);
+  revalidatePath('/','layout');
+  return {ok:true,celebration:savedCelebration(sessions,created[0].id,iso=>dayInTz(iso,tz))};
 }
 
 const editSchema = detailsSchema.extend({

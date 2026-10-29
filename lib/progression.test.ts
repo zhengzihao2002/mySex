@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {zh} from './i18n/zh.ts';
-import {MISSIONS,RANKS,TOP_RANK_XP,rankThreshold,coupleRank,sessionXp,progression,missionProgress,missionUnlocked,endurancePoints,type MissionRun} from './progression.ts';
+import {MISSIONS,RANKS,TOP_RANK_XP,rankThreshold,coupleRank,sessionXp,progression,missionProgress,endurancePoints,type MissionRun} from './progression.ts';
 import {scoreSession,scoreAll} from './score.ts';
 import type {SexSession} from './types';
 const s:SexSession={id:'one',scoreVersion:2,kind:'intercourse',createdBy:'a',status:'done',startedAt:'2026-01-02T12:00:00Z',endedAt:'2026-01-02T12:40:00Z',durationSec:2400,pausedAt:null,pausedSec:0,ip:null,city:null,region:null,country:null,latitude:null,longitude:null,geoSource:null,place:null,rating:5,protection:null,hisOrgasms:1,herOrgasms:1,tags:['Missionary','Doggy','Seated'],notes:null,updatedAt:'2026-01-02T12:40:00Z',breaks:[]};
@@ -47,44 +47,48 @@ test('v2 only counts actual distinct positions, averages submitted ratings, and 
   assert.equal(points({...oral,tags:['Seated']},'pleasure'),0);
 });
 
-test('missions require both acceptance, saved evidence after acceptance and matching activity',()=>{
-  for(const r of [{...run,acceptedAt:null},{...run,acceptedAt:'2026-01-03T00:00:00Z'},{...run,skippedAt:run.createdAt}])assert.equal(missionProgress(m('time10'),r,[s],now).complete,false);
-  for(const entry of [{...s,status:'active' as const},{...s,kind:'oral' as const},{...s,startedAt:'2027-01-01T00:00:00Z'},{...s,endedAt:'2027-01-01T00:00:00Z'}])assert.equal(missionProgress(m('time10'),run,[entry],now).complete,false);
-  assert.deepEqual(missionProgress(m('time10'),run,[s],now),{value:10,target:10,complete:true,evidence:['one']});
-  assert.equal(missionProgress(m('time30'),run,[{...s,durationSec:600,pausedSec:3600}],now).complete,false);
+test('all goals track saved history automatically without invitations or skipping',()=>{
+  const game=progression([s],[],now);
+  assert.equal(game.quests.length,MISSIONS.length);
+  assert.equal(game.recordXp,105);
+  assert.equal(game.missionXp,850);
+  assert.deepEqual(game.quests.filter(q=>q.complete).map(q=>q.mission.key),['new','duet','trio','time10','time15','time20','time30','time40']);
+  for(const legacy of [{...run,acceptedAt:null},{...run,skippedAt:run.createdAt},{...run,kind:'oral' as const}])assert.deepEqual(progression([s],[legacy],now),game);
+  for(const invalid of [{...s,status:'active' as const},{...s,kind:'oral' as const},{...s,startedAt:'2027-01-01T00:00:00Z'},{...s,endedAt:'2027-01-01T00:00:00Z'}])assert.equal(progression([invalid],[],now).xp,0);
+  assert.equal(missionProgress(m('time30'),[{...s,durationSec:600,pausedSec:3600}],now).complete,false);
 });
 
-test('new positions compare against history; mood labels and position cards cannot supply proof',()=>{
-  const history={...s,id:'past',startedAt:'2025-12-31T00:00:00Z'};
-  assert.equal(missionProgress(m('new'),run,[history,s],now).complete,false);
-  assert.equal(missionProgress(m('new'),run,[history,{...s,tags:['Morning','Toys']}],now).complete,false);
-  assert.equal(missionProgress(m('new'),run,[history,{...s,tags:['Standing']}],now).complete,true);
-  assert.equal(missionProgress(m('trio'),run,[{...s,tags:['Missionary','Toys','Morning']}],now).value,1);
-  assert.equal(missionProgress(m('collection'),run,[s,{...s,id:'two',tags:['Standing']}],now).complete,true);
+test('only saved actual positions supply proof; all 13 goals can complete automatically',()=>{
+  assert.equal(missionProgress(m('new'),[{...s,tags:['Morning','Toys']}],now).complete,false);
+  assert.equal(missionProgress(m('trio'),[{...s,tags:['Missionary','Toys','Morning']}],now).value,1);
+  const records=[s,{...s,id:'two',startedAt:'2026-01-03T12:00:00Z',endedAt:null},{...s,id:'three',startedAt:'2026-01-04T12:00:00Z',endedAt:null,tags:[...s.tags,'Standing']}];
+  const game=progression(records,[],now);
+  assert.equal(game.missionXp,1600);
+  assert.equal(game.quests.filter(q=>q.complete).length,13);
+  assert.ok(game.quests.find(q=>q.mission.key==='finale')!.evidence.every(id=>records.some(s=>s.id===id)));
+  assert.equal(progression([s],[],now).quests.find(q=>q.mission.key==='finale')!.complete,false);
 });
 
-test('rhythm counts different local days, and favourite returns requires the same position',()=>{
+test('rhythm uses consistent UTC days; a favourite needs the same position on three days',()=>{
   const a={...s,startedAt:'2026-01-02T01:00:00Z',endedAt:null,tags:['Missionary']};
   const b={...a,id:'two',startedAt:'2026-01-02T23:00:00Z'};
   const c={...a,id:'three',startedAt:'2026-01-03T23:00:00Z'};
-  assert.equal(missionProgress(m('days2'),run,[a,b],now).value,1);
-  const local={...run,timeZone:'America/New_York'};
-  assert.equal(missionProgress(m('days2'),local,[a,b],now).complete,true);
-  assert.equal(missionProgress(m('return'),local,[a,b,c],now).complete,true);
-  assert.equal(missionProgress(m('return'),local,[a,b,{...c,tags:['Seated']}],now).complete,false);
+  const d={...a,id:'four',startedAt:'2026-01-04T23:00:00Z'};
+  assert.equal(missionProgress(m('days2'),[a,b],now).value,1);
+  assert.equal(missionProgress(m('days2'),[a,c],now).complete,true);
+  assert.equal(missionProgress(m('return'),[a,c,d],now).complete,true);
+  assert.equal(missionProgress(m('return'),[a,c,{...d,tags:['Seated']}],now).complete,false);
 });
 
-test('one canonical reward, edited/deleted proof reevaluates, later short entries never erase earned XP',()=>{
-  const one=progression([s],[run],now);
-  assert.equal(one.missionXp,50);assert.equal(one.recordXp,105);
+test('each goal awards once, invalid proof reevaluates, and shorter later records never subtract valid XP',()=>{
+  const one=progression([s],[],now);
   assert.equal(progression([s,s],[run,run],now).xp,one.xp);
   assert.equal(progression([],[run],now).xp,0);
-  assert.equal(progression([{...s,durationSec:60}],[run],now).missionXp,0);
-  assert.ok(progression([s,{...s,id:'short',durationSec:60}],[run],now).xp>one.xp);
-  assert.equal(progression([s],[],now).missionXp,0);
+  assert.equal(progression([{...s,durationSec:60}],[],now).missionXp,300);
+  assert.ok(progression([s,{...s,id:'short',durationSec:60}],[],now).xp>one.xp);
 });
 
-test('rank titles and thresholds stay distinct and increasingly demanding; skipping gives no reward',()=>{
+test('rank titles and thresholds stay distinct and increasingly demanding',()=>{
   assert.ok(RANKS.length>=100);
   assert.equal(new Set(RANKS).size,RANKS.length);
   assert.ok(RANKS.every(title=>!!zh[title]));
@@ -95,11 +99,7 @@ test('rank titles and thresholds stay distinct and increasingly demanding; skipp
     if(i>1)assert.ok(rankThreshold(i)-rankThreshold(i-1)>rankThreshold(i-1)-rankThreshold(i-2));
   }
   assert.equal(coupleRank(1e9).level,RANKS.length);
-  assert.equal(missionUnlocked(m('time15'),'intercourse',[],[s],now),false);
-  const skip={...run,acceptedAt:null,skippedAt:run.createdAt};
-  assert.equal(missionUnlocked(m('time15'),'intercourse',[skip],[],now),true);
-  assert.equal(progression([],[skip],now).missionXp,0);
-  assert.equal(missionUnlocked(m('time15'),'oral',[skip],[],now),false);
+
 });
 
 
@@ -110,7 +110,7 @@ test('level 100 follows the natural curve without a fixed cap or record-count ga
   assert.equal(coupleRank(TOP_RANK_XP).level,100);
   const records=Array.from({length:4800},(_,i)=>({...s,id:String(i)}));
   const game=progression(records,[],now);
-  assert.equal(game.xp,504000);
+  assert.equal(game.xp,504850);
   assert.equal(game.rank.level,100);
   const oralProgress=progression(records.map(r=>({...r,kind:'oral' as const})),[],now);
   assert.equal(oralProgress.xp,0);
@@ -120,8 +120,7 @@ test('level 100 follows the natural curve without a fixed cap or record-count ga
 test('oral records and legacy oral invitations never create mission progress or rewards',()=>{
  const oralRun={...run,kind:'oral' as const};
  assert.equal(progression([{...s,kind:'oral'}],[oralRun],now).missionXp,0);
- assert.equal(progression([{...s,kind:'oral'}],[oralRun],now).quests.length,0);
- assert.equal(missionUnlocked(m('time10'),'oral',[],[],now),false);
+ assert.equal(progression([{...s,kind:'oral'}],[oralRun],now).quests.some(q=>q.complete),false);
 });
 
 
@@ -132,8 +131,8 @@ test('classic and versionless history automatically earns XP exactly once withou
  const before=scoreSession(classic,ctx);
  const game=progression([classic,unversioned,untimed,classic],[],now);
  assert.equal(game.recordXp,105+55+25);
- assert.equal(game.rank.level,2);
- assert.equal(game.missionXp,0);
+ assert.equal(game.rank.level,4);
+ assert.equal(game.missionXp,850);
  assert.deepEqual(scoreSession(classic,ctx),before);
  assert.equal(progression([{...untimed,kind:'oral'}],[],now).xp,0);
  assert.equal(progression([{...classic,status:'active'}],[],now).xp,0);

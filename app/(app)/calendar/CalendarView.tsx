@@ -10,6 +10,8 @@ import { SessionCard } from '@/components/SessionCard';
 import { SessionForm } from '@/components/SessionForm';
 import { MonthPager, type MonthPagerHandle } from '@/components/MonthPager';
 import { Sheet } from '@/components/Sheet';
+import {SavedSessionReveal} from '@/components/XpCelebration';
+import type {SaveCelebration} from '@/lib/session-rewards';
 import { useTz } from '@/components/TzProvider';
 import { useRun } from '@/components/useRun';
 import { toPayload } from '../timer/TimerView';
@@ -271,6 +273,7 @@ function DayPanel({
   hasModel: boolean;
 }) {
   const [logOpen, setLogOpen] = useState(false);
+  const [celebration,setCelebration]=useState<SaveCelebration|null>(null);
   const [checkInOpen, setCheckInOpen] = useState(false);
   const [editPeriod, setEditPeriod] = useState<Period | null>(null);
   const add = useRun();
@@ -403,12 +406,15 @@ function DayPanel({
             error={add.error}
             pending={add.pending}
             onSubmit={async (v) => {
-              if (await add.run(() => logPastSession(toPayload(v)))) setLogOpen(false);
+              let saved:SaveCelebration|undefined;
+              const ok=await add.run(async()=>{const result=await logPastSession(toPayload(v));if(result.ok)saved=result.celebration;return result;});
+              if(ok){setLogOpen(false);if(saved)setCelebration(saved);}
             }}
           />
         )}
       </Sheet>
 
+      {celebration&&<SavedSessionReveal celebration={celebration} onClose={()=>setCelebration(null)}/>}
       <CheckInSheet open={checkInOpen} onClose={() => setCheckInOpen(false)} date={date} sex={me.sex!} existing={myLog} />
       <PeriodSheet period={editPeriod} onClose={() => setEditPeriod(null)} />
     </section>

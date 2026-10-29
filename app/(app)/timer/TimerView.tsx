@@ -12,7 +12,9 @@ import { ChevronDown, EyeOff, History, MapPin, Navigation, Pause, Play, Trash2 }
 import { discardActiveSession, finishSession, logPastSession, setPaused, startSession } from '@/app/actions';
 import { useRecordingLocation } from '@/components/useRecordingLocation';
 import { FormError } from '@/components/FormError';
-import { ScoreReveal, type RevealTimes, type RewardReveal } from '@/components/ScoreBadge';
+import {type RevealTimes} from '@/components/ScoreBadge';
+import {SavedSessionReveal} from '@/components/XpCelebration';
+import {savedCelebration,type SaveCelebration} from '@/lib/session-rewards';
 import { getGps, SessionForm, Toggle, type SessionFormValues } from '@/components/SessionForm';
 import { Sheet } from '@/components/Sheet';
 import { KIND_META, KindPicker } from '@/components/KindPicker';
@@ -21,7 +23,6 @@ import { placeSuggestions, scoreSessions } from '@/lib/clientScore';
 import { formatClock, formatDuration, prettyDate } from '@/lib/dates';
 import { dayInTz, timeInTz } from '@/lib/tz';
 import { useTz } from '@/components/TzProvider';
-import type { Score } from '@/lib/score';
 import type { SessionKind, SexSession } from '@/lib/types';
 
 /** Elapsed seconds of a session, derived only from server timestamps — survives app quits. */
@@ -58,7 +59,7 @@ export function TimerView({
   const done = useMemo(() => sessions.filter((s) => s.status === 'done'), [sessions]);
   const places = useMemo(() => placeSuggestions(sessions), [sessions]);
   const [optimistic, setOptimistic] = useState<SexSession | null>(null);
-  const [reveal, setReveal] = useState<{ score: Score; times: RevealTimes; reward?:RewardReveal } | null>(null);
+  const [celebration,setCelebration]=useState<SaveCelebration|null>(null);
   const { tz } = useTz();
 
   // The clock depends on Date.now(); render it only on the device to avoid hydration drift.
@@ -84,18 +85,16 @@ export function TimerView({
           starterName={names[current.createdBy] ?? 'You'}
           isMine={current.createdBy === meId}
           places={places}
-          onFinished={(values, durationSec, times) => {
+          onFinished={(values, durationSec, times, serverCelebration) => {
             const saved:SexSession={...current,...values,feelings:[],status:'done',durationSec,endedAt:new Date().toISOString()};
             const next=[...done.filter(s=>s.id!==current.id),saved];
-            const scores=scoreSessions(next,tz),s=scores.get(current.id);
-            const before=progression(done,missions),after=progression(next,missions);
-            if(s)setReveal({score:s,times,reward:saved.kind==='intercourse'?{xp:Math.max(0,after.xp-before.xp),level:after.rank.level,title:after.rank.title,levelUp:after.rank.level>before.rank.level,missions:after.quests.filter(q=>q.complete&&!before.quests.some(b=>b.run.id===q.run.id&&b.complete)).length}:undefined});
+            setCelebration(serverCelebration??savedCelebration(next,current.id,iso=>dayInTz(iso,tz))??null);
           }}
         />
       ) : (
-        <IdleTimer initialKind={initialKind} places={places} done={done} onStart={(s) => setOptimistic(s)} onStartFailed={() => setOptimistic(null)} />
+        <IdleTimer onSaved={setCelebration} initialKind={initialKind} places={places} done={done} onStart={(s) => setOptimistic(s)} onStartFailed={() => setOptimistic(null)} />
       )}
-      {reveal && <ScoreReveal score={reveal.score} times={reveal.times} reward={reveal.reward} onClose={() => setReveal(null)} />}
+      {celebration&&<SavedSessionReveal celebration={celebration} onClose={()=>setCelebration(null)}/>}
     </>
   );
 }
@@ -103,12 +102,14 @@ export function TimerView({
 // ─────────────────────────────── idle ───────────────────────────────
 
 function IdleTimer({
+  onSaved,
   initialKind,
   places,
   done,
   onStart,
   onStartFailed,
 }: {
+  onSaved:(saved:SaveCelebration)=>void;
   initialKind:SessionKind;
   places: string[];
   done: SexSession[];
@@ -209,11 +210,14 @@ function IdleTimer({
           error={past.error}
           pending={past.pending}
           onSubmit={async (v) => {
+            let saved:SaveCelebration|undefined;
             const ok = await past.run(async () => {
               const gps = v.useLocation && v.useGps ? await getGps() : null;
-              return logPastSession(toPayload(v, gps));
+              const result=await logPastSession(toPayload(v,gps));
+              if(result.ok)saved=result.celebration;
+              return result;
             });
-            if (ok) setPastOpen(false);
+            if(ok){setPastOpen(false);if(saved)onSaved(saved);}
           }}
         />
       </Sheet>
@@ -316,7 +320,7 @@ function LiveTimer({
   starterName: string;
   isMine: boolean;
   places: string[];
-  onFinished: (values: Partial<SexSession>, durationSec: number, times: RevealTimes) => void;
+  onFinished: (values: Partial<SexSession>, durationSec: number, times: RevealTimes,celebration?:SaveCelebration) => void;
 }) {
   const { t, f } = useT();
   const router = useRouter();
@@ -342,7 +346,7 @@ function LiveTimer({
   const staminaMax=session.scoreVersion===2?45:40;
   const stamina=session.scoreVersion===2?endurancePoints(secs):Math.round(40*(1-Math.exp(-minutes/15)));
   const liveXp=sessionXp({...session,status:'done',durationSec:secs});
-  const mission=useMemo(()=>progression(sessions,missions).quests.find(q=>q.run.kind===session.kind&&q.run.acceptedAt&&!q.run.skippedAt&&new Date(session.startedAt)>=new Date(q.run.acceptedAt)&&!q.complete&&q.mission.rule==='minutes'),[sessions,missions,session.kind,session.startedAt]);
+  const mission=useMemo(()=>progression(sessions,missions).quests.find(q=>session.kind==='intercourse'&&!q.complete&&q.mission.rule==='minutes'),[sessions,missions,session.kind,session.startedAt]);
   const headAngle = secFrac * 2 * Math.PI - Math.PI / 2;
   const { tz } = useTz();
   const startedLabel = f.timeInTz(session.startedAt, tz);
@@ -598,13 +602,14 @@ function LiveTimer({
               tags: v.tags,
               notes: v.notes || null,
             };
-            const ok = await finish.run(() => finishSession(session.id, values));
+            let saved:SaveCelebration|undefined;
+            const ok=await finish.run(async()=>{const result=await finishSession(session.id,values);if(result.ok)saved=result.celebration;return result;});
             if (ok) {
               setFinishOpen(false);
               const activeSec = Math.round(elapsedSec(session, Date.now()));
               const breaks = session.breaks.filter((b) => b.end);
               const heat=[v.hisRating,v.herRating].filter((n):n is number=>n!=null);
-              onFinished({...values,rating:heat.length?heat.reduce((a,b)=>a+b,0)/heat.length:null}, activeSec, { startedAt: session.startedAt, activeSec, breakSec: session.pausedSec, breaks });
+              onFinished({...values,rating:heat.length?heat.reduce((a,b)=>a+b,0)/heat.length:null}, activeSec, { startedAt: session.startedAt, activeSec, breakSec: session.pausedSec, breaks },saved);
             } else router.refresh();
           }}
         />
