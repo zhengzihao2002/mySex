@@ -1,4 +1,4 @@
-# Automatic couple quests, XP and versioned scoring
+# Automatic couple quests, XP and scoring
 
 Status: implemented according to the approved product direction and subsequent user corrections.
 
@@ -44,7 +44,7 @@ XP is derived from current distinct saved IDs and deterministic goal definitions
 
 ## Save celebration and navigation
 
-Edit, finish-save and record-detail sheets anchor to all four native screen edges instead of fixing their root to JavaScript pixel heights or dynamic viewport units. Scroll locks change only body overflow; they do not change body positioning, width, top, or root overflow, which can alter the viewport in the installed iOS app before a keyboard opens. During typing, only the panel size and inner scroll area are constrained. Edit and Save stay in normal document flow. Sheets and save overlays retain shared ownership of the overflow lock and restore the previous page scroll after closing.
+Edit, finish-save and record-detail sheets anchor to all four native screen edges instead of fixing their root to JavaScript pixel heights or dynamic viewport units. Scroll locks change only body overflow; they do not change body positioning, width, top, or root overflow, which can alter the viewport in the installed iOS app before a keyboard opens. During typing, only the panel size and inner scroll area are constrained. Edit and Save stay in normal document flow. Home-indicator padding is inside the scrolling content, so the scrollport reaches the panel bottom instead of clipping content above a fixed blank strip. The keyboard scrollport likewise reaches the visible keyboard edge; caret spacing is applied inside it. Sheets and save overlays retain shared ownership of the overflow lock and restore the previous page scroll after closing.
 
 Live completion and both manual-entry paths return the authoritative saved session, its score, and a reward snapshot. The previous XP is reconstructed from the current history excluding that record; the new XP includes it. This identifies the new session's XP and newly completed goals without trusting a client clock estimate or stale rank.
 
@@ -65,7 +65,7 @@ Every historical, restored and new record uses the same current calculation. Sto
 
 The endurance contribution is 1/5/11/20/45 points at 10/20/30/40/60 minutes. The final score point requires all 60 minutes instead of rounding up early. Breaks never contribute. This one-hour score applies to both activity types; oral records still earn no XP or quest rewards. Endurance XP separately retains its 120-minute maximum.
 
-Scores stay read-only, with the existing expandable calculation. Older record scores recalculate under this same formula rather than retaining their old calculation.
+Scores stay read-only, with the existing expandable breakdown. The product shows plain minute-to-percentage examples (10/20/30/40/50/60 minutes = +1/+5/+11/+20/+31/+45%) and the current record’s exact contribution, rather than an algebraic formula. Heat, pleasure, variety and XP explanations likewise use plain values. Older record scores recalculate under this same formula rather than retaining their old calculation.
 
 ## Verification
 

@@ -43,7 +43,7 @@ export function MissionsView({sessions}:{sessions:SexSession[];runs?:MissionRun[
     </div>
     <Sheet open={ranksOpen} onClose={()=>setRanksOpen(false)} title={t('Rank ladder & XP')}>
       <div className="mb-4 grid grid-cols-2 gap-2"><div className="card text-center"><b>{game.recordXp} XP</b><p className="text-xs text-ink-3">{t('From sessions')}</p></div><div className="card text-center"><b>{game.missionXp} XP</b><p className="text-xs text-ink-3">{t('From missions')}</p></div></div>
-      <p className="mb-2 text-sm text-ink-2">{t('Each completed intercourse record earns 25 base XP plus round(80 × min(active minutes / 120, 1)²) endurance XP. The full 80 endurance XP requires 120 active minutes. Breaks and oral records earn no XP. Existing records count using this harder XP curve.')}</p>
+      <p className="mb-2 text-sm text-ink-2">{t('Each completed intercourse record earns 25 base XP plus up to 80 endurance XP. The full endurance bonus requires 120 active minutes. Breaks and oral records earn no XP. Existing records follow the same rules.')}</p>
       <p className="mb-2 text-sm text-ink-2">{t('Total session XP: 40 min → 34; 60 min → 45; 90 min → 70; 120 min → 105. Quest bonuses are added separately.')}</p>
       <p className="mb-4 text-xs text-ink-3">{t('Existing records use the same current score and XP rules. Missing active time earns base XP only. Corrections and deletions update rewards.')}</p>
       <p className="mb-4 text-sm text-rose-2">{t('Top rank requires {xp} XP. Only intercourse records and missions earn XP.',{xp:TOP_RANK_XP.toLocaleString()})}</p>

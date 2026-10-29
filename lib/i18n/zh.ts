@@ -1,6 +1,15 @@
 // Simplified Chinese. Keys are the English UI text (see lib/i18n/core.ts).
 // Run `node scripts/check-i18n.mjs --missing` to find untranslated keys.
 export const zh: Record<string, string> = {
+  "60 active minutes = +45%, the maximum. Breaks do not count.": "60分钟有效时长 = +45%，达到满分。休息不计入。",
+  "Average heat: 1/5 = +4%; 2/5 = +8%; 3/5 = +12%; 4/5 = +16%; 5/5 = +20%. Your ratings are averaged.": "平均热度：1/5 = +4%；2/5 = +8%；3/5 = +12%；4/5 = +16%；5/5 = +20%。取双方评分的平均值。",
+  "One selected recipient with an orgasm = +20%. If both are selected, each earns +10%. Extra orgasms add no points.": "只选择一方接受且记录高潮 = +20%。选择双方时，每方记录高潮 = +10%。更多高潮不额外加分。",
+  "One partner with an orgasm = +10%. Both = +20%. Extra orgasms add no points.": "一方记录高潮 = +10%，双方 = +20%。更多高潮不额外加分。",
+  "1 position = +3%. 2 = +8%. 3 or more = +15%. Mood and setting tags do not count.": "1种姿势 = +3%，2种 = +8%，3种及以上 = +15%。氛围和场景标签不计入。",
+  "{time} active = +{points}%": "{time}有效时长 = +{points}%",
+  "Active-time examples": "有效时长得分示例",
+  "{minutes} min = +{points}%": "{minutes}分钟 = +{points}%",
+  "Each completed intercourse record earns 25 base XP plus up to 80 endurance XP. The full endurance bonus requires 120 active minutes. Breaks and oral records earn no XP. Existing records follow the same rules.": "每条已完成的性交记录获得25基础经验，以及最多80耐力经验。全部耐力奖励需要达到120分钟有效时长。休息时间和口交记录不产生经验，历史记录使用相同规则。",
   "Existing records use the same current score and XP rules. Missing active time earns base XP only. Corrections and deletions update rewards.": "历史记录和新记录使用同一套现行评分及经验规则。缺少有效时长时只获得基础经验，修改和删除记录会更新奖励。",
   "No recorded sessions yet.": "还没有记录。",
   "Lotus": "莲花坐式",
@@ -449,7 +458,7 @@ export const zh: Record<string, string> = {
   "Edit requests": "修改请求",
   "Type": "类型",
   "When": "时间",
-  "Active time": "活动时间",
+  "Active time": "有效时长",
   "Heat": "热度",
   "Change sent. The session stays as it is until your partner agrees.": "修改已发送。在对方同意之前，记录保持不变。",
   "{name} wants to change this session.": "{name}想修改这条记录。",

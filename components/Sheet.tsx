@@ -59,7 +59,7 @@ export function Sheet({open,onClose,title,children,viewKey,stableHeight=false}:{
         Object.assign(panel.style,{position:'absolute',top:`${(viewport?.offsetTop??0)+layoutHeight-panelHeight}px`,height:`${panelHeight}px`,maxHeight:'none',marginBottom:''});
         if(content.current){
           const visibleBottom=(viewport?.offsetTop??0)+(viewport?.height??window.innerHeight);
-          content.current.style.maxHeight=`${Math.max(0,visibleBottom-panel.offsetTop-content.current.offsetTop-12)}px`;
+          content.current.style.maxHeight=`${Math.max(0,visibleBottom-panel.offsetTop-panel.clientTop-content.current.offsetTop)}px`;
         }
       }else{
         Object.assign(panel.style,{position:'',top:'',height:'',maxHeight:keyboardOpen?`${(viewport?.height??window.innerHeight)*.92}px`:'',marginBottom:keyboardOpen?`${Math.max(0,node.clientHeight-(viewport?.offsetTop??0)-(viewport?.height??window.innerHeight))}px`:''});
@@ -101,13 +101,15 @@ export function Sheet({open,onClose,title,children,viewKey,stableHeight=false}:{
   return createPortal(<div ref={root} data-app-sheet className="fixed inset-0 z-50 flex items-end justify-center">
     <div className="absolute inset-0 touch-none animate-fade bg-black/60 backdrop-blur-sm motion-reduce:animate-none" onClick={onClose}/>
     <div ref={dialog} role="dialog" aria-modal="true" aria-labelledby={title?titleId:undefined} aria-label={title?undefined:t('Details')} tabIndex={-1}
-      className={`relative flex max-h-[92%] w-full max-w-lg animate-rise flex-col rounded-t-[32px] border-t border-line bg-surface pb-safe shadow-2xl outline-none motion-reduce:animate-none ${stableHeight?'h-[92%]':''}`}>
+      className={`relative flex max-h-[92%] w-full max-w-lg animate-rise flex-col rounded-t-[32px] border-t border-line bg-surface shadow-2xl outline-none motion-reduce:animate-none ${stableHeight?'h-[92%]':''}`}>
       <div className="mx-auto mt-2.5 h-1.5 w-10 shrink-0 rounded-full bg-line"/>
       <div className="flex shrink-0 items-center justify-between gap-3 px-5 pt-3 pb-2">
         <div id={titleId} className="min-w-0 text-lg font-bold">{title}</div>
         <button type="button" onClick={onClose} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface-2 text-ink-2" aria-label={t('Close')}><X size={18}/></button>
       </div>
-      <div ref={content} data-sheet-scroll className={`min-h-0 overflow-y-auto overscroll-contain px-5 pb-6 ${stableHeight?'flex-1':''}`}>{children}</div>
+      {/* Keep the home-indicator inset inside the scrollport, so it does not
+          become a fixed blank strip clipping content above the screen edge. */}
+      <div ref={content} data-sheet-scroll className={`min-h-0 overflow-y-auto overscroll-contain px-5 pb-[calc(env(safe-area-inset-bottom)+24px)] ${stableHeight?'flex-1':''}`}>{children}</div>
     </div>
   </div>,document.body);
 }
