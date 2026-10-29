@@ -31,6 +31,7 @@ export type CoupleContext = {
 export type SessionKind = 'intercourse' | 'oral';
 
 export type SexSession = {
+  scoreVersion?: 1 | 2;
   id: string;
   kind: SessionKind;
   createdBy: string;

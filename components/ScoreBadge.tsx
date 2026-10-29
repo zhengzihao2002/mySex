@@ -40,7 +40,9 @@ export function ScoreBadge({ score, size = 'sm' }: { score: Score; size?: 'sm' |
 /** Full-screen, animated reveal of a session's score. */
 export type RevealTimes = { startedAt: string; activeSec: number; breakSec: number; breaks: Break[] };
 
-export function ScoreReveal({ score, times, onClose }: { score: Score; times?: RevealTimes; onClose: () => void }) {
+export type RewardReveal={xp:number;level:number;title:string;levelUp:boolean;missions:number};
+
+export function ScoreReveal({ score, times, reward, onClose }: { score: Score; times?: RevealTimes; reward?:RewardReveal; onClose: () => void }) {
   const { t } = useT();
   const [shown, setShown] = useState(0);
   useEffect(() => {
@@ -58,9 +60,10 @@ export function ScoreReveal({ score, times, onClose }: { score: Score; times?: R
   const R = 92;
   const C = 2 * Math.PI * R;
   return (
-    <div className="fixed inset-0 z-[60] flex animate-fade flex-col items-center justify-center bg-bg/95 px-6 backdrop-blur-2xl" onClick={onClose}>
+    <div className="fixed inset-0 z-[60] flex animate-fade flex-col items-center overflow-y-auto bg-bg/95 px-6 py-8 backdrop-blur-2xl" onClick={onClose}>
+      <button type="button" className="btn-ghost mb-3 shrink-0" onClick={onClose}>{t('Close')}</button>
       <p className="text-sm font-semibold tracking-[0.3em] text-ink-3 uppercase">{t('mySex Score')}</p>
-      <div className="relative my-4 h-48 w-48">
+      <div className="relative my-4 h-48 w-48 shrink-0">
         <svg viewBox="0 0 220 220" className="h-full w-full -rotate-90">
           <circle cx="110" cy="110" r={R} stroke="var(--color-surface-2)" strokeWidth="14" fill="none" />
           <circle
@@ -83,6 +86,12 @@ export function ScoreReveal({ score, times, onClose }: { score: Score; times?: R
       <p className="font-display text-3xl font-bold">
         {score.emoji} {t(score.grade)}
       </p>
+      <p className="mt-1 text-xs text-ink-3">{score.version===2?t('Score v2'):t('Classic score')}</p>
+      {reward&&<div className="mt-3 w-full max-w-xs rounded-2xl border border-amber-300/40 bg-amber-300/5 p-3 text-center">
+        <p className="text-xl font-bold text-amber-300">+{reward.xp} XP</p>
+        <p className="font-semibold">{reward.levelUp?'✦ ':''}{t(reward.title)}</p>
+        <p className="text-xs text-ink-2">{reward.levelUp?t('Level up!'):t('Level {n}',{n:reward.level})}{reward.missions>0?` · ${t('{n} missions completed',{n:reward.missions})}`:''}</p>
+      </div>}
       {times && (
         <div className="mt-5 w-full max-w-xs">
           <SessionTimes {...times} />

@@ -6,6 +6,7 @@ const timestamp = z.iso.datetime({ offset: true });
 const text = z.string().max(2000).nullable();
 const date = z.iso.date();
 const session = z.object({
+  scoreVersion: z.union([z.literal(1),z.literal(2)]).optional(),
   id: z.uuid(), createdBy: z.string(), kind: z.enum(['intercourse', 'oral']), status: z.enum(['active', 'done']),
   startedAt: timestamp, endedAt: timestamp.nullable(), pausedAt: timestamp.nullable(),
   pausedSec: z.number().int().nonnegative(), durationSec: z.number().int().nonnegative().nullable(),
@@ -50,7 +51,7 @@ export function verifyBackup(input: unknown, secret: string, who: RestoreActor):
 /** Preview and import share the same selection rules. All writes are atomic and never overwrite. */
 export async function restoreBackup(client: NeonQueryFunction<false, false>, b: Backup, who: RestoreActor, apply: boolean): Promise<RestoreCounts> {
   const sessions = b.sessions.filter(s => s.status === 'done').map(s => ({
-    id: s.id, couple_id: who.coupleId, created_by: s.createdBy, status: 'done', kind: s.kind,
+    id: s.id, couple_id: who.coupleId, score_version:s.scoreVersion??1, created_by: s.createdBy, status: 'done', kind: s.kind,
     started_at: s.startedAt, ended_at: s.endedAt, paused_sec: s.pausedSec, duration_sec: s.durationSec,
     ip: s.ip, city: s.city, region: s.region, country: s.country, latitude: s.latitude, longitude: s.longitude,
     geo_source: s.geoSource, gps_named_at: s.gpsNamedAt ?? null, place: s.place, rating: s.rating, protection: s.protection,
@@ -72,8 +73,8 @@ export async function restoreBackup(client: NeonQueryFunction<false, false>, b: 
       where exists(select 1 from allowed) and not exists(select 1 from sessions x where x.id = s.id)
       and not exists(select 1 from deleted_session_markers m where m.key_hash = encode(sha256(convert_to(${who.coupleId} || ':' || s.id::text, 'UTF8')), 'hex'))
     ), added as (
-      insert into sessions(id,couple_id,created_by,status,kind,started_at,ended_at,paused_sec,duration_sec,ip,city,region,country,latitude,longitude,geo_source,gps_named_at,place,rating,protection,his_orgasms,her_orgasms,tags,notes,breaks)
-      select id,couple_id,created_by,status,kind,started_at,ended_at,paused_sec,duration_sec,ip,city,region,country,latitude,longitude,geo_source,gps_named_at,place,rating,protection,his_orgasms,her_orgasms,tags,notes,breaks
+      insert into sessions(score_version,id,couple_id,created_by,status,kind,started_at,ended_at,paused_sec,duration_sec,ip,city,region,country,latitude,longitude,geo_source,gps_named_at,place,rating,protection,his_orgasms,her_orgasms,tags,notes,breaks)
+      select score_version,id,couple_id,created_by,status,kind,started_at,ended_at,paused_sec,duration_sec,ip,city,region,country,latitude,longitude,geo_source,gps_named_at,place,rating,protection,his_orgasms,her_orgasms,tags,notes,breaks
       from candidates where ${apply} on conflict do nothing returning id
     ) select case when ${apply} then (select count(*) from added) else (select count(*) from candidates) end as n`,
     tx`with candidates as (

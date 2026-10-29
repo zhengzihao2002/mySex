@@ -1,4 +1,5 @@
 'use client';
+import {endurancePoints,progression,sessionXp,type MissionRun} from '@/lib/progression';
 import {TimerPrompts} from '@/components/TimerPrompts';
 import {SessionFeelings} from '@/components/SessionFeelings';
 import {SessionPersonality} from '@/components/SessionPersonality';
@@ -11,7 +12,7 @@ import { ChevronDown, EyeOff, History, MapPin, Navigation, Pause, Play, Trash2 }
 import { discardActiveSession, finishSession, logPastSession, setPaused, startSession } from '@/app/actions';
 import { useRecordingLocation } from '@/components/useRecordingLocation';
 import { FormError } from '@/components/FormError';
-import { ScoreReveal, type RevealTimes } from '@/components/ScoreBadge';
+import { ScoreReveal, type RevealTimes, type RewardReveal } from '@/components/ScoreBadge';
 import { getGps, SessionForm, Toggle, type SessionFormValues } from '@/components/SessionForm';
 import { Sheet } from '@/components/Sheet';
 import { KIND_META, KindPicker } from '@/components/KindPicker';
@@ -44,7 +45,11 @@ export function TimerView({
   sessions,
   names,
   meId,
+  missions=[],
+  initialKind='intercourse',
 }: {
+  missions?:MissionRun[];
+  initialKind?:SessionKind;
   sessions: SexSession[];
   names: Record<string, string>;
   meId: string;
@@ -53,7 +58,7 @@ export function TimerView({
   const done = useMemo(() => sessions.filter((s) => s.status === 'done'), [sessions]);
   const places = useMemo(() => placeSuggestions(sessions), [sessions]);
   const [optimistic, setOptimistic] = useState<SexSession | null>(null);
-  const [reveal, setReveal] = useState<{ score: Score; times: RevealTimes } | null>(null);
+  const [reveal, setReveal] = useState<{ score: Score; times: RevealTimes; reward?:RewardReveal } | null>(null);
   const { tz } = useTz();
 
   // The clock depends on Date.now(); render it only on the device to avoid hydration drift.
@@ -73,20 +78,24 @@ export function TimerView({
         <LiveTimer
           key="live-timer"
           session={current}
+          missions={missions}
+          sessions={sessions}
           pendingStart={!active}
           starterName={names[current.createdBy] ?? 'You'}
           isMine={current.createdBy === meId}
           places={places}
           onFinished={(values, durationSec, times) => {
-            const scores = scoreSessions([...done, { ...current, ...values, status: 'done', durationSec }], tz);
-            const s = scores.get(current.id);
-            if (s) setReveal({ score: s, times });
+            const saved:SexSession={...current,...values,feelings:[],status:'done',durationSec,endedAt:new Date().toISOString()};
+            const next=[...done.filter(s=>s.id!==current.id),saved];
+            const scores=scoreSessions(next,tz),s=scores.get(current.id);
+            const before=progression(done,missions),after=progression(next,missions);
+            if(s)setReveal({score:s,times,reward:saved.scoreVersion===2?{xp:Math.max(0,after.xp-before.xp),level:after.rank.level,title:after.rank.title,levelUp:after.rank.level>before.rank.level,missions:after.quests.filter(q=>q.complete&&!before.quests.some(b=>b.run.id===q.run.id&&b.complete)).length}:undefined});
           }}
         />
       ) : (
-        <IdleTimer places={places} done={done} onStart={(s) => setOptimistic(s)} onStartFailed={() => setOptimistic(null)} />
+        <IdleTimer initialKind={initialKind} places={places} done={done} onStart={(s) => setOptimistic(s)} onStartFailed={() => setOptimistic(null)} />
       )}
-      {reveal && <ScoreReveal score={reveal.score} times={reveal.times} onClose={() => setReveal(null)} />}
+      {reveal && <ScoreReveal score={reveal.score} times={reveal.times} reward={reveal.reward} onClose={() => setReveal(null)} />}
     </>
   );
 }
@@ -94,11 +103,13 @@ export function TimerView({
 // ─────────────────────────────── idle ───────────────────────────────
 
 function IdleTimer({
+  initialKind,
   places,
   done,
   onStart,
   onStartFailed,
 }: {
+  initialKind:SessionKind;
   places: string[];
   done: SexSession[];
   onStart: (s: SexSession) => void;
@@ -106,7 +117,7 @@ function IdleTimer({
 }) {
   const { t, f } = useT();
   const place = '';
-  const [kind, setKind] = useState<SessionKind>('intercourse');
+  const [kind, setKind] = useState<SessionKind>(initialKind);
   const { useLocation, setUseLocation, useGps, setUseGps, ready: locationReady } = useRecordingLocation();
   const [pastOpen, setPastOpen] = useState(false);
   const start = useRun();
@@ -121,6 +132,7 @@ function IdleTimer({
       const gps = useLocation && useGps ? await getGps() : null;
       onStart({
         id: 'pending',
+        scoreVersion:2,
         kind,
         createdBy: '',
         status: 'active',
@@ -289,6 +301,8 @@ const C_IN = 2 * Math.PI * R_IN;
 
 function LiveTimer({
   session,
+  missions,
+  sessions,
   pendingStart,
   starterName,
   isMine,
@@ -296,6 +310,8 @@ function LiveTimer({
   onFinished,
 }: {
   session: SexSession;
+  missions:MissionRun[];
+  sessions:SexSession[];
   pendingStart: boolean;
   starterName: string;
   isMine: boolean;
@@ -323,7 +339,10 @@ function LiveTimer({
   const minutes = secs / 60;
   const secFrac = (secs % 60) / 60;
   const minFrac = (minutes % 60) / 60;
-  const stamina = Math.round(40 * (1 - Math.exp(-minutes / 15)));
+  const staminaMax=session.scoreVersion===2?45:40;
+  const stamina=session.scoreVersion===2?endurancePoints(secs):Math.round(40*(1-Math.exp(-minutes/15)));
+  const liveXp=sessionXp({...session,status:'done',durationSec:secs});
+  const mission=useMemo(()=>progression(sessions,missions).quests.find(q=>q.run.kind===session.kind&&q.run.acceptedAt&&!q.run.skippedAt&&new Date(session.startedAt)>=new Date(q.run.acceptedAt)&&!q.complete&&q.mission.rule==='minutes'),[sessions,missions,session.kind,session.startedAt]);
   const headAngle = secFrac * 2 * Math.PI - Math.PI / 2;
   const { tz } = useTz();
   const startedLabel = f.timeInTz(session.startedAt, tz);
@@ -474,14 +493,18 @@ function LiveTimer({
         </div>
 
 
+        {session.scoreVersion===2&&<div className="mb-2 w-full max-w-[300px] rounded-2xl border border-line bg-surface/40 px-3 py-2 text-center text-xs text-ink-2">
+          <span className="font-semibold text-rose-2">{t('On save')}: +{liveXp.total} XP</span>
+          {mission&&<p className="mt-1">{t(mission.mission.title)} · {Math.min(mission.target,Math.floor(minutes))}/{mission.target} {t('min')}{minutes>=mission.target?' ✓':''}</p>}
+        </div>}
         {session.kind === 'intercourse' && <div className="my-3 w-full max-w-[300px] shrink-0"><TimerPrompts paused={paused || pendingStart} kind={session.kind} /></div>}
         <div className="mt-4 w-full max-w-[300px]">
           <div className="mb-1 flex justify-between text-[11px] text-ink-3">
             <span>{t('Stamina points')}</span>
-            <span className="tabular-nums">{stamina}/40</span>
+            <span className="tabular-nums">{stamina}/{staminaMax}</span>
           </div>
           <div className="h-1 overflow-hidden rounded-full bg-white/10">
-            <div className="h-full rounded-full bg-gradient-to-r from-rose to-ovulation" style={{ width: `${(stamina / 40) * 100}%` }} />
+            <div className="h-full rounded-full bg-gradient-to-r from-rose to-ovulation" style={{ width: `${(stamina / staminaMax) * 100}%` }} />
           </div>
         </div>
         </div>

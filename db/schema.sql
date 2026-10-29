@@ -291,3 +291,24 @@ alter table sessions alter column rating type numeric(3,1);
 alter table sessions add column if not exists experiences_initialized boolean not null default true;
 
 update sessions set experiences_initialized=false where status='active';
+
+-- Add with v1 first, so every pre-launch record keeps its original calculation.
+alter table sessions add column if not exists score_version smallint not null default 1 check (score_version in (1,2));
+alter table sessions alter column score_version set default 2;
+
+-- One canonical mission instance per couple/activity/goal. XP is derived from valid proof,
+-- never accumulated by repeated saves or accepted twice by competing requests.
+create table if not exists couple_missions (
+  id uuid primary key default gen_random_uuid(),
+  couple_id uuid not null references couples(id) on delete cascade,
+  mission_key text not null,
+  kind text not null check(kind in ('intercourse','oral')),
+  requested_by text not null references profiles(user_id) on delete cascade,
+  created_at timestamptz not null default now(),
+  accepted_at timestamptz,
+  time_zone text not null default 'UTC',
+  unique(couple_id,kind,mission_key)
+);
+create index if not exists couple_missions_expiry on couple_missions(created_at) where accepted_at is null;
+
+alter table couple_missions add column if not exists skipped_at timestamptz;

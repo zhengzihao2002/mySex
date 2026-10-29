@@ -2,6 +2,8 @@
 import { useT } from '@/components/I18nProvider';
 
 import Link from 'next/link';
+import {CoupleProgress} from '@/components/CoupleProgress';
+import type {MissionRun} from '@/lib/progression';
 import { useEffect, useMemo, useState } from 'react';
 import { CalendarPlus, Dice5, Flame, Settings, SmilePlus, Timer } from 'lucide-react';
 import { sendNote, setAnniversary } from '@/app/actions';
@@ -26,7 +28,9 @@ export function HomeView({
   sessions,
   logs,
   notes,
+  missions=[],
 }: {
+  missions?: MissionRun[];
   ctx: CoupleContext;
   periods: Period[];
   sessions: SexSession[];
@@ -102,6 +106,8 @@ export function HomeView({
         <Quick onClick={() => setCheckIn(true)} icon={<SmilePlus size={22} />} label={t('Check-in')} />
         <Quick href="/play" icon={<Dice5 size={22} />} label={t('Play')} />
       </div>
+
+      <CoupleProgress sessions={sessions} runs={missions}/>
 
       <MoodCard me={me.name} myLog={myLog} partnerName={partner.name} partnerLog={partnerLog} onCheckIn={() => setCheckIn(true)} />
 

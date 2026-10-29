@@ -2,6 +2,7 @@
 import { useT } from '@/components/I18nProvider';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { Dice5, Lock, Shuffle, Sparkles } from 'lucide-react';
 import { answerDesire, resetDesires } from '@/app/actions';
 import { useRun } from '@/components/useRun';
@@ -38,6 +39,7 @@ export function PlayView({
         <h1 className="font-display text-3xl font-bold">{t('Play')}</h1>
         <p className="text-sm text-ink-3">{t('Foreplay, gamified.')}</p>
       </div>
+      <Link href="/missions" className="card block border-rose/30 bg-gradient-to-br from-plum/30 to-surface"><h2 className="font-display text-xl font-bold">✦ {t('Couple quests')}</h2><p className="mt-1 text-sm text-ink-2">{t('Earn XP. Unlock titles. Conquer your next chapter.')} →</p></Link>
       <SexDice />
       <DareCard />
       <Desires mine={mine} matches={matches} partnerAnswered={partnerAnswered} partnerName={partnerName} />

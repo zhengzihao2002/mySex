@@ -1,6 +1,6 @@
-# Proposal: couple missions and harder session scoring
+# Couple missions, progression and versioned session scoring
 
-Status: proposal only. No mission tables, XP, score weights, timer targets, or existing achievement criteria have been changed.
+Status: approved by the user and implemented. Existing achievements and the original recording controls remain available.
 
 ## Product direction
 
@@ -43,12 +43,20 @@ Time examples: 5 minutes = 2/45; 10 = 6; 15 = 11; 20 = 17; 30 = 30; 40 = 45. Wit
 
 This makes high scores harder and makes duration matter more while preventing score farming by adding descriptive tags or ever-higher orgasm counts. The timer may show the chosen milestone and active-time progress, but Pause, Finish, and Discard remain available at every score.
 
-## Decisions before implementation
+## Implemented progression
 
-1. Approve or revise the four score weights and 40-minute cap. This changes the old sex-specific weights and removes adventure bonuses from v2; those are deliberate proposed changes, not already authorized removals.
-2. Approve a v2 launch boundary: existing records retain their classic score calculation; new records use v2, with a visible version label and version-aware comparisons. No silent historical rescoring.
-3. Confirm whether a Rhythm chapter should have an optional deadline or use only untimed progress. No automatic reminders either way.
+The board has 12 missions plus a chapter finale for each activity. Explorer, Endurance and Rhythm unlock sequentially within their paths. Either partner can skip without XP; an unfinished mission can be abandoned and invited again. Rhythm uses untimed progress, not streak resets. The 40-minute summit is optional for reaching the finale. Completion awards the chapter crown on the board.
 
-## Implementation order after agreement
+New completed records with positive active duration earn 25 base XP for intercourse or 15 for oral, plus `round(80 × min(activeMinutes / 40, 1)^1.4)` endurance XP. Classic records do not receive retroactive XP. Session XP and mission XP feed 20 ranks with localized titles, including 月蚀领航者、极光登峰者、双生凤凰 and 超新星双皇; every level has its own title. The threshold for zero-based rank index `i` is `100i² + 50i`; each subsequent level therefore takes more additional XP. The last rank remains a title while lifetime XP continues to grow.
 
-Start with mission board, dual acceptance, 12 missions, deterministic evidence/XP, and progress in the existing timer/save reveal. Add the approved v2 formula and versioned score explanations. Add cosmetic unlocks last. Test two-device races, duplicate saves, abandoned missions, edited/deleted evidence, oral recipient handling, pause exclusion, and expiry independently of record retention.
+The Home card shows the current rank, total XP, next threshold, and an active mission or pending invitations. The full ladder and XP explanation open from Missions. Live recordings show projected session XP and an accepted endurance goal, and the save reveal shows XP and level-ups. Scores remain informational, with per-category explanations in record details.
+
+## Persistence and verification boundaries
+
+`couple_missions` has a unique `(couple_id, kind, mission_key)` row and a server-generated ID. The proposer accepts by inviting; only the other authenticated account can activate that exact invitation. A withdrawn/replaced ID cannot activate a newer invitation. Pending invitations are physically removed after seven days by the existing authenticated-visit cleanup. Accepted/skipped mission state persists separately from inbox retention. Invitations are on the mission board, not in the record-approval inbox.
+
+XP is derived from distinct current saved record IDs and canonical mission rows rather than an incrementing balance or claimed-award table. Repeated requests cannot double-award XP. Deletion or an approved correction reevaluates evidence and removes invalid rewards; a later short record cannot erase a valid earlier reward. Records and their active durations are self-reported; the app does not verify what happened physically. Mission day boundaries use the timezone saved with the invitation.
+
+The schema adds score version 1 to existing rows before setting the default for newly created records to 2. Classic scoring uses only classic records for its history-dependent context, so new past entries cannot silently alter old adventure bonuses. Analytics compare average/best scores within a selected version, and location averages label each version separately. Signed backups preserve the session score version; older backups restore as classic. Mission acceptance remains in the live database and is not replayed by a one-person backup restore.
+
+Automated checks cover migration reruns, unchanged classic scores, v2 thresholds, recipient handling, position filtering, rating averages, dual acceptance, duplicate invitations/acceptance, expiry, unpairing, abandoned/replaced IDs, local-day evidence, skipped goals, corrected/deleted proof, and backup score-version integrity. Browser checks cover the board, rank ladder, read-only score chart, timer, Simplified Chinese and narrow screens.

@@ -209,3 +209,12 @@ test('map-selected location provenance and pin survive export verification and r
  await restoreBackup(client,valid,who,true);const saved=(await pg.query<{latitude:number;longitude:number;geo_source:string}>('select latitude,longitude,geo_source from sessions')).rows[0];
  assert.equal(saved.latitude,0);assert.equal(saved.longitude,0);assert.equal(saved.geo_source,'map');
 });
+
+test('backups preserve the score generation and old backups stay classic on restore',async()=>{
+  const b=backup();b.sessions.push({...b.sessions[0],id:'20000000-0000-4000-8000-000000000002',scoreVersion:2});
+  const signed={...b,signature:signBackup(b,secret)};
+  const verified=verifyBackup(signed,secret,who);
+  await restoreBackup(client,verified,who,true);
+  assert.deepEqual((await pg.query<{score_version:number}>('select score_version from sessions order by id')).rows.map(r=>r.score_version),[1,2]);
+  assert.throws(()=>verifyBackup({...signed,sessions:signed.sessions.map(s=>({...s,scoreVersion:1}))},secret,who),/verification failed/);
+});

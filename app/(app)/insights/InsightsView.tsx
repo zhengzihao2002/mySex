@@ -267,9 +267,11 @@ function SexStats({ sessions, kind, allSessions, scores, herName, hisName }: { s
   const countOf = (k: SessionKind) => allSessions.filter((s) => s.kind === k).length;
   const totalSec = sessions.reduce((a, s) => a + (s.durationSec ?? 0), 0);
   const avgSec = totalSec / sessions.length;
-  const scoreVals = sessions.map((s) => scores.get(s.id)?.total ?? 0);
-  const avgScore = Math.round(scoreVals.reduce((a, b) => a + b, 0) / scoreVals.length);
-  const best = [...sessions].sort((a, b) => (scores.get(b.id)?.total ?? 0) - (scores.get(a.id)?.total ?? 0))[0];
+  const [scoreVersion,setScoreVersion]=useState<1|2>(sessions.some(s=>s.scoreVersion===2)?2:1);
+  const scoredSessions=sessions.filter(s=>(s.scoreVersion??1)===scoreVersion);
+  const scoreVals = scoredSessions.map((s) => scores.get(s.id)?.total ?? 0);
+  const avgScore = scoreVals.length?Math.round(scoreVals.reduce((a, b) => a + b, 0) / scoreVals.length):'–';
+  const best = [...scoredSessions].sort((a, b) => (scores.get(b.id)?.total ?? 0) - (scores.get(a.id)?.total ?? 0))[0];
   const longest = [...sessions].sort((a, b) => (b.durationSec ?? 0) - (a.durationSec ?? 0))[0];
   const herO = sessions.reduce((a, s) => a + (s.herOrgasms ?? 0), 0);
   const hisO = sessions.reduce((a, s) => a + (s.hisOrgasms ?? 0), 0);
@@ -312,11 +314,12 @@ function SexStats({ sessions, kind, allSessions, scores, herName, hisName }: { s
         </div>
         <Tile value={f.formatDuration(totalSec)} label={t('naked time together')} />
         <Tile value={f.formatDuration(avgSec)} label={t('average length')} />
-        <Tile value={avgScore} label={t('average score')} />
+        <Tile value={avgScore} label={`${t('average score')} · ${scoreVersion===2?t('Score v2'):t('Classic score')}`} />
       </div>
 
+      <div className="flex flex-wrap justify-center gap-2">{([2,1] as const).map(v=><button key={v} className={`chip ${scoreVersion===v?'chip-on':''}`} aria-pressed={scoreVersion===v} onClick={()=>setScoreVersion(v)}>{v===2?t('Score v2'):t('Classic score')}</button>)}</div>
       <div className="grid grid-cols-2 gap-2">
-        <Highlight title={t('Best ever')} s={best} score={scores.get(best.id)} tz={tz} />
+        {best?<Highlight title={t('Best ever')} s={best} score={scores.get(best.id)} tz={tz} />:<div className="card text-sm text-ink-3">{t('No records with this score version yet.')}</div>}
         <Highlight title={t('Longest')} s={longest} score={scores.get(longest.id)} tz={tz} />
       </div>
 
@@ -526,7 +529,7 @@ function PlacesTab({ sessions }: { sessions: SexSession[] }) {
       <div className="space-y-2">
         {groups.map(([name, list]) => {
           const geo = list.find((s) => s.latitude != null && s.longitude != null);
-          const avg = Math.round(list.reduce((a, s) => a + (scores.get(s.id)?.total ?? 0), 0) / list.length);
+          const avgs=([2,1] as const).flatMap(v=>{const group=list.filter(s=>(s.scoreVersion??1)===v);return group.length?[`${v===2?t('Score v2'):t('Classic score')}: ${Math.round(group.reduce((a,s)=>a+(scores.get(s.id)?.total??0),0)/group.length)}`]:[];}).join(' · ');
           const lastDay = dayInTz(list[0].startedAt, tz);
           const cityLine = [list[0].city, list[0].region, list[0].country].filter(Boolean).join(', ');
           return (
@@ -535,7 +538,7 @@ function PlacesTab({ sessions }: { sessions: SexSession[] }) {
               <div className="min-w-0 flex-1">
                 <p className="truncate font-semibold">{name === 'Unknown' ? t('Unknown') : name}</p>
                 <p className="truncate text-xs text-ink-3">
-                  {t('{n}×', { n: list.length })} · {t('avg score')} {avg} · {t('last')} {f.prettyDate(lastDay)}
+                  {t('{n}×', { n: list.length })} · {t('avg score')} {avgs} · {t('last')} {f.prettyDate(lastDay)}
                   {name !== cityLine && cityLine ? ` · ${cityLine}` : ''}
                 </p>
                 <p className="truncate text-[11px] text-ink-3">
