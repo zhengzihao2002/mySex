@@ -29,7 +29,7 @@ function toProfile(r: Row): Profile {
 export function toSession(r: Row): SexSession {
   return {
     id: r.id,
-    scoreVersion: r.score_version === 2 ? 2 : 1,
+    scoreVersion: r.score_version === 3 ? 3 : r.score_version === 2 ? 2 : 1,
     kind: r.kind === 'oral' ? 'oral' : 'intercourse',
     createdBy: r.created_by,
     status: r.status,

@@ -294,7 +294,10 @@ update sessions set experiences_initialized=false where status='active';
 
 -- Add with v1 first, so every pre-launch record keeps its original calculation.
 alter table sessions add column if not exists score_version smallint not null default 1 check (score_version in (1,2));
-alter table sessions alter column score_version set default 2;
+-- Preserve v1/v2 rows; only newly inserted sessions default to the harder v3.
+alter table sessions drop constraint if exists sessions_score_version_check;
+alter table sessions add constraint sessions_score_version_check check (score_version in (1,2,3));
+alter table sessions alter column score_version set default 3;
 
 -- One canonical mission instance per couple/activity/goal. XP is derived from valid proof,
 -- never accumulated by repeated saves or accepted twice by competing requests.

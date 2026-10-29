@@ -1,4 +1,5 @@
 'use client';
+import {scoreVersionLabel} from '@/lib/score';
 import { useT } from '@/components/I18nProvider';
 
 import { useEffect,useMemo, useState } from 'react';
@@ -267,7 +268,7 @@ function SexStats({ sessions, kind, allSessions, scores, herName, hisName }: { s
   const countOf = (k: SessionKind) => allSessions.filter((s) => s.kind === k).length;
   const totalSec = sessions.reduce((a, s) => a + (s.durationSec ?? 0), 0);
   const avgSec = totalSec / sessions.length;
-  const [scoreVersion,setScoreVersion]=useState<1|2>(sessions.some(s=>s.scoreVersion===2)?2:1);
+  const [scoreVersion,setScoreVersion]=useState<1|2|3>(sessions.some(s=>s.scoreVersion===3)?3:sessions.some(s=>s.scoreVersion===2)?2:1);
   const scoredSessions=sessions.filter(s=>(s.scoreVersion??1)===scoreVersion);
   const scoreVals = scoredSessions.map((s) => scores.get(s.id)?.total ?? 0);
   const avgScore = scoreVals.length?Math.round(scoreVals.reduce((a, b) => a + b, 0) / scoreVals.length):'–';
@@ -314,10 +315,10 @@ function SexStats({ sessions, kind, allSessions, scores, herName, hisName }: { s
         </div>
         <Tile value={f.formatDuration(totalSec)} label={t('naked time together')} />
         <Tile value={f.formatDuration(avgSec)} label={t('average length')} />
-        <Tile value={avgScore} label={`${t('average score')} · ${scoreVersion===2?t('Score v2'):t('Classic score')}`} />
+        <Tile value={avgScore} label={`${t('average score')} · ${t(scoreVersionLabel(scoreVersion))}`} />
       </div>
 
-      <div className="flex flex-wrap justify-center gap-2">{([2,1] as const).map(v=><button key={v} className={`chip ${scoreVersion===v?'chip-on':''}`} aria-pressed={scoreVersion===v} onClick={()=>setScoreVersion(v)}>{v===2?t('Score v2'):t('Classic score')}</button>)}</div>
+      <div className="flex flex-wrap justify-center gap-2">{([3,2,1] as const).map(v=><button key={v} className={`chip ${scoreVersion===v?'chip-on':''}`} aria-pressed={scoreVersion===v} onClick={()=>setScoreVersion(v)}>{t(scoreVersionLabel(v))}</button>)}</div>
       <div className="grid grid-cols-2 gap-2">
         {best?<Highlight title={t('Best ever')} s={best} score={scores.get(best.id)} tz={tz} />:<div className="card text-sm text-ink-3">{t('No records with this score version yet.')}</div>}
         <Highlight title={t('Longest')} s={longest} score={scores.get(longest.id)} tz={tz} />
@@ -529,7 +530,7 @@ function PlacesTab({ sessions }: { sessions: SexSession[] }) {
       <div className="space-y-2">
         {groups.map(([name, list]) => {
           const geo = list.find((s) => s.latitude != null && s.longitude != null);
-          const avgs=([2,1] as const).flatMap(v=>{const group=list.filter(s=>(s.scoreVersion??1)===v);return group.length?[`${v===2?t('Score v2'):t('Classic score')}: ${Math.round(group.reduce((a,s)=>a+(scores.get(s.id)?.total??0),0)/group.length)}`]:[];}).join(' · ');
+          const avgs=([3,2,1] as const).flatMap(v=>{const group=list.filter(s=>(s.scoreVersion??1)===v);return group.length?[`${t(scoreVersionLabel(v))}: ${Math.round(group.reduce((a,s)=>a+(scores.get(s.id)?.total??0),0)/group.length)}`]:[];}).join(' · ');
           const lastDay = dayInTz(list[0].startedAt, tz);
           const cityLine = [list[0].city, list[0].region, list[0].country].filter(Boolean).join(', ');
           return (

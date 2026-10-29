@@ -5,12 +5,20 @@ export function positionTags(s: Pick<SexSession,'kind'|'tags'>): string[] {
   const allowed=new Set(ACTIVITY_GROUPS[s.kind].find(g=>g.key==='positions')!.tags);
   return [...new Set(s.tags)].filter(tag=>allowed.has(tag));
 }
-export const endurancePoints=(seconds:number)=>Math.round(45*Math.pow(Math.min(Math.max(0,seconds)/2400,1),1.4));
+const enduranceFraction=(seconds:number)=>Number.isFinite(seconds)?Math.pow(Math.min(Math.max(0,seconds)/7200,1),2):0;
+// Reserve the final point for the full target instead of rounding up early.
+const enduranceReward=(seconds:number,max:number)=>Math.min(seconds>=7200?max:max-1,Math.round(max*enduranceFraction(seconds)));
+// Preserve v2 saved scores; v3 intercourse reaches its ceiling at two active hours.
+export const endurancePoints=(seconds:number,version:2|3=3)=>version===2?Math.round(45*Math.pow(Math.min(Math.max(0,seconds)/2400,1),1.4)):enduranceReward(seconds,45);
+/** The same harder 120-minute curve applies to XP from all completed intercourse history. */
+export function enduranceXp(seconds:number) {
+  return enduranceReward(seconds,80);
+}
 /** Derived from one canonical record, never an increment on Save. Historical and new completed intercourse records use the same XP rules. */
 export function sessionXp(s: Pick<SexSession,'status'|'scoreVersion'|'durationSec'|'kind'>) {
   if(s.kind!=='intercourse'||s.status!=='done'||(s.durationSec!=null&&s.durationSec<=0))return {base:0,endurance:0,total:0};
   const base=25;
-  const endurance=Math.round(80*Math.pow(Math.min((s.durationSec??0)/2400,1),1.4));
+  const endurance=enduranceXp(s.durationSec??0);
   return {base,endurance,total:base+endurance};
 }
 // i18n:begin
@@ -131,15 +139,15 @@ export const MISSIONS:Mission[]=[
   {key:'fivefold',path:'explorer',title:/*i18n*/'Fivefold expedition',description:/*i18n*/'In ONE session: at least 35 active minutes and five different positions.',xp:400,target:1,rule:'session',minMinutes:35,minPositions:5},
   {key:'grand-tour',path:'explorer',title:/*i18n*/'The grand tour',description:/*i18n*/'In ONE session: at least 40 active minutes and six different positions.',xp:600,target:1,rule:'session',minMinutes:40,minPositions:6},
   {key:'atlas',path:'explorer',title:/*i18n*/'Master the atlas',description:/*i18n*/'Collect all eight positions across at least 12 sessions on eight different days. Every qualifying session needs 25 active minutes and three positions.',xp:1000,target:1,rule:'atlas',minMinutes:25,minPositions:3,minDays:8,minSessions:12},
-  {key:'thirty',path:'endurance',title:/*i18n*/'The endurance trial',description:/*i18n*/'In ONE session: at least 30 active minutes and three different positions.',xp:200,target:1,rule:'session',minMinutes:30,minPositions:3},
-  {key:'thirty-five',path:'endurance',title:/*i18n*/'Beyond the plateau',description:/*i18n*/'In ONE session: at least 35 active minutes and three different positions.',xp:300,target:1,rule:'session',minMinutes:35,minPositions:3},
-  {key:'forty',path:'endurance',title:/*i18n*/'The forty-minute summit',description:/*i18n*/'In ONE session: at least 40 active minutes and three different positions.',xp:450,target:1,rule:'session',minMinutes:40,minPositions:3},
-  {key:'triple-summit',path:'endurance',title:/*i18n*/'Three summits',description:/*i18n*/'On three different days, record a session with 40 active minutes and three positions each time.',xp:700,target:3,rule:'days',minMinutes:40,minPositions:3},
-  {key:'five-summits',path:'endurance',title:/*i18n*/'The crown circuit',description:/*i18n*/'On five different days, record a session with 40 active minutes and four positions each time.',xp:1000,target:5,rule:'days',minMinutes:40,minPositions:4},
+  {key:'thirty',path:'endurance',title:/*i18n*/'The iron hour',description:/*i18n*/'In ONE session: at least 60 active minutes and four different positions.',xp:120,target:1,rule:'session',minMinutes:60,minPositions:4},
+  {key:'thirty-five',path:'endurance',title:/*i18n*/'The ninety-minute ascent',description:/*i18n*/'In ONE session: at least 90 active minutes and five different positions.',xp:240,target:1,rule:'session',minMinutes:90,minPositions:5},
+  {key:'forty',path:'endurance',title:/*i18n*/'The two-hour legend',description:/*i18n*/'In ONE session: at least 120 active minutes and six different positions.',xp:400,target:1,rule:'session',minMinutes:120,minPositions:6},
+  {key:'triple-summit',path:'endurance',title:/*i18n*/'Three summits',description:/*i18n*/'On three different days, record a session with 90 active minutes and five positions each time. No deadline.',xp:600,target:3,rule:'days',minMinutes:90,minPositions:5},
+  {key:'five-summits',path:'endurance',title:/*i18n*/'The crown circuit',description:/*i18n*/'On five different days, record a session with 120 active minutes and six positions each time. No deadline.',xp:1000,target:5,rule:'days',minMinutes:120,minPositions:6},
   {key:'ten-days',path:'rhythm',title:/*i18n*/'Ten-day odyssey',description:/*i18n*/'On ten different days, record a session with 25 active minutes and three positions each time. No deadline.',xp:800,target:10,rule:'days',minMinutes:25,minPositions:3},
   {key:'twenty-days',path:'rhythm',title:/*i18n*/'Twenty-day legend',description:/*i18n*/'On twenty different days, record a session with 30 active minutes and four positions each time. No deadline.',xp:1400,target:20,rule:'days',minMinutes:30,minPositions:4},
   {key:'twelve-routes',path:'rhythm',title:/*i18n*/'Twelve original routes',description:/*i18n*/'Record 12 different position combinations across at least 12 different days. Each session needs 30 active minutes and at least four positions.',xp:1400,target:1,rule:'combinations',minMinutes:30,minPositions:4,minDays:12,minSessions:12},
-  {key:'finale',path:'finale',title:/*i18n*/'The ultimate chapter',description:/*i18n*/'Complete all 12 other quests, then qualify with ONE session containing 40 active minutes and five different positions.',xp:2500,target:1,rule:'session',minMinutes:40,minPositions:5,finale:true},
+  {key:'finale',path:'finale',title:/*i18n*/'The ultimate chapter',description:/*i18n*/'Complete every other quest, then qualify with ONE session containing 120 active minutes and six different positions.',xp:2500,target:1,rule:'session',minMinutes:120,minPositions:6,finale:true},
 ];
 export type MissionRun={id:string;key:string;kind:SessionKind;requestedBy:string;createdAt:string;acceptedAt:string|null;skippedAt?:string|null;timeZone:string};
 export type MissionCheck={label:string;value:number;target:number};

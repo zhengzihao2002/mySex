@@ -35,7 +35,7 @@ export function MissionsView({sessions}:{sessions:SexSession[];runs?:MissionRun[
           {quest&&<div className="mt-3"><div className="mb-1 flex justify-between text-xs text-ink-2"><span>{t('Progress')}</span><b>{m.rule==='atlas'||m.rule==='combinations'?`${Math.round(quest.value*100)}%`:`${quest.value}/${quest.target}`}</b></div><div className="h-2 overflow-hidden rounded-full bg-line"><div className="h-full rounded-full bg-gradient-to-r from-rose to-amber-300 transition-all motion-reduce:transition-none" style={progressFillStyle(quest.value/quest.target)}/></div></div>}
           {quest.checks&&<div className="mt-2 space-y-1 text-xs text-ink-3">{quest.checks.map(c=><p key={c.label} className="flex justify-between gap-2"><span>{t(c.label)}</span><b className="tabular-nums">{c.value}/{c.target}</b></p>)}</div>}
           {complete&&!!quest.evidence.length&&<details className="mt-3 text-xs text-ink-2"><summary className="cursor-pointer py-2">{t('Saved record proof')} · {quest.evidence.length}</summary><div className="flex flex-wrap gap-2">{quest.evidence.map(id=>{const s=sessions.find(s=>s.id===id);return s?<Link className="chip" key={id} href={`/insights?session=${id}`}>{f.prettyDate(s.startedAt.slice(0,10))} · {f.formatDuration(s.durationSec??0)}</Link>:null;})}</div></details>}
-          {!complete&&m.finale&&<p className="mt-2 text-xs text-ink-3">{t('All 12 other quests must be completed before the crown is awarded.')}</p>}
+          {!complete&&m.finale&&<p className="mt-2 text-xs text-ink-3">{t('All {n} other quests must be completed before the crown is awarded.',{n:game.quests.filter(q=>!q.mission.finale).length})}</p>}
           {complete&&m.finale&&<p className="mt-3 text-sm text-amber-300">✦ {t('Chapter crown unlocked')}</p>}
         </article>;
       })}
@@ -43,7 +43,8 @@ export function MissionsView({sessions}:{sessions:SexSession[];runs?:MissionRun[
     </div>
     <Sheet open={ranksOpen} onClose={()=>setRanksOpen(false)} title={t('Rank ladder & XP')}>
       <div className="mb-4 grid grid-cols-2 gap-2"><div className="card text-center"><b>{game.recordXp} XP</b><p className="text-xs text-ink-3">{t('From sessions')}</p></div><div className="card text-center"><b>{game.missionXp} XP</b><p className="text-xs text-ink-3">{t('From missions')}</p></div></div>
-      <p className="mb-2 text-sm text-ink-2">{t('Each completed intercourse record earns 25 XP. Active time adds up to 80 XP: round(80 × (minutes / 40)^1.4), capped at 40 minutes. Oral records earn no XP.')}</p>
+      <p className="mb-2 text-sm text-ink-2">{t('Each completed intercourse record earns 25 base XP plus round(80 × min(active minutes / 120, 1)²) endurance XP. The full 80 endurance XP requires 120 active minutes. Breaks and oral records earn no XP. Existing records count using this harder XP curve.')}</p>
+      <p className="mb-2 text-sm text-ink-2">{t('Total session XP: 40 min → 34; 60 min → 45; 90 min → 70; 120 min → 105. Quest bonuses are added separately.')}</p>
       <p className="mb-4 text-xs text-ink-3">{t('Existing intercourse records count automatically. Their original session scores stay unchanged. Missing active time earns base XP only. Corrections and deletions update rewards.')}</p>
       <p className="mb-4 text-sm text-rose-2">{t('Top rank requires {xp} XP. Only intercourse records and missions earn XP.',{xp:TOP_RANK_XP.toLocaleString()})}</p>
       <p className="mb-4 text-xs text-ink-3">{t('The first upgrade costs 150 XP. Every following upgrade costs 100 XP more than the previous one.')}</p>

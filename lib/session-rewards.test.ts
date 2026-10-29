@@ -8,7 +8,7 @@ const day=(iso:string)=>iso.slice(0,10),now=Date.parse('2026-02-01T00:00:00Z');
 test('save reward carries exact old/new XP and new quest bonuses with authoritative saved score',()=>{
   const snapshot=savedCelebration([s],s.id,day,now)!;
   assert.equal(snapshot.score.total,100);
-  assert.deepEqual(snapshot.reward,{beforeXp:0,afterXp:1055,sessionXp:105,missionXp:950,completedMissions:['thirty','thirty-five','forty']});
+  assert.deepEqual(snapshot.reward,{beforeXp:0,afterXp:34,sessionXp:34,missionXp:0,completedMissions:[]});
   assert.deepEqual(savedCelebration([s,s],s.id,day,now),snapshot);
 });
 test('already-earned goals do not award again and classic records still count',()=>{
@@ -20,4 +20,16 @@ test('already-earned goals do not award again and classic records still count',(
   assert.deepEqual(result.reward!.completedMissions,[]);
   assert.equal(savedCelebration([{...s,kind:'oral'}],s.id,day,now)!.reward,undefined);
   assert.equal(savedCelebration([{...s,status:'active'}],s.id,day,now),undefined);
+});
+
+test('long-session saves include the harder XP curve and only newly earned advanced bonuses',()=>{
+  const past={...s,id:'past',startedAt:'2026-01-01T12:00:00Z',endedAt:'2026-01-01T12:40:00Z'};
+  const long={...s,durationSec:7200,endedAt:'2026-01-02T14:00:00Z',tags:['Missionary','Doggy','Cowgirl','Reverse cowgirl','Spooning','Standing']};
+  const result=savedCelebration([past,long],long.id,day,now)!;
+  assert.equal(result.reward!.beforeXp,34);
+  assert.equal(result.reward!.sessionXp,105);
+  assert.equal(result.reward!.missionXp,2010);
+  assert.equal(result.reward!.afterXp,34+105+2010);
+  assert.deepEqual(savedCelebration([past,long,long],long.id,day,now),result);
+  assert.equal(result.score.total,100); // the separate informational v2 score is unchanged
 });

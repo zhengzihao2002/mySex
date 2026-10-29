@@ -2,7 +2,7 @@
 import { useT } from './I18nProvider';
 
 import { useEffect, useState } from 'react';
-import type { Score } from '@/lib/score';
+import {scoreVersionLabel,type Score} from '@/lib/score';
 import type { Break } from '@/lib/types';
 import { SessionTimes } from './SessionTimes';
 
@@ -86,7 +86,7 @@ export function ScoreReveal({ score, times, reward, onClose }: { score: Score; t
       <p className="font-display text-3xl font-bold">
         {score.emoji} {t(score.grade)}
       </p>
-      <p className="mt-1 text-xs text-ink-3">{score.version===2?t('Score v2'):t('Classic score')}</p>
+      <p className="mt-1 text-xs text-ink-3">{t(scoreVersionLabel(score.version))}</p>
       {reward&&<div className="mt-3 w-full max-w-xs rounded-2xl border border-amber-300/40 bg-amber-300/5 p-3 text-center">
         <p className="text-xl font-bold text-amber-300">+{reward.xp} XP</p>
         <p className="font-semibold">{reward.levelUp?'✦ ':''}{t(reward.title)}</p>

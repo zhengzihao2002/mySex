@@ -1,6 +1,22 @@
 // Simplified Chinese. Keys are the English UI text (see lib/i18n/core.ts).
 // Run `node scripts/check-i18n.mjs --missing` to find untranslated keys.
 export const zh: Record<string, string> = {
+  "Score v3": "巅峰评分",
+  "Active time: round(45 × min(minutes / 120, 1)²). Breaks do not count; 120 active minutes reaches the cap.": "有效时长得分：round(45 × min(分钟数 / 120, 1)²)。休息不计分；达到120分钟有效时长才获得满分。",
+  "Each completed intercourse record earns 25 base XP plus round(80 × min(active minutes / 120, 1)²) endurance XP. The full 80 endurance XP requires 120 active minutes. Breaks and oral records earn no XP. Existing records count using this harder XP curve.": "每条已完成的性交记录获得25基础经验，加上 round(80 × min(有效分钟数 / 120, 1)²) 耐力经验。达到120分钟有效时长才获得全部80耐力经验。休息时间和口交记录不产生经验。历史记录同样按这条更严格的经验曲线计算。",
+  "Total session XP: 40 min → 34; 60 min → 45; 90 min → 70; 120 min → 105. Quest bonuses are added separately.": "单次总经验：40分钟→34；60分钟→45；90分钟→70；120分钟→105。任务奖励另计。",
+  "All {n} other quests must be completed before the crown is awarded.": "必须先完成其余{n}个任务，再挑战最终王冠。",
+  "The iron hour": "钢铁一小时",
+  "In ONE session: at least 60 active minutes and four different positions.": "必须在同一次性交中，达到至少60分钟有效时长并使用四种不同姿势。",
+  "The ninety-minute ascent": "九十分凌云",
+  "In ONE session: at least 90 active minutes and five different positions.": "必须在同一次性交中，达到至少90分钟有效时长并使用五种不同姿势。",
+  "The two-hour legend": "双小时传说",
+  "In ONE session: at least 120 active minutes and six different positions.": "必须在同一次性交中，达到至少120分钟有效时长并使用六种不同姿势。",
+  "The ninety-minute trilogy": "凌云三部曲",
+  "On three different days, record a session with 90 active minutes and five positions each time. No deadline.": "在三个不同日期，分别记录一次至少90分钟有效时长、五种姿势的性交，无截止日期。",
+  "The two-hour dynasty": "双小时王朝",
+  "On five different days, record a session with 120 active minutes and six positions each time. No deadline.": "在五个不同日期，分别记录一次至少120分钟有效时长、六种姿势的性交，无截止日期。",
+  "Complete every other quest, then qualify with ONE session containing 120 active minutes and six different positions.": "先完成其余全部任务，再开始一次至少120分钟有效时长、六种不同姿势的性交，完成最终挑战。",
   "All 12 other quests must be completed before the crown is awarded.": "必须先完成其余12个任务，再挑战最终王冠。",
   "Four-part choreography": "四式编舞",
   "In ONE session: at least 30 active minutes and four different positions.": "必须在同一次性交中，达到至少30分钟有效时长并使用四种不同姿势。",

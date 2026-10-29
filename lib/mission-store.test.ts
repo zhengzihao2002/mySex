@@ -59,13 +59,14 @@ test('either partner may leave; unpaired/outsider actions fail; stale IDs cannot
  assert.equal(await abandonMission(client,partner,fresh.id),false);
 });
 
-test('migration preserves old scores and assigns v2 only to new records, including after reruns',async()=>{
+test('migration preserves v1 and v2 scores and assigns v3 only to new records, including after reruns',async()=>{
  await pg.exec('alter table sessions drop column score_version');
  await pg.query("insert into sessions(couple_id,created_by,started_at) values($1,'me','2026-01-01')",[coupleId]);
  await pg.exec(schema);
  await pg.query("insert into sessions(couple_id,created_by,started_at) values($1,'me','2026-02-01')",[coupleId]);
+ await pg.query("insert into sessions(couple_id,created_by,started_at,score_version) values($1,'me','2026-01-15',2)",[coupleId]);
  await pg.exec(schema);
- assert.deepEqual((await pg.query<{score_version:number}>('select score_version from sessions order by started_at')).rows.map(r=>r.score_version),[1,2]);
+ assert.deepEqual((await pg.query<{score_version:number}>('select score_version from sessions order by started_at')).rows.map(r=>r.score_version),[1,2,3]);
 });
 
 

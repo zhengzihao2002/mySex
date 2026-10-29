@@ -6,7 +6,7 @@ const timestamp = z.iso.datetime({ offset: true });
 const text = z.string().max(2000).nullable();
 const date = z.iso.date();
 const session = z.object({
-  scoreVersion: z.union([z.literal(1),z.literal(2)]).optional(),
+  scoreVersion: z.union([z.literal(1),z.literal(2),z.literal(3)]).optional(),
   id: z.uuid(), createdBy: z.string(), kind: z.enum(['intercourse', 'oral']), status: z.enum(['active', 'done']),
   startedAt: timestamp, endedAt: timestamp.nullable(), pausedAt: timestamp.nullable(),
   pausedSec: z.number().int().nonnegative(), durationSec: z.number().int().nonnegative().nullable(),

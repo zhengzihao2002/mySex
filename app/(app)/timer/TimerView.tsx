@@ -133,7 +133,7 @@ function IdleTimer({
       const gps = useLocation && useGps ? await getGps() : null;
       onStart({
         id: 'pending',
-        scoreVersion:2,
+        scoreVersion:3,
         kind,
         createdBy: '',
         status: 'active',
@@ -343,8 +343,8 @@ function LiveTimer({
   const minutes = secs / 60;
   const secFrac = (secs % 60) / 60;
   const minFrac = (minutes % 60) / 60;
-  const staminaMax=session.scoreVersion===2?45:40;
-  const stamina=session.scoreVersion===2?endurancePoints(secs):Math.round(40*(1-Math.exp(-minutes/15)));
+  const staminaMax=(session.scoreVersion??1)>=2?45:40;
+  const stamina=(session.scoreVersion??1)>=2?endurancePoints(secs,session.scoreVersion===3&&session.kind==='intercourse'?3:2):Math.round(40*(1-Math.exp(-minutes/15)));
   const liveXp=sessionXp({...session,status:'done',durationSec:secs});
   const mission=useMemo(()=>progression(sessions,missions).quests.find(q=>session.kind==='intercourse'&&!q.complete&&q.mission.path==='endurance'&&q.mission.rule==='session'),[sessions,missions,session.kind,session.startedAt]);
   const headAngle = secFrac * 2 * Math.PI - Math.PI / 2;
