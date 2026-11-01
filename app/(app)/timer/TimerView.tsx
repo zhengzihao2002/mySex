@@ -77,7 +77,7 @@ export function TimerView({
       {current && !mounted ? (
         <div className="fixed inset-0 z-[45] bg-bg" />
       ) : current ? (
-        <RecordingLayer><LiveTimer
+        <RecordingLayer entrance={!active?'fade':'slide'}><LiveTimer
           key="live-timer"
           session={current}
           missions={missions}
