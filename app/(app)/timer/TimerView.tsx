@@ -9,7 +9,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {flushSync} from 'react-dom';
-import {RecordingLayer} from '@/components/RecordingLayer';
+import {RecordingLayer,useRecordingDismissal} from '@/components/RecordingLayer';
 import {RecordingDial} from '@/components/RecordingDial';
 import {useRecordingClock} from '@/components/useRecordingClock';
 import {recordingElapsed as elapsedSec} from '@/lib/recording-clock';
@@ -326,6 +326,7 @@ function LiveTimer({
   const [finishOpen, setFinishOpen] = useState(false);
   const [promptOpen,setPromptOpen]=useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const setDismissal=useRecordingDismissal();
   const act = useRun();
   const finish = useRun();
   const frozenAt = useRef<number>(0);
@@ -445,10 +446,11 @@ function LiveTimer({
             className="btn bg-menstrual text-bg"
             disabled={act.pending}
             onClick={async () => {
+              setDismissal('discard');
               if (await act.run(() => discardActiveSession(session.id, session.updatedAt))) {
                 setConfirmDiscard(false);
                 router.push('/timer');
-              }
+              }else setDismissal('minimize');
             }}
           >
             {t('Discard recording')}
