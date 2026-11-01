@@ -1,7 +1,10 @@
 'use client';
+import { SymbolIcon } from '@/components/SymbolIcon';
 import { useT } from '@/components/I18nProvider';
 
 import { useState } from 'react';
+import { useReducedMotion } from 'motion/react';
+import { AnimatedValue } from '@/components/Motion';
 import Link from 'next/link';
 import { Dice5, Lock, Shuffle, Sparkles } from 'lucide-react';
 import { answerDesire, resetDesires } from '@/app/actions';
@@ -35,7 +38,7 @@ export function PlayView({
 }) {
   const { t } = useT();
   return (
-    <div className="space-y-5 pt-2">
+    <div className="space-y-5 pt-2" data-motion>
       <div>
         <h1 className="font-display text-3xl font-bold">{t('Play')}</h1>
         <p className="text-sm text-ink-3">{t('Foreplay, gamified.')}</p>
@@ -52,8 +55,10 @@ function SexDice() {
   const { t } = useT();
   const [roll, setRoll] = useState({ a: 'Kiss', p: 'Neck', t: '1 min', pos: 'Missionary' });
   const [spinning, setSpinning] = useState(false);
+  const reduceMotion = useReducedMotion();
   const go = () => {
     if (navigator.vibrate) navigator.vibrate(40);
+    if (reduceMotion) { setRoll(r=>({a:pick(ACTIONS,r.a),p:pick(PARTS,r.p),t:pick(TIMES,r.t),pos:pick(POSITIONS,r.pos)})); return; }
     setSpinning(true);
     let n = 0;
     const id = setInterval(() => {
@@ -73,7 +78,7 @@ function SexDice() {
       <div className="grid grid-cols-3 gap-2 text-center">
         {[roll.a, roll.p, roll.t].map((v, i) => (
           <div key={i} className={`flex h-20 items-center justify-center rounded-2xl border border-line bg-surface-2 px-1 text-sm font-bold transition ${spinning ? 'scale-95 rotate-3' : ''}`}>
-            {t(v)}
+            <AnimatedValue value={t(v)}/>
           </div>
         ))}
       </div>
@@ -179,7 +184,7 @@ function Desires({
           <div className="flex flex-wrap gap-2">
             {matches.map((m) => (
               <span key={m.item} className={`chip ${m.both ? 'chip-on' : ''}`}>
-                {m.both ? '💯' : '🤔'} {t(m.item)}
+                <SymbolIcon value={m.both ? "💯" : "🤔"} size={16}/> {t(m.item)}
               </span>
             ))}
           </div>
@@ -188,7 +193,7 @@ function Desires({
             <Lock size={14} /> {t('Matches unlock as you both answer.')}
           </p>
         )}
-        {matches.length > 0 && <p className="mt-2 text-[11px] text-ink-3">{t('💯 both said yes · 🤔 at least one maybe')}</p>}
+        {matches.length > 0 && <p className="mt-2 text-[11px] text-ink-3"><SymbolIcon value="💯" size={12}/> {t('Both said yes')} · <SymbolIcon value="🤔" size={12}/> {t('At least one maybe')}</p>}
       </div>
 
       {DESIRES.map((g) => (
@@ -198,19 +203,19 @@ function Desires({
           </summary>
           <div className="mt-3 divide-y divide-line/50">
             {g.items.map((item) => (
-              <div key={item} className="flex items-center justify-between gap-2 py-2">
+              <div key={item} className="flex flex-wrap items-center justify-between gap-2 py-3">
                 <span className="text-sm">{t(item)}</span>
                 <div className="flex shrink-0 gap-1">
                   {(['yes', 'maybe', 'no'] as const).map((a) => (
                     <button
                       key={a}
                       onClick={() => set(item, a)}
-                      className={`rounded-full px-2.5 py-1 text-xs font-semibold capitalize transition ${
+                      className={`min-h-11 min-w-11 rounded-xl px-2.5 py-2 text-xs font-semibold capitalize transition ${
                         local[item] === a
                           ? a === 'yes'
-                            ? 'bg-follicular text-white'
+                            ? 'bg-follicular text-bg'
                             : a === 'maybe'
-                              ? 'bg-luteal text-white'
+                              ? 'bg-luteal text-bg'
                               : 'bg-line text-ink'
                           : 'bg-surface-2 text-ink-3'
                       }`}

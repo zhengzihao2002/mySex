@@ -1,4 +1,5 @@
 'use client';
+import { SymbolIcon } from '@/components/SymbolIcon';
 
 import {useId,useState} from 'react';
 import {Search,X} from 'lucide-react';
@@ -18,7 +19,7 @@ export function ActivityFields({kind,value,onChange,disabled=false}:{kind:Sessio
   const matches=(text:string)=>!query.trim()||`${text} ${t(text)}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase());
   const filtered=groups.map(group=>({...group,tags:group.tags.filter(tag=>matches(tag)||matches(group.label))})).filter(group=>group.tags.length);
   const toggle=(tag:string)=>onChange(value.includes(tag)?value.filter(v=>v!==tag):value.length<20?[...value,tag]:value);
-  return <section className="space-y-3" aria-label={t('What went down')}>
+  return <section className="space-y-3" data-motion aria-label={t('What went down')}>
     <div className="flex items-center gap-2"><h3 className="label mb-0 flex-1">{t('What went down')}</h3><span className="text-xs text-ink-3">{t('{n} selected',{n:value.length})}</span>
       <button type="button" disabled={disabled} className="rounded-full bg-surface-2 p-2 text-ink-2" aria-label={t(searchOpen?'Close activity search':'Search activities')} aria-expanded={searchOpen} onClick={()=>{setSearchOpen(!searchOpen);setQuery('');}}>{searchOpen?<X size={15}/>:<Search size={15}/>}</button></div>
     {searchOpen&&<input id={searchId} className="input" aria-label={t('Search activities')} placeholder={t('Find a position, mood, or extra…')} value={query} disabled={disabled} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();e.stopPropagation();}}}/>}
@@ -27,8 +28,8 @@ export function ActivityFields({kind,value,onChange,disabled=false}:{kind:Sessio
       const visible=expandable&&!expandedPositions?group.tags.filter((tag,i)=>i<8||value.includes(tag)):group.tags;
       const hidden=group.tags.length-visible.length;
       return <fieldset key={group.key} className="rounded-2xl border border-line/60 bg-surface-2/30 p-3" disabled={disabled}>
-      <legend className="px-1 text-xs font-semibold text-ink-2">{group.emoji} {t(group.label)}</legend>
-      <div className="flex flex-wrap gap-2">{visible.map(tag=>{const on=value.includes(tag);return <button type="button" key={tag} data-tag={tag} aria-pressed={on} disabled={!on&&value.length>=20} onClick={()=>toggle(tag)} className={`chip transition-colors disabled:opacity-40 ${on?'chip-on':''}`}>{t(tag)}</button>;})}</div>
+      <legend className="px-1 text-xs font-semibold text-ink-2"><SymbolIcon value={group.emoji} size={14}/> {t(group.label)}</legend>
+      <div className="flex flex-wrap gap-2" data-motion>{visible.map(tag=>{const on=value.includes(tag);return <button type="button" key={tag} data-tag={tag} aria-pressed={on} disabled={!on&&value.length>=20} onClick={()=>toggle(tag)} className={`chip transition-colors disabled:opacity-40 ${on?'chip-on':''}`}>{t(tag)}</button>;})}</div>
       {expandable&&(hidden>0||expandedPositions)&&<button type="button" className="mt-2 min-h-11 text-sm text-rose-2" aria-expanded={expandedPositions} onClick={()=>setExpandedPositions(!expandedPositions)}>{expandedPositions?t('Fewer positions'):t('More positions ({n})',{n:hidden})}</button>}
     </fieldset>})}
     {!filtered.length&&<p role="status" className="text-sm text-ink-3">{t('No matching activities.')}</p>}

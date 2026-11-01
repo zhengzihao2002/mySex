@@ -26,7 +26,7 @@ export function LanguageSwitch({ className = '' }: { className?: string }) {
               router.refresh();
             })
           }
-          className={`rounded-full px-3 py-1 transition ${lang === l ? 'bg-rose text-white' : 'text-ink-3'}`}
+          className={`rounded-full px-3 py-1 transition ${lang === l ? 'bg-rose text-bg' : 'text-ink-3'}`}
           aria-pressed={lang === l}
         >
           {label}

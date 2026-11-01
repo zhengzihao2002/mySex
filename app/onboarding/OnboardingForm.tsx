@@ -1,9 +1,11 @@
 'use client';
+import { SymbolIcon, symbolLabel } from '@/components/SymbolIcon';
 
 import { useActionState, useState } from 'react';
 import { completeOnboarding } from '@/app/actions';
 import { FormError } from '@/components/FormError';
 import { useT } from '@/components/I18nProvider';
+import { Mars, Venus } from 'lucide-react';
 import { AVATARS } from '@/lib/content';
 import type { Sex } from '@/lib/types';
 
@@ -45,13 +47,13 @@ export function OnboardingForm(props: {
                 sex === value ? `${grad} border-rose ring-2 ring-rose/50` : 'from-transparent'
               }`}
             >
-              <span className="text-4xl">{symbol}</span>
+              <span className="mb-2">{value==='male'?<Mars size={34} strokeWidth={1.4}/>:<Venus size={34} strokeWidth={1.4}/>}</span>
               <span className="font-semibold">{t(label)}</span>
             </button>
           ))}
         </div>
         <input type="hidden" name="sex" value={sex ?? ''} />
-        {props.sexLocked && <p className="mt-2 text-xs text-ink-3">🔒 {t('Locked — you have saved history with a partner.')}</p>}
+        {props.sexLocked && <p className="mt-2 text-xs text-ink-3"><SymbolIcon value="🔒" size={12}/> {t('Locked — you have saved history with a partner.')}</p>}
       </div>
 
       <div>
@@ -61,12 +63,14 @@ export function OnboardingForm(props: {
             <button
               type="button"
               key={a}
+                aria-label={t(symbolLabel(a))}
+                aria-pressed={avatar === a}
               onClick={() => setAvatar(a)}
               className={`flex h-11 w-11 items-center justify-center rounded-2xl border text-2xl transition ${
                 avatar === a ? 'border-rose bg-rose/20' : 'border-line bg-surface-2'
               }`}
             >
-              {a}
+              <SymbolIcon value={a} size={20}/>
             </button>
           ))}
         </div>

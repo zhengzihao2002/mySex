@@ -1,4 +1,6 @@
 'use client';
+import { AnimatedContent } from './Motion';
+import { SymbolIcon } from '@/components/SymbolIcon';
 
 import {useId,useState} from 'react';
 import type {Score} from '@/lib/score';
@@ -7,7 +9,7 @@ import {useT} from './I18nProvider';
 import {endurancePoints,positionTags,sessionXp} from '@/lib/progression';
 import {scoreColor} from './ScoreBadge';
 
-const COLORS=['#ff4389','#c879f4','#7c8dff','#ffb34d','#43cebd','#e992b6'];
+const COLORS=['#d88f86','#baa7df','#8da4bd','#d9b67e','#88b7a2','#d2a6bd'];
 const R=66,C=2*Math.PI*R;
 
 /** Each coloured arc contributes its points out of 100, leaving unearned points muted. */
@@ -27,7 +29,7 @@ export function SessionScore({score,session:s}:{score:Score;session:SexSession})
   };
   const xp=sessionXp(s);
   const input=part?.key==='duration'?t('{time} active = +{points}%',{time:f.formatDuration(s.durationSec??0),points:part.points}):part?.key==='heat'?`${s.rating??'–'}/5`:part?.key==='variety'?positionTags(s).map(x=>t(x)).join(' · ')||t('None'):null;
-  return <section className="mb-4 rounded-3xl border border-line bg-gradient-to-br from-surface-2 to-surface p-4" aria-label={t('Score breakdown')}>
+  return <section className="mb-4 rounded-3xl border border-line bg-gradient-to-br from-surface-2 to-surface p-4" aria-label={t('Score breakdown')} data-motion>
     <div className="flex items-center justify-between gap-2"><h3 className="font-semibold">{t('mySex Score')}</h3></div>
     <div className="relative mx-auto my-2 h-44 w-44">
       <svg viewBox="0 0 176 176" className="h-full w-full -rotate-90" aria-label={t('Score breakdown')}>
@@ -41,7 +43,7 @@ export function SessionScore({score,session:s}:{score:Score;session:SexSession})
             onClick={()=>choose(p.key)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();choose(p.key);}}}/>:null;
         })}
       </svg>
-      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center" role="meter" aria-label={t('Saved score')} aria-valuenow={score.total} aria-valuemin={0} aria-valuemax={100}><span className="text-5xl font-bold tabular-nums" style={{color:scoreColor(score.total)}}>{score.total}<span className="text-lg">%</span></span><span className="mt-1 text-xs text-ink-2">{score.emoji} {t(score.grade)}</span></div>
+      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center" role="meter" aria-label={t('Saved score')} aria-valuenow={score.total} aria-valuemin={0} aria-valuemax={100}><span className="text-5xl font-bold tabular-nums" style={{color:scoreColor(score.total)}}>{score.total}<span className="text-lg">%</span></span><span className="mt-1 text-xs text-ink-2"><SymbolIcon value={score.emoji} size={13}/> {t(score.grade)}</span></div>
     </div>
     <button type="button" className="btn-ghost w-full" aria-expanded={expanded} aria-controls={detailId} onClick={()=>{setExpanded(!expanded);if(expanded)setSelected(null);}}>{expanded?t('Hide score breakdown'):t('How is this calculated?')}</button>
     {expanded&&<div className="mt-3 space-y-3">
@@ -52,12 +54,12 @@ export function SessionScore({score,session:s}:{score:Score;session:SexSession})
       </button>)}
     </div>
     <div id={detailId} className="mt-3 rounded-2xl bg-surface/60 p-3 text-xs text-ink-2" aria-live="polite">
-      {part?<><p className="mb-1 font-semibold text-ink">{t(part.label)} · +{part.points}% <span className="font-normal text-ink-3">{t('Maximum {n}%',{n:part.max})}</span></p>
+      <AnimatedContent value={selected??'overview'}>{part?<><p className="mb-1 font-semibold text-ink">{t(part.label)} · +{part.points}% <span className="font-normal text-ink-3">{t('Maximum {n}%',{n:part.max})}</span></p>
         {input&&<p className="mb-1">{input}</p>}
         {part.key==='heat'&&<p className="mb-1">{t('{n} of 2 partner ratings submitted',{n:(s.feelings??[]).filter(f=>f.rating!=null).length})}</p>}
         {part.key==='pleasure'&&<p className="mb-1">{t('His orgasms 🍆')}: {s.hisOrgasms??t('Not recorded')} · {t('Her orgasms 💦')}: {s.herOrgasms??t('Not recorded')}</p>}<p>{explanations[part.key]}</p>
         {part.key==='duration'&&<ul aria-label={t('Active-time examples')} className="mt-3 grid grid-cols-2 gap-2">{[10,20,30,40,50,60].map(minutes=><li key={minutes} className="rounded-xl bg-surface-2 px-2 py-2 text-center tabular-nums">{t('{minutes} min = +{points}%',{minutes,points:endurancePoints(minutes*60)})}</li>)}</ul>}
-      </>:<p>{t('Tap a segment or category to see how it is calculated.')}</p>}
+      </>:<p>{t('Tap a segment or category to see how it is calculated.')}</p>}</AnimatedContent>
     </div>
     <p className="text-center text-xs text-ink-3">{t('Contributions add up to {n}%.',{n:score.total})}</p>
     </div>}

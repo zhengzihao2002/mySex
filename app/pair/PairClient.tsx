@@ -1,4 +1,5 @@
 'use client';
+import { AnimatedValue } from '@/components/Motion';
 import { useT } from '@/components/I18nProvider';
 
 import { useRouter } from 'next/navigation';
@@ -36,11 +37,11 @@ export function PairClient({ code }: { code: string }) {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5" data-motion>
       <div className="card relative overflow-hidden text-center">
-        <div className="pointer-events-none absolute -inset-1/2 animate-[drift_18s_linear_infinite] bg-[conic-gradient(from_0deg,transparent,rgba(255,61,127,0.18),transparent_40%)]" />
+        <div className="pointer-events-none absolute -inset-1/2 animate-[drift_18s_linear_infinite] bg-[conic-gradient(from_0deg,transparent,rgba(216,143,134,0.10),transparent_40%)]" />
         <p className="label relative">{t('Your invite code')}</p>
-        <p className="relative font-mono text-5xl font-black tracking-[0.25em] text-ink">{code}</p>
+        <p className="relative font-mono text-5xl font-black tracking-[0.18em] text-ink"><AnimatedValue value={code}/></p>
         <div className="relative mt-4 flex justify-center gap-2">
           <button
             type="button"

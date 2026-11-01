@@ -1,4 +1,5 @@
 'use client';
+import { SymbolIcon } from '@/components/SymbolIcon';
 import { useT } from '@/components/I18nProvider';
 
 import { MonitorSmartphone } from 'lucide-react';
@@ -6,7 +7,6 @@ import { signOutDevice, signOutOtherDevices } from '@/app/actions';
 import { FormError } from '@/components/FormError';
 import { useTz } from '@/components/TzProvider';
 import { useRun } from '@/components/useRun';
-import { flagEmoji } from '@/lib/content';
 import type { Device } from '@/lib/devices';
 import { describeDevice } from '@/lib/ua';
 
@@ -49,7 +49,7 @@ export function DevicesSection({ devices, currentId }: { devices: Device[]; curr
                   {isThis && <span className="rounded-full bg-follicular/30 px-2 py-0.5 text-[10px] font-bold text-ink">{t('This device')}</span>}
                 </p>
                 <p className="truncate text-xs text-ink-2">
-                  {flagEmoji(d.country)} {place(d, t('Unknown location'))}
+                  <SymbolIcon value="📍" size={12}/> {place(d, t('Unknown location'))}
                   {d.ip ? ` · ${d.ip}` : ''}
                 </p>
                 <p className="text-[11px] text-ink-3" suppressHydrationWarning>

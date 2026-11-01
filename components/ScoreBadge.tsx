@@ -1,4 +1,5 @@
 'use client';
+import { SymbolIcon } from '@/components/SymbolIcon';
 import { useT } from './I18nProvider';
 
 import { useEffect, useLayoutEffect, useState } from 'react';
@@ -9,7 +10,7 @@ import { SessionTimes } from './SessionTimes';
 
 export function scoreColor(total: number) {
   const value = Number.isFinite(total) ? Math.max(0, Math.min(100, total)) : 0;
-  return `hsl(${(value * 1.2).toFixed(2)} 80% 60%)`;
+  return `hsl(${(value * 1.2).toFixed(2)} 48% 66%)`;
 }
 
 export function ScoreBadge({ score, size = 'sm' }: { score: Score; size?: 'sm' | 'md' }) {
@@ -48,6 +49,7 @@ export function ScoreReveal({ score, times, reward, onClose }: { score: Score; t
   const { t } = useT();
   const [shown, setShown] = useState(0);
   useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { setShown(score.total); return; }
     let raf = 0;
     const t0 = performance.now();
     const tick = (t: number) => {
@@ -86,7 +88,7 @@ export function ScoreReveal({ score, times, reward, onClose }: { score: Score; t
         </div>
       </div>
       <p className="font-display text-3xl font-bold">
-        {score.emoji} {t(score.grade)}
+        <SymbolIcon value={score.emoji} size={24}/> {t(score.grade)}
       </p>
       {reward&&<div className="mt-3 w-full max-w-xs rounded-2xl border border-amber-300/40 bg-amber-300/5 p-3 text-center">
         <p className="text-xl font-bold text-amber-300">+{reward.xp} XP</p>

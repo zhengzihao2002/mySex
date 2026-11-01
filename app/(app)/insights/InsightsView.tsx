@@ -1,4 +1,6 @@
 'use client';
+import { AnimatedContent, SelectionPill } from '@/components/Motion';
+import { SymbolIcon } from '@/components/SymbolIcon';
 import { useT } from '@/components/I18nProvider';
 
 import { useEffect,useMemo, useState } from 'react';
@@ -15,7 +17,7 @@ import { useTz } from '@/components/TzProvider';
 import { achievements } from '@/lib/achievements';
 import type { Score } from '@/lib/score';
 import { placeSuggestions, scoreSessions } from '@/lib/clientScore';
-import { flagEmoji, PHASES, PROTECTION } from '@/lib/content';
+import { PHASES, PROTECTION } from '@/lib/content';
 import { buildCycleModel, dayInfo, findCycle, phaseSpans, upcomingCycles, type CycleDefaults, type Phase } from '@/lib/cycle';
 import { diffDays, formatDuration, MONTHS, prettyDate, prettyRange, relativeDays, WEEKDAYS } from '@/lib/dates';
 import { dayInTz, hourInTz } from '@/lib/tz';
@@ -47,7 +49,7 @@ export function InsightsView(props: {
   return (
     <div className="space-y-4 pt-2">
       <h1 className="font-display text-3xl font-bold">{t('Insights')}</h1>
-      <div className="grid grid-cols-4 rounded-2xl bg-surface-2 p-1 text-xs font-semibold">
+      <div className="selection-group grid grid-cols-4 gap-1 rounded-2xl border border-line bg-bg/40 p-1 text-xs font-medium" role="group" aria-label={t('Insights')}>
         {(
           [
             ['sex', /*i18n*/ 'Sex 🔥'],
@@ -56,15 +58,17 @@ export function InsightsView(props: {
             ['places', /*i18n*/ 'Places 📍'],
           ] as const
         ).map(([k, label]) => (
-          <button key={k} onClick={() => {clearTarget();setTab(k);}} className={`rounded-xl py-2 transition ${visibleTab === k ? 'bg-surface text-ink shadow' : 'text-ink-3'}`}>
-            {t(label)}
+          <button key={k} onClick={() => {clearTarget();setTab(k);}} aria-pressed={visibleTab === k} className={`selection-choice min-h-11 rounded-xl py-2 ${visibleTab === k ? 'text-rose-2' : 'text-ink-3'}`}>
+            {visibleTab === k && <SelectionPill id="insights-tabs"/>}<span>{t(label)}</span>
           </button>
         ))}
       </div>
+      <AnimatedContent value={visibleTab}>
       {visibleTab === 'cycle' && <CycleTab {...props} />}
       {visibleTab === 'sex' && <SexTab {...props} />}
       {visibleTab === 'history' && <HistoryTab sessions={props.sessions} target={target} onTargetClosed={clearTarget}/>}
       {visibleTab === 'places' && <PlacesTab sessions={props.sessions} />}
+      </AnimatedContent>
     </div>
   );
 }
@@ -141,12 +145,12 @@ function CycleTab({ periods, sessions, herLogs, isHer, herName, defaults }: Para
           {upcoming.map((u, i) => (
             <div key={u.periodStart} className="grid grid-cols-[1fr_auto] gap-1 py-2.5 text-sm">
               <p className="font-semibold">
-                <span className="text-menstrual">🩸</span> {f.prettyRange(u.periodStart, u.periodEnd)}
+                <span className="text-menstrual"><SymbolIcon value="🩸" size={13}/></span> {f.prettyRange(u.periodStart, u.periodEnd)}
                 {i === 0 && u.periodStart > today && <span className="ml-1 text-xs font-normal text-ink-3">{f.relativeDays(diffDays(u.periodStart, today))}</span>}
               </p>
               <p className="text-right text-xs text-ink-3">{u.cycle.predicted ? `±${t('{n}d', { n: stats.window })}` : t('logged')}</p>
               <p className="col-span-2 text-xs text-ink-2">
-                🥚 {t('Ovulation')} {f.prettyDate(u.ovulation)} · {t('Fertile')} {f.prettyRange(u.fertileStart, u.fertileEnd)}
+                <SymbolIcon value="🥚" size={13}/> {t('Ovulation')} {f.prettyDate(u.ovulation)} · {t('Fertile')} {f.prettyRange(u.fertileStart, u.fertileEnd)}
               </p>
             </div>
           ))}
@@ -167,7 +171,7 @@ function CycleTab({ periods, sessions, herLogs, isHer, herName, defaults }: Para
 
       <section className="card">
         <h3 className="mb-3 font-semibold">{t('Intercourse by phase')}</h3>
-        <HBars data={PHASE_ORDER.map((p) => ({ key: p, label: `${PHASES[p].emoji} ${t(PHASES[p].name)}`, value: sexByPhase.get(p) ?? 0, color: PHASES[p].color }))} />
+        <HBars data={PHASE_ORDER.map((p) => ({ key: p, label: `${t(PHASES[p].name)}`, value: sexByPhase.get(p) ?? 0, color: PHASES[p].color }))} />
         {libido.size > 0 && (
           <>
             <h3 className="mt-5 mb-3 font-semibold">{t('Her horniness by phase')}</h3>
@@ -175,7 +179,7 @@ function CycleTab({ periods, sessions, herLogs, isHer, herName, defaults }: Para
               format={(n) => `${n.toFixed(1)}/5`}
               data={PHASE_ORDER.map((p) => {
                 const v = libido.get(p) ?? [];
-                return { key: p, label: `${PHASES[p].emoji} ${t(PHASES[p].name)}`, value: v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0, color: PHASES[p].color };
+                return { key: p, label: `${t(PHASES[p].name)}`, value: v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0, color: PHASES[p].color };
               })}
             />
           </>
@@ -188,7 +192,7 @@ function CycleTab({ periods, sessions, herLogs, isHer, herName, defaults }: Para
           <details key={p} className="card group" style={{ borderColor: PHASES[p].color + '55' }}>
             <summary className="flex cursor-pointer list-none items-center gap-3">
               <span className="flex h-9 w-9 items-center justify-center rounded-xl text-xl" style={{ background: PHASES[p].tint }}>
-                {PHASES[p].emoji}
+                <SymbolIcon value={PHASES[p].emoji} size={22}/>
               </span>
               <span className="flex-1 font-semibold">{t(PHASES[p].name)}</span>
               <span className="text-ink-3 transition group-open:rotate-90">›</span>
@@ -293,7 +297,7 @@ function SexStats({ sessions, kind, allSessions, scores, herName, hisName }: { s
     const h = hourInTz(s.startedAt, tz);
     byTime[h < 5 ? 3 : h < 12 ? 0 : h < 18 ? 1 : 2]++;
   }
-  const protection = PROTECTION.map((p) => ({ key: p.key, label: `${p.emoji} ${t(p.label)}`, value: sessions.filter((s) => s.protection === p.key).length })).filter((p) => p.value > 0);
+  const protection = PROTECTION.map((p) => ({ key: p.key, label: `${t(p.label)}`, value: sessions.filter((s) => s.protection === p.key).length })).filter((p) => p.value > 0);
   const tagCounts = new Map<string, number>();
   sessions.forEach((s) => s.tags.forEach((x) => tagCounts.set(x, (tagCounts.get(x) ?? 0) + 1)));
   const topTags = [...tagCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
@@ -306,7 +310,7 @@ function SexStats({ sessions, kind, allSessions, scores, herName, hisName }: { s
           <p className="text-[11px] text-ink-3">{kind === 'all' ? t('sessions all-time') : t(KIND_META[kind].label)}</p>
           {kind === 'all' && (
             <p className="mt-0.5 text-[11px] text-ink-2">
-              🍆 {countOf('intercourse')} · 👅 {countOf('oral')}
+              <SymbolIcon value="🍆" size={13}/> {countOf('intercourse')} · <SymbolIcon value="👅" size={13}/> {countOf('oral')}
             </p>
           )}
         </div>
@@ -347,11 +351,11 @@ function SexStats({ sessions, kind, allSessions, scores, herName, hisName }: { s
         <div className="grid grid-cols-2 gap-2 text-center">
           <div className="rounded-2xl bg-surface-2 p-3">
             <p className="text-3xl font-bold">{herO}</p>
-            <p className="text-xs text-ink-3">{herName} 💦</p>
+            <p className="text-xs text-ink-3">{herName}</p>
           </div>
           <div className="rounded-2xl bg-surface-2 p-3">
             <p className="text-3xl font-bold">{hisO}</p>
-            <p className="text-xs text-ink-3">{hisName} 🍆</p>
+            <p className="text-xs text-ink-3">{hisName}</p>
           </div>
         </div>
         {herRate != null && (
@@ -386,15 +390,17 @@ function BadgeGrid({ badges }: { badges: ReturnType<typeof achievements> }) {
   const { t } = useT();
   const [filter, setFilter] = useViewState<'all' | 'stories' | 'unlocked' | 'remaining'>('insights:badges','all');
   const [search, setSearch] = useViewState('insights:badge-search','');
+  const [expanded, setExpanded] = useViewState('insights:badges-expanded',false);
   const visible = badges.filter(b => (filter === 'all' || (filter === 'stories' ? b.collection === 'stories' : filter === 'unlocked' ? b.unlocked : !b.unlocked)) &&
     `${t(b.title)} ${t(b.desc)}`.toLowerCase().includes(search.toLowerCase()));
   return <div className="mt-3 space-y-3">
     <input className="input" value={search} onChange={e => setSearch(e.target.value)} placeholder={t('Search achievements')} aria-label={t('Search achievements')} />
-    <div className="flex flex-wrap gap-2">{(['all','stories','unlocked','remaining'] as const).map(k => <button key={k} className={`chip ${filter === k ? 'chip-on' : ''}`} onClick={() => setFilter(k)}>{t(k === 'all' ? 'All' : k === 'stories' ? 'Stories & surprises' : k === 'unlocked' ? 'Unlocked' : 'Still to discover')}</button>)}</div>
-    <div className="grid grid-cols-3 gap-2">{visible.map(b => <div key={b.key} className={`flex flex-col items-center rounded-2xl p-3 text-center ${b.unlocked ? 'bg-rose/10' : 'bg-surface-2 text-ink-3'}`}>
-      <span className={`text-2xl ${b.unlocked ? '' : 'grayscale'}`}>{b.emoji}</span><span className="mt-1 text-xs font-semibold">{t(b.title)}</span>
-      <span className="mt-1 text-[10px] text-ink-3">{t(b.desc)}</span><span className="mt-1 text-[10px]">{b.unlocked ? t('Unlocked') : t('Still to discover')}</span>
+    <div className="flex flex-wrap gap-2">{(['all','stories','unlocked','remaining'] as const).map(k => <button key={k} className={`chip ${filter === k ? 'chip-on' : ''}`} aria-pressed={filter === k} onClick={() => {setFilter(k);setExpanded(false);}}>{t(k === 'all' ? 'All' : k === 'stories' ? 'Stories & surprises' : k === 'unlocked' ? 'Unlocked' : 'Still to discover')}</button>)}</div>
+    <div className="achievement-grid" data-motion>{(expanded || search.trim() ? visible : visible.slice(0,12)).map(b => <div key={b.key} className="achievement" data-unlocked={b.unlocked}>
+      <span className="achievement-icon"><SymbolIcon value={b.emoji} size={20}/></span><span className="achievement-title">{t(b.title)}</span>
+      <span className="achievement-description">{t(b.desc)}</span><span className="achievement-status">{b.unlocked ? t('Unlocked') : t('Still to discover')}</span>
     </div>)}</div>
+    {!search.trim() && visible.length > 12 && <button type="button" className="btn-ghost w-full" aria-expanded={expanded} onClick={()=>setExpanded(!expanded)}>{expanded?t('Show fewer achievements'):t('View all {n} achievements',{n:visible.length})}</button>}
     {!visible.length && <p className="text-sm text-ink-3">{t('No matching achievements.')}</p>}
   </div>;
 }
@@ -469,8 +475,8 @@ function HistoryTab({sessions,target,onTargetClosed}:{sessions:SexSession[];targ
     <div className="space-y-4">
       <div className="grid grid-cols-3 gap-2">
         <Tile value={sessions.length} label={t('Total')} />
-        <Tile value={count('intercourse')} label={`🍆 ${t('Intercourse')}`} />
-        <Tile value={count('oral')} label={`👅 ${t('Oral')}`} />
+        <Tile value={count('intercourse')} label={t('Intercourse')} />
+        <Tile value={count('oral')} label={t('Oral')} />
       </div>
       <KindFilter value={kind} onChange={setKind} />
       {!groups.length && <p className="card text-center text-sm text-ink-2">{t('Nothing logged yet. Hit the ❤️ button and start the clock 😏')}</p>}
@@ -483,9 +489,9 @@ function HistoryTab({sessions,target,onTargetClosed}:{sessions:SexSession[];targ
             <div className="flex items-baseline justify-between px-1">
               <h3 className="font-semibold">{f.lang === 'zh' ? `${y}年${m}月` : `${f.monthName(m)} ${y}`}</h3>
               <p className="text-xs text-ink-3">
-                {inter > 0 && `🍆 ${inter}`}
+                {inter > 0 && <><SymbolIcon value="🍆" size={12}/> {inter}</>}
                 {inter > 0 && oral > 0 && '  ·  '}
-                {oral > 0 && `👅 ${oral}`}
+                {oral > 0 && <><SymbolIcon value="👅" size={12}/> {oral}</>}
               </p>
             </div>
             {list.map((s) => (
@@ -523,7 +529,7 @@ function PlacesTab({ sessions }: { sessions: SexSession[] }) {
         <Tile value={cities.size} label={t('cities')} />
         <Tile value={countries.size} label={t('countries')} />
       </div>
-      {countries.size > 0 && <p className="text-center text-3xl tracking-widest">{[...countries].map((c) => flagEmoji(c)).join(' ')}</p>}
+      {countries.size > 0 && <p className="text-center text-3xl tracking-widest">{[...countries].map(c=><span key={c} className="chip mr-2"><SymbolIcon value="📍" size={12}/>{c}</span>)}</p>}
       <div className="space-y-2">
         {groups.map(([name, list]) => {
           const geo = list.find((s) => s.latitude != null && s.longitude != null);
@@ -532,7 +538,7 @@ function PlacesTab({ sessions }: { sessions: SexSession[] }) {
           const cityLine = [list[0].city, list[0].region, list[0].country].filter(Boolean).join(', ');
           return (
             <div key={name} className="card flex items-center gap-3">
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-surface-2 text-xl">{flagEmoji(list[0].country)}</span>
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-surface-2 text-xl"><SymbolIcon value="📍" size={20}/></span>
               <div className="min-w-0 flex-1">
                 <p className="truncate font-semibold">{name === 'Unknown' ? t('Unknown') : name}</p>
                 <p className="truncate text-xs text-ink-3">

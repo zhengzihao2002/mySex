@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { I18nProvider } from '@/components/I18nProvider';
 import { getLang } from '@/lib/i18n/server';
 import './globals.css';
+import { MotionProvider } from '@/components/Motion';
 
 export const metadata: Metadata = {
   title: 'mySex',
@@ -18,7 +19,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: 'cover',
-  themeColor: '#0e070d',
+  themeColor: '#111113',
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -26,7 +27,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang={lang === 'zh' ? 'zh-CN' : 'en'}>
       <body className="antialiased">
-        <I18nProvider lang={lang}>{children}</I18nProvider>
+        <I18nProvider lang={lang}><MotionProvider>{children}</MotionProvider></I18nProvider>
       </body>
     </html>
   );

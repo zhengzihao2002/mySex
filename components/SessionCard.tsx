@@ -1,4 +1,5 @@
 'use client';
+import { SymbolIcon } from '@/components/SymbolIcon';
 import {useSessionViewer,useSessionDraft} from './SessionViewer';
 import {SessionPersonality} from './SessionPersonality';
 import { useT } from './I18nProvider';
@@ -9,7 +10,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Trash2 } from 'lucide-react';
 import { deleteSession, updateSession } from '@/app/actions';
-import { flagEmoji, PROTECTION } from '@/lib/content';
+import { PROTECTION } from '@/lib/content';
 import type { Score } from '@/lib/score';
 import type { SexSession } from '@/lib/types';
 import { ScoreBadge } from './ScoreBadge';
@@ -60,23 +61,23 @@ export function SessionCard({
   return (
     <>
       <button onClick={() => setOpen(true)} className="flex w-full items-center gap-3 rounded-2xl border border-line/70 bg-surface-2/60 p-3 text-left">
-        {score ? <ScoreBadge score={score} /> : <span className="text-2xl">❤️</span>}
+        {score ? <ScoreBadge score={score} /> : <span className="text-2xl"><SymbolIcon value="❤️" size={24}/></span>}
         <div className="min-w-0 flex-1">
           <p className="font-semibold">
             {showDate ? `${showDate} · ` : ''}
-            {KIND_META[s.kind].emoji} {f.timeInTz(s.startedAt, tz)} · {f.formatDuration(s.durationSec ?? 0)}
+            <SymbolIcon value={KIND_META[s.kind].emoji} size={13}/> {f.timeInTz(s.startedAt, tz)} · {f.formatDuration(s.durationSec ?? 0)}
             {s.pausedSec ? <span className="text-xs font-normal text-ink-3"> (+{t('{d} breaks', { d: f.formatDuration(s.pausedSec) })})</span> : null}
-            {s.rating ? <span className="ml-1">🔥 {s.rating}/5</span> : null}
+            {s.rating ? <span className="ml-1"><SymbolIcon value="🔥" size={13}/> {s.rating}/5</span> : null}
           </p>
           <p className="truncate text-xs text-ink-3">
             {where ? (
               <>
-                {flagEmoji(s.country)} {where}
+                <SymbolIcon value="📍" size={12}/> {where}
               </>
             ) : (
               s.geoSource === 'map' ? t('Map pin') : s.geoSource === 'gps' ? t('GPS location') : t('Somewhere secret')
             )}
-            {protection ? ` · ${protection.emoji} ${t(protection.label)}` : ''}
+            {protection ? ` · ${t(protection.label)}` : ''}
             {s.herOrgasms ? ` · ${t('her')} ×${s.herOrgasms}` : ''}
             {s.hisOrgasms ? ` · ${t('him')} ×${s.hisOrgasms}` : ''}
           </p>
@@ -169,7 +170,7 @@ export function SessionCard({
             {t('Keep')}
           </button>
           <button
-            className="btn bg-menstrual text-white"
+            className="btn bg-menstrual text-bg"
             disabled={pending}
             onClick={async () => {
               if (await run(() => deleteSession(s.id, s.updatedAt))) {

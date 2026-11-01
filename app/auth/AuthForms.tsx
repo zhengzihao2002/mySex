@@ -1,4 +1,5 @@
 'use client';
+import { SymbolIcon } from '@/components/SymbolIcon';
 
 import Link from 'next/link';
 import { useActionState, useState, useTransition } from 'react';
@@ -30,9 +31,11 @@ export function SignInForm() {
   const verify = state !== back ? verifyOf(state) : null;
   if (verify) return <CodeStep email={verify} password={creds.password} note={errorOf(state)} onBack={() => setBack(state)} />;
   return (
-    <form action={action} className="space-y-3">
-      <input className="input" name="email" type="email" autoComplete="email" placeholder={t('Email')} defaultValue={creds.email} required />
-      <input className="input" name="password" type="password" autoComplete="current-password" placeholder={t('Password')} required />
+    <form action={action} className="auth-form space-y-3" data-motion>
+      <label className="label" htmlFor="auth-email">{t('Email')}</label>
+      <input id="auth-email" className="input" name="email" type="email" autoComplete="email" placeholder={t('Email')} defaultValue={creds.email} required />
+      <label className="label" htmlFor="auth-password">{t('Password')}</label>
+      <input id="auth-password" className="input" name="password" type="password" autoComplete="current-password" placeholder={t('Password')} required />
       <FormError error={verifyOf(state) ? null : errorOf(state)} />
       <button className="btn-primary w-full" disabled={pending}>
         {pending ? t('Sliding in…') : t('Sign in')}
@@ -56,7 +59,7 @@ export function SignUpForm() {
   const [consent, setConsent] = useState(false);
   if (verify) return <CodeStep email={verify} password={creds.password} onBack={() => setBack(state)} />;
   return (
-    <form action={action} className="space-y-3">
+    <form action={action} className="auth-form space-y-3" data-motion>
       <div>
         <label className="label" htmlFor="accessCode">{t('Access code · invite only 🔒')}</label>
         <input
@@ -71,9 +74,12 @@ export function SignUpForm() {
           required
         />
       </div>
-      <input className="input" name="name" autoComplete="given-name" placeholder={t('First name or nickname')} maxLength={40} required />
-      <input className="input" name="email" type="email" autoComplete="email" placeholder={t('Email')} required />
-      <input className="input" name="password" type="password" autoComplete="new-password" placeholder={t('Password (8+ characters)')} minLength={8} required />
+      <label className="label" htmlFor="auth-name">{t('Your name')}</label>
+      <input id="auth-name" className="input" name="name" autoComplete="given-name" placeholder={t('First name or nickname')} maxLength={40} required />
+      <label className="label" htmlFor="auth-email">{t('Email')}</label>
+      <input id="auth-email" className="input" name="email" type="email" autoComplete="email" placeholder={t('Email')} required />
+      <label className="label" htmlFor="auth-password">{t('Password')}</label>
+      <input id="auth-password" className="input" name="password" type="password" autoComplete="new-password" placeholder={t('Password (8+ characters)')} minLength={8} required />
 
       <div className="card space-y-3 border-rose/30 bg-rose/5">
         <p className="text-xs font-bold tracking-widest text-rose-2 uppercase">{t('Adults only · 18+')}</p>
@@ -138,7 +144,7 @@ function CodeStep({ email, password, note, onBack }: { email: string; password: 
   return (
     <form action={action} className="space-y-4">
       <div className="card space-y-1 text-center">
-        <p className="text-3xl">📬</p>
+        <p className="text-3xl"><SymbolIcon value="💌" size={30}/></p>
         <p className="font-semibold">{t('Check your email')}</p>
         <p className="text-sm text-ink-2">
           {t('We sent a verification code to')} <b className="text-ink">{email}</b>. {t('Enter it below to unlock mySex.')}

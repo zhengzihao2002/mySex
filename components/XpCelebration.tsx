@@ -1,4 +1,5 @@
 'use client';
+import { SymbolIcon } from '@/components/SymbolIcon';
 import {progressFillStyle} from '@/lib/progress-style';
 import {useEffect,useLayoutEffect,useRef,useState} from 'react';
 import {lockPageScroll} from '@/lib/page-scroll-lock';
@@ -78,12 +79,12 @@ export function XpCelebration({reward,onContinue}:{reward:XpReward;onContinue:()
       <div className="rounded-2xl border border-line bg-bg/40 p-4 text-left">
         <div className="mb-3 flex justify-between gap-2 text-sm"><span className="text-ink-2">{t('Total XP')}</span><b className="tabular-nums">{frame.xp.toLocaleString()} XP</b></div>
         <div role="progressbar" aria-label={t('Level progress')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress*100)} className="h-3 overflow-hidden rounded-full bg-line">
-          <div className="h-full rounded-full bg-gradient-to-r from-rose via-fuchsia-400 to-amber-300 shadow-[0_0_14px_rgba(255,61,127,0.5)]" style={progressFillStyle(progress)}/>
+          <div className="h-full rounded-full bg-gradient-to-r from-rose via-rose-2 to-luteal" style={progressFillStyle(progress)}/>
         </div>
         <p className="mt-2 min-h-4 text-xs text-ink-3">{ceiling?`${Math.max(0,frame.xp-floor).toLocaleString()} / ${(ceiling-floor).toLocaleString()} XP`:t('Highest rank unlocked')}</p>
       </div>
       <div className="rounded-2xl bg-rose/10 p-3"><p className="text-2xl font-bold text-rose-2">+{gained.toLocaleString()} XP</p><p className="mt-1 text-xs text-ink-2">{t('{session} session XP · {quests} quest XP',{session:reward.sessionXp,quests:Math.max(0,reward.missionXp)})}</p></div>
-      {reward.completedMissions.length>0&&<div className="flex flex-wrap justify-center gap-2">{reward.completedMissions.map(key=>{const m=MISSIONS.find(m=>m.key===key);return m?<span key={key} className="rounded-full border border-amber-300/30 bg-amber-300/5 px-3 py-1 text-xs text-amber-300">🏆 {t(m.title)}</span>:null;})}</div>}
+      {reward.completedMissions.length>0&&<div className="flex flex-wrap justify-center gap-2">{reward.completedMissions.map(key=>{const m=MISSIONS.find(m=>m.key===key);return m?<span key={key} className="rounded-full border border-amber-300/30 bg-amber-300/5 px-3 py-1 text-xs text-amber-300"><SymbolIcon value="🏆" size={13}/> {t(m.title)}</span>:null;})}</div>}
       <p className="sr-only" role="status">{frame.ready?t('XP added. Level {level}: {title}',{level:final.level,title:t(final.title)}):t('Adding earned XP…')}</p>
       <button type="button" className="btn-primary min-h-12 w-full" disabled={!frame.ready} onClick={()=>{if(frame.ready)onContinue();}}>{frame.ready?t('Continue'):t('Adding earned XP…')}</button>
     </div>

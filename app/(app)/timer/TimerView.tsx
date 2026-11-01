@@ -1,4 +1,6 @@
 'use client';
+import { AnimatedValue } from '@/components/Motion';
+import { SymbolIcon } from '@/components/SymbolIcon';
 import {endurancePoints,progression,sessionXp,type MissionRun} from '@/lib/progression';
 import {TimerPrompts} from '@/components/TimerPrompts';
 import {SessionFeelings} from '@/components/SessionFeelings';
@@ -170,7 +172,7 @@ function IdleTimer({
       <h1 className="font-display mt-1 text-3xl font-bold">{t('Ready when you are')}</h1>
       <KindPicker value={kind} onChange={setKind} disabled={start.pending} className="mt-4 w-full max-w-xs" />
 
-      <button onClick={begin} disabled={start.pending || !locationReady} className="group relative my-10 flex h-56 w-56 items-center justify-center" aria-label="Start timer">
+      <button onClick={begin} disabled={start.pending || !locationReady} className="timer-start group relative my-10 flex h-56 w-56 items-center justify-center" aria-label="Start timer">
         <span className="absolute inset-0 rounded-full bg-rose/30 [animation:ripple_2.4s_ease-out_infinite]" />
         <span className="absolute inset-0 rounded-full bg-ovulation/25 [animation:ripple_2.4s_ease-out_1.2s_infinite]" />
         <span className="absolute inset-3 rounded-full bg-gradient-to-br from-rose via-plum to-ovulation shadow-[0_0_80px_rgba(255,61,127,0.45)] transition group-active:scale-95" />
@@ -182,7 +184,7 @@ function IdleTimer({
         </span>
       </button>
 
-      <div className="w-full space-y-3">
+      <div className="w-full space-y-3" data-motion>
         <Toggle on={useLocation} onChange={setUseLocation} disabled={start.pending} icon={<MapPin size={16} />} title={t('Record location')} sub={t('Saves your IP & city so you can see where you did it')} />
         {useLocation && (
           <Toggle on={useGps} onChange={setUseGps} disabled={start.pending} icon={<Navigation size={16} />} title={t('Precise GPS pin')} sub={t('Asks for location permission')} />
@@ -362,7 +364,7 @@ function LiveTimer({
   };
 
   return (
-    <div className="fixed inset-0 z-[45] flex flex-col overflow-hidden bg-bg">
+    <div className="timer-screen fixed inset-0 z-[45] flex flex-col overflow-hidden bg-bg">
       {/* Ambient light */}
       <div className={`pointer-events-none absolute inset-0 transition-opacity duration-1000 ${paused ? 'opacity-30' : 'opacity-100'}`}>
         <div className="absolute -top-1/4 -left-1/4 h-[80vh] w-[80vh] animate-[drift_22s_linear_infinite] rounded-full bg-rose/25 blur-[100px]" />
@@ -375,7 +377,7 @@ function LiveTimer({
         </Link>
         <div className="flex items-center gap-2 rounded-full bg-surface-2/70 px-3 py-1.5 text-xs font-semibold tracking-widest uppercase backdrop-blur">
           <span className={`h-2 w-2 rounded-full ${paused ? 'bg-luteal' : 'animate-pulse bg-rose'}`} />
-          {KIND_META[session.kind].emoji} {pendingStart ? t('Starting') : paused ? t('Paused') : t('Live')}
+          <SymbolIcon value={KIND_META[session.kind].emoji} size={14}/> <AnimatedValue value={pendingStart ? t('Starting') : paused ? t('Paused') : t('Live')}/>
         </div>
         <div className="flex gap-2">
           <button onClick={() => setDim(true)} className="rounded-full bg-surface-2/70 p-2.5 text-ink-2 backdrop-blur" aria-label="Discreet mode">
@@ -397,9 +399,9 @@ function LiveTimer({
           <svg viewBox="0 0 300 300" className="absolute inset-0 h-full w-full">
             <defs>
               <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#ff7aa8" />
-                <stop offset="55%" stopColor="#ff3d7f" />
-                <stop offset="100%" stopColor="#7c3aed" />
+                <stop offset="0%" stopColor="#efb0a6" />
+                <stop offset="55%" stopColor="#d88f86" />
+                <stop offset="100%" stopColor="#baa7df" />
               </linearGradient>
               <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
                 <feGaussianBlur stdDeviation="4" result="b" />
@@ -423,7 +425,7 @@ function LiveTimer({
                   y1={150 + r1 * Math.sin(a)}
                   x2={150 + r2 * Math.cos(a)}
                   y2={150 + r2 * Math.sin(a)}
-                  stroke={lit ? '#ff7aa8' : 'rgba(255,255,255,0.14)'}
+                  stroke={lit ? '#efb0a6' : 'rgba(255,255,255,0.14)'}
                   strokeWidth={long ? 2 : 1}
                   strokeLinecap="round"
                 />
@@ -448,7 +450,7 @@ function LiveTimer({
               cy="150"
               r={R_IN}
               fill="none"
-              stroke="#7c3aed"
+              stroke="#baa7df"
               strokeOpacity="0.85"
               strokeWidth="3"
               strokeLinecap="round"
@@ -463,7 +465,7 @@ function LiveTimer({
               <path d="M12 21s-7.5-4.6-10-9.2C.4 8.6 2.3 4.5 6.2 4.5c2.2 0 3.8 1.3 4.6 2.6.2.3.6.3.8 0 .8-1.3 2.4-2.6 4.6-2.6 3.9 0 5.8 4.1 4.2 7.3C19.5 16.4 12 21 12 21z" />
             </svg>
             <span className={`text-[64px] leading-none font-extralight tracking-tight tabular-nums ${paused ? 'text-ink-2' : ''}`}>
-              {formatClock(secs)}
+              <AnimatedValue value={formatClock(secs)}/>
             </span>
             <span className="mt-3 text-sm font-medium text-ink-2">
               {paused ? (
@@ -545,7 +547,7 @@ function LiveTimer({
 
       {dim && (
         <button className="fixed inset-0 z-[70] flex flex-col items-center justify-center bg-black" onClick={() => setDim(false)}>
-          <span className="text-4xl font-extralight text-white/20 tabular-nums">{formatClock(secs)}</span>
+          <span className="text-4xl font-extralight text-white/20 tabular-nums"><AnimatedValue value={formatClock(secs)}/></span>
           <span className="mt-2 text-[10px] text-white/15">{t('tap to wake')}</span>
         </button>
       )}
@@ -558,7 +560,7 @@ function LiveTimer({
             {t('Keep going')}
           </button>
           <button
-            className="btn bg-menstrual text-white"
+            className="btn bg-menstrual text-bg"
             disabled={act.pending}
             onClick={async () => {
               if (await act.run(() => discardActiveSession(session.id, session.updatedAt))) {

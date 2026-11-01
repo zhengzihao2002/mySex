@@ -1,4 +1,5 @@
 'use client';
+import { SymbolIcon } from './SymbolIcon';
 import { useT } from './I18nProvider';
 
 import { useState } from 'react';
@@ -43,7 +44,7 @@ function CheckInForm({ date, sex, existing, onDone }: { date: string; sex: Sex; 
 
   return (
     <form
-      className="space-y-5"
+      className="space-y-5" data-motion
       onSubmit={async (e) => {
         e.preventDefault();
         const ok = await run(() => saveDailyLog({ date, mood, libido, energy, flow, symptoms, note: note || null }));
@@ -57,12 +58,13 @@ function CheckInForm({ date, sex, existing, onDone }: { date: string; sex: Sex; 
             <button
               type="button"
               key={m.key}
+              aria-pressed={mood === m.key}
               onClick={() => setMood(mood === m.key ? null : m.key)}
               className={`flex flex-col items-center rounded-2xl border py-2 text-[11px] transition ${
                 mood === m.key ? 'border-rose bg-rose/20 text-ink' : 'border-line bg-surface-2 text-ink-3'
               }`}
             >
-              <span className="text-2xl">{m.emoji}</span>
+              <SymbolIcon value={m.emoji} size={24} className="mb-2 mt-1"/>
               {t(m.label)}
             </button>
           ))}
@@ -79,7 +81,7 @@ function CheckInForm({ date, sex, existing, onDone }: { date: string; sex: Sex; 
             <div className="flex flex-wrap gap-2">
               {FLOWS.map((f) => (
                 <button type="button" key={f} onClick={() => setFlow(flow === f ? null : f)} className={`chip capitalize ${flow === f ? 'chip-on' : ''}`}>
-                  {'💧'.repeat(FLOWS.indexOf(f) + 1)} {t(f)}
+                  <SymbolIcon value="💧" size={14 + FLOWS.indexOf(f) * 2}/> {t(f)}
                 </button>
               ))}
             </div>
@@ -140,10 +142,11 @@ function Scale({ label, value, onChange, icons }: { label: string; value: number
             type="button"
             key={i}
             onClick={() => onChange(value === i + 1 ? null : i + 1)}
-            className={`rounded-2xl border py-2 text-2xl transition ${value === i + 1 ? 'border-rose bg-rose/20' : 'border-line bg-surface-2 opacity-70'}`}
+            className={`flex flex-col items-center gap-1.5 rounded-2xl border py-3 transition ${value === i + 1 ? 'border-rose bg-rose/20' : 'border-line bg-surface-2 opacity-70'}`}
             aria-label={`${label} ${i + 1}`}
+            aria-pressed={value === i + 1}
           >
-            {icon}
+            <SymbolIcon value={icon} size={22}/><span className="text-[10px] text-ink-3">{i + 1}</span>
           </button>
         ))}
       </div>

@@ -1,6 +1,7 @@
 // Tiny i18n: English text is the key; zh.ts maps it to Simplified Chinese.
 // Missing translations fall back to English (scripts/check-i18n.mjs lists them).
 import { zh } from './zh';
+import { displayText } from '../display-text';
 
 export type Lang = 'en' | 'zh';
 export const LANGS: Lang[] = ['en', 'zh'];
@@ -9,7 +10,7 @@ export const LANG_COOKIE = 'lang';
 export type Vars = Record<string, string | number>;
 
 export function translate(lang: Lang, key: string, vars?: Vars): string {
-  let s = lang === 'zh' ? (zh[key] ?? key) : key;
+  let s = displayText(lang === 'zh' ? (zh[key] ?? key) : key);
   if (vars) for (const [k, v] of Object.entries(vars)) s = s.replaceAll(`{${k}}`, String(v));
   return s;
 }

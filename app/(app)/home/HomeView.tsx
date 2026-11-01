@@ -1,11 +1,13 @@
 'use client';
+import { AnimatedValue } from '@/components/Motion';
 import { useT } from '@/components/I18nProvider';
 
 import Link from 'next/link';
+import { SymbolIcon, ProfileAvatar } from '@/components/SymbolIcon';
 import {CoupleProgress} from '@/components/CoupleProgress';
 import type {MissionRun} from '@/lib/progression';
 import { useEffect, useMemo, useState } from 'react';
-import { CalendarPlus, Dice5, Flame, Settings, SmilePlus, Timer } from 'lucide-react';
+import { ArrowUpRight, CalendarDays, CalendarPlus, Clock3, Dice5, Flame, Heart, Settings, SmilePlus, Timer } from 'lucide-react';
 import { sendNote, setAnniversary } from '@/app/actions';
 import { FormError } from '@/components/FormError';
 import { InboxLink } from '@/components/InboxLink';
@@ -69,18 +71,18 @@ export function HomeView({
   const greeting = hour < 5 ? t('Up late,') : hour < 12 ? t('Morning,') : hour < 18 ? t('Hey') : t('Evening,');
 
   return (
-    <div className="space-y-4 pt-2">
+    <div className="space-y-4 pt-2" data-motion>
       <header className="flex items-center justify-between">
         <div className="flex min-w-0 items-center gap-3">
           <div className="flex -space-x-3">
-            <span className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-bg bg-surface-2 text-2xl">{me.avatar}</span>
-            <span className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-bg bg-surface-2 text-2xl">{partner.avatar}</span>
+            <ProfileAvatar value={me.avatar} name={me.name}/>
+            <ProfileAvatar value={partner.avatar} name={partner.name}/>
           </div>
           <div className="min-w-0">
-            <p className="text-sm text-ink-3">
+            <p className="text-xs text-ink-3">
               {greeting} {me.name}
             </p>
-            <p className="font-semibold break-words">
+            <p className="mt-1 text-sm font-medium break-words">
               {t('You & {name}', { name: partner.name })} ·{' '}
               <button className="text-rose-2 underline decoration-dotted underline-offset-4" onClick={() => setTogetherOpen(true)}>
                 {f.plural(daysTogether, t('{n} day', { n: daysTogether.toLocaleString() }), t('{n} days', { n: daysTogether.toLocaleString() }))}
@@ -96,6 +98,11 @@ export function HomeView({
         </div>
       </header>
 
+      <div className="home-heading">
+        <div><p className="eyebrow mb-2">{t('Your shared space')}</p><h1 className="font-display">{t('A little closer.')}</h1></div>
+        <p className="home-date">{f.prettyDate(today, { weekday: true })}</p>
+      </div>
+
       {active && <LiveBanner session={active} />}
 
       <CycleCard model={model} info={info} today={today} isHer={me.sex === 'female'} herName={her.name} />
@@ -107,18 +114,18 @@ export function HomeView({
         <Quick href="/play" icon={<Dice5 size={22} />} label={t('Play')} />
       </div>
 
-      <CoupleProgress sessions={sessions} runs={missions}/>
-
+      <p className="home-section-label"><Heart size={13}/>{t('The two of you')}</p>
       <MoodCard me={me.name} myLog={myLog} partnerName={partner.name} partnerLog={partnerLog} onCheckIn={() => setCheckIn(true)} />
 
-      <div className="grid grid-cols-2 gap-2">
-        <Stat value={thisMonth} label={`🍆 ${t('Intercourse')} · ${t('this month')}`} />
-        <Stat value={thisMonthOral} label={`👅 ${t('Oral')} · ${t('this month')}`} />
+      <div className="home-stats">
+        <Stat value={thisMonth} label={`${t('Intercourse')} · ${t('this month')}`} />
+        <Stat value={thisMonthOral} label={`${t('Oral')} · ${t('this month')}`} />
+        <Stat value={streak} label={t('week streak')} />
+        <Stat value={daysSince == null ? '–' : daysSince} label={t('days since')} />
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        <Stat value={streak} label={`${t('week streak')}${streak >= 4 ? ' 🔥' : ''}`} />
-        <Stat value={daysSince == null ? '–' : daysSince} label={daysSince === 0 ? `${t('days since')} 😏` : t('days since')} />
-      </div>
+
+      <p className="home-section-label"><Clock3 size={13}/>{t('Your story')}</p>
+      <CoupleProgress sessions={sessions} runs={missions}/>
 
       {last && (
         <Link href={`/insights?session=${last.id}`} className="card flex items-center gap-3">
@@ -129,18 +136,19 @@ export function HomeView({
               {f.relativeDays(-(daysSince ?? 0))[0].toUpperCase() + f.relativeDays(-(daysSince ?? 0)).slice(1)} · {f.formatDuration(last.durationSec ?? 0)}
             </p>
             <p className="text-xs text-ink-3">
-              {scores.get(last.id)?.emoji} {t(scores.get(last.id)?.grade ?? '')}
+              <SymbolIcon value={scores.get(last.id)?.emoji} size={12}/> {t(scores.get(last.id)?.grade ?? '')}
               {last.place ? ` · ${last.place}` : last.city ? ` · ${last.city}` : ''}
             </p>
           </div>
         </Link>
       )}
 
-      <Link href="/notes" className="card block">
+      <Link href="/notes" className="card block relative">
+        <ArrowUpRight size={18} className="absolute right-5 top-5 text-ink-3"/>
         <p className="mb-1 text-xs text-ink-3 uppercase">{t('From {name}', { name: partner.name })}</p>
         {latestFromPartner ? (
           <p className={`${latestFromPartner.readAt ? 'text-ink-2' : 'font-semibold'}`}>
-            {NOTE_KINDS[latestFromPartner.kind].emoji} {latestFromPartner.body}
+            <SymbolIcon value={NOTE_KINDS[latestFromPartner.kind].emoji} size={16}/> {latestFromPartner.body}
           </p>
         ) : (
           <p className="text-ink-3">{t('No notes yet. Slide into their notes 💌')}</p>
@@ -171,7 +179,7 @@ function LiveBanner({ session }: { session: SexSession }) {
   const end = session.pausedAt ? new Date(session.pausedAt).getTime() : now;
   const secs = end == null ? 0 : (end - new Date(session.startedAt).getTime()) / 1000 - session.pausedSec;
   return (
-    <Link href="/timer" className="relative flex items-center gap-3 overflow-hidden rounded-3xl bg-gradient-to-r from-rose to-plum p-4 text-white shadow-lg shadow-rose/30">
+    <Link href="/timer" className="relative flex items-center gap-3 overflow-hidden rounded-2xl bg-rose p-4 text-bg">
       <span className="relative flex h-3 w-3">
         <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/70" />
         <span className="relative inline-flex h-3 w-3 rounded-full bg-white" />
@@ -198,7 +206,8 @@ function CycleCard({
   const { t, f } = useT();
   if (!model || !info) {
     return (
-      <Link href="/calendar" className="card block">
+      <Link href="/calendar" className="card cycle-empty block">
+        <CalendarDays size={28} className="mb-3 text-rose-2"/>
         <p className="text-xs text-ink-3 uppercase">{t('Cycle')}</p>
         <p className="mt-1 font-semibold">{isHer ? t('Log your last period to unlock predictions 🩸') : t('Waiting for {name} to log her period', { name: herName })}</p>
         <p className="mt-1 text-sm text-ink-3">{t('mySex learns her cycle, predicts periods, fertile days and when she’s most in the mood.')}</p>
@@ -220,8 +229,8 @@ function CycleCard({
   const angle = pos * 2 * Math.PI - Math.PI / 2;
 
   return (
-    <Link href="/insights" className="card flex items-center gap-4" style={{ borderColor: phase.color + '55' }}>
-      <div className="relative h-32 w-32 shrink-0">
+    <Link href="/insights" className="card cycle-card">
+      <div className="cycle-ring relative shrink-0">
         <svg viewBox="0 0 128 128" className="h-full w-full">
           {spans.map((s) => {
             const len = (s.days / cycle.length) * C;
@@ -232,12 +241,12 @@ function CycleCard({
                 cy="64"
                 r={R}
                 fill="none"
-                stroke={PHASES[s.phase].color}
-                strokeWidth="10"
+                stroke={`var(--color-${s.phase})`}
+                strokeWidth="6"
                 strokeDasharray={`${Math.max(0, len - 2)} ${C}`}
                 strokeDashoffset={-offset}
                 transform="rotate(-90 64 64)"
-                opacity={s.phase === info.phase ? 1 : 0.45}
+                opacity={s.phase === info.phase ? 1 : 0.25}
               />
             );
             offset += len;
@@ -247,13 +256,14 @@ function CycleCard({
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className="text-[10px] text-ink-3 uppercase">{t('Day')}</span>
-          <span className="text-3xl font-bold tabular-nums">{info.cycleDay}</span>
+          <span className="font-display text-4xl tabular-nums">{info.cycleDay}</span>
           <span className="text-[10px] text-ink-3">{t('of {n}', { n: info.cycleLength })}</span>
         </div>
       </div>
       <div className="min-w-0 flex-1 space-y-1.5">
-        <p className="text-lg font-bold" style={{ color: phase.color === '#7c3aed' ? '#a78bfa' : undefined }}>
-          {phase.emoji} {t(phase.name)}
+        <p className="eyebrow mb-1">{t('Your cycle, today')}</p>
+        <p className="phase-heading">
+          {t(phase.name)}
         </p>
         {model.daysLate > 0 ? (
           <p className="text-sm font-semibold text-menstrual">{t('Period is {n} days late', { n: model.daysLate })}</p>
@@ -284,9 +294,7 @@ function CycleCard({
 
 function Quick({ href, onClick, icon, label, accent }: { href?: string; onClick?: () => void; icon: React.ReactNode; label: string; accent?: boolean }) {
   const { t, f } = useT();
-  const cls = `flex flex-col items-center gap-1.5 rounded-3xl border py-3 text-xs font-medium transition active:scale-95 ${
-    accent ? 'border-rose/50 bg-rose/15 text-ink' : 'border-line/70 bg-surface/80 text-ink-2'
-  }`;
+  const cls = "home-quick active:scale-95";
   return href ? (
     <Link href={href} className={cls}>
       {icon}
@@ -303,9 +311,9 @@ function Quick({ href, onClick, icon, label, accent }: { href?: string; onClick?
 function Stat({ value, label }: { value: React.ReactNode; label: string }) {
   const { t, f } = useT();
   return (
-    <div className="card px-3 py-3 text-center">
-      <p className="text-2xl font-bold tabular-nums">{value}</p>
-      <p className="text-[11px] text-ink-3">{label}</p>
+    <div className="home-stat">
+      <p className="tabular-nums">{typeof value==='number'||typeof value==='string'?<AnimatedValue value={value}/>:value}</p>
+      <p>{label}</p>
     </div>
   );
 }
@@ -328,7 +336,7 @@ function MoodCard({
   const [sent, setSent] = useState(false);
   const mood = (l: DailyLog | null) => MOODS.find((m) => m.key === l?.mood);
   return (
-    <div className="card">
+    <div className="card home-mood" data-motion>
       <div className="flex items-center justify-between">
         <p className="text-xs text-ink-3 uppercase">{t('Today’s vibe')}</p>
         <button className="text-xs font-semibold text-rose-2" onClick={onCheckIn}>
@@ -341,11 +349,11 @@ function MoodCard({
           [partnerName, partnerLog],
         ].map(([name, log]) => (
           <div key={name as string} className="flex items-center gap-2">
-            <span className="text-3xl">{mood(log as DailyLog | null)?.emoji ?? '·'}</span>
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface-2 text-rose-2"><SymbolIcon value={mood(log as DailyLog | null)?.emoji} size={21}/></span>
             <div>
               <p className="text-sm font-medium">{name as string}</p>
               <p className="text-xs text-ink-3">
-                {log ? `${t(mood(log as DailyLog)?.label ?? 'Checked in')}${(log as DailyLog).libido ? ` · ${'🔥'.repeat((log as DailyLog).libido!)}` : ''}` : t('No check-in yet')}
+                {log ? `${t(mood(log as DailyLog)?.label ?? 'Checked in')}${(log as DailyLog).libido ? ` · ${(log as DailyLog).libido}/5` : ''}` : t('No check-in yet')}
               </p>
             </div>
           </div>

@@ -13,7 +13,7 @@ export function SessionEditDiff({session:s,proposed:p,includeLocation=true}:{ses
   const {t,f}=useT();
   const {tz}=useTz();
   const dash='–';
-  const protection=(key:string|null)=>{const item=PROTECTION.find(p=>p.key===key);return item?`${item.emoji} ${t(item.label)}`:dash;};
+  const protection=(key:string|null)=>{const item=PROTECTION.find(p=>p.key===key);return item?`${t(item.label)}`:dash;};
   const rows:[string,string,string][]=[
     [t('Type'),t(KIND_META[s.kind].label),t(KIND_META[p.kind??s.kind].label)],
     [t('When'),f.dateTimeInTz(s.startedAt,tz),f.dateTimeInTz(p.startedAt,tz)],

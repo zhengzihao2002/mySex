@@ -1,4 +1,5 @@
 'use client';
+import { SymbolIcon } from '@/components/SymbolIcon';
 import {progressFillStyle} from '@/lib/progress-style';
 import Link from 'next/link';
 import {useEffect,useMemo,useState} from 'react';
@@ -16,7 +17,7 @@ export function MissionsView({sessions}:{sessions:SexSession[];runs?:MissionRun[
   // Keep two phones in sync without push notifications or background polling.
   useEffect(()=>{const refresh=()=>{if(document.visibilityState==='visible')router.refresh();};const timer=setInterval(refresh,15000);window.addEventListener('focus',refresh);return()=>{clearInterval(timer);window.removeEventListener('focus',refresh);};},[router]);
   const paths=[{key:'explorer',title:t('Explorer'),icon:'🧭'},{key:'endurance',title:t('Endurance'),icon:'🔥'},{key:'rhythm',title:t('Rhythm'),icon:'🌙'},{key:'finale',title:t('Chapter finale'),icon:'👑'}];
-  return <div className="space-y-5 pt-2 pb-4">
+  return <div className="space-y-5 pt-2 pb-4" data-motion>
     <header><Link href="/home" className="inline-flex min-h-11 items-center text-sm text-ink-3">← {t('Home')}</Link><h1 className="font-display text-3xl font-bold">{t('Couple quests')}</h1><p className="mt-1 text-sm text-ink-2">{t('Two players. One legendary story.')}</p></header>
     <CoupleProgress sessions={sessions} onExplore={()=>{const board=document.getElementById('quest-board');board?.focus({preventScroll:true});board?.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});}}/>
     <button className="btn-ghost w-full" onClick={()=>setRanksOpen(true)}>{t('Rank ladder & XP')}</button>
@@ -24,13 +25,13 @@ export function MissionsView({sessions}:{sessions:SexSession[];runs?:MissionRun[
 
     <div id="quest-board" tabIndex={-1} className="space-y-5 scroll-mt-4 outline-none">
     {paths.map(path=><section key={path.key} className="space-y-3">
-      <h2 className="font-display text-xl font-bold">{path.icon} {path.title}</h2>
+      <h2 className="font-display text-xl font-bold"><SymbolIcon value={path.icon} size={20}/> {path.title}</h2>
       {MISSIONS.filter(m=>m.path===path.key).map(m=>{
         const quest=game.quests.find(q=>q.mission.key===m.key)!;
         const complete=quest.complete;
         const status=complete?t('Completed'):t('In progress');
         return <article key={m.key} className={`rounded-3xl border p-4 ${complete?'border-amber-300/40 bg-amber-300/5':'border-line bg-surface'}`}>
-          <div className="flex items-start justify-between gap-3"><div><p className={`text-xs ${complete?'text-amber-300':'text-rose-2'}`}>{complete?'🏆 ':''}{status}</p><h3 className="mt-1 font-semibold">{t(m.title)}</h3></div><span className="shrink-0 rounded-full bg-surface-2 px-2.5 py-1 text-xs font-bold">+{m.xp} XP</span></div>
+          <div className="flex items-start justify-between gap-3"><div><p className={`text-xs ${complete?'text-amber-300':'text-rose-2'}`}>{complete&&<SymbolIcon value="🏆" size={13}/>}{status}</p><h3 className="mt-1 font-semibold">{t(m.title)}</h3></div><span className="shrink-0 rounded-full bg-surface-2 px-2.5 py-1 text-xs font-bold">+{m.xp} XP</span></div>
           <p className="mt-2 text-sm text-ink-2">{t(m.description)}</p>
           {quest&&<div className="mt-3"><div className="mb-1 flex justify-between text-xs text-ink-2"><span>{t('Progress')}</span><b>{m.rule==='atlas'||m.rule==='combinations'?`${Math.round(quest.value*100)}%`:`${quest.value}/${quest.target}`}</b></div><div className="h-2 overflow-hidden rounded-full bg-line"><div className="h-full rounded-full bg-gradient-to-r from-rose to-amber-300 transition-all motion-reduce:transition-none" style={progressFillStyle(quest.value/quest.target)}/></div></div>}
           {quest.checks&&<div className="mt-2 space-y-1 text-xs text-ink-3">{quest.checks.map(c=><p key={c.label} className="flex justify-between gap-2"><span>{t(c.label)}</span><b className="tabular-nums">{c.value}/{c.target}</b></p>)}</div>}

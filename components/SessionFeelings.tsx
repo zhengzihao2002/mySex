@@ -1,4 +1,5 @@
 'use client';
+import { SymbolIcon } from '@/components/SymbolIcon';
 import {useEffect,useState} from 'react';
 import {getSessionFeelings,saveSessionFeeling} from '@/app/actions';
 import type {SessionFeeling} from '@/lib/session-feelings';
@@ -15,8 +16,8 @@ export function SessionFeelings({sessionId}:{sessionId:string}){
  if(!ready)return <p className="text-xs text-ink-3">{t('Loading session feelings…')}</p>;
  return <section className="my-4 space-y-5">
  <h3 className="font-semibold">{t('Each partner’s experience')}</h3><p className="text-xs text-ink-3">{t('Each partner writes one note and gives their own heat rating. The session uses the average of submitted ratings.')}</p>
- {reviews.filter(r=>r.userId!==me).map(r=><div className="rounded-xl bg-surface-2 p-3 text-sm" key={r.userId}><b>{r.name}</b><p className="whitespace-pre-wrap break-words">{[r.feeling,r.highlight].filter(Boolean).join('\n')}</p>{r.rating!=null&&<p>🔥 {r.rating}/5</p>}</div>)}
- <form className="space-y-5" onSubmit={async e=>{e.preventDefault();setSaved(false);if(await run(()=>saveSessionFeeling(sessionId,{feeling:note,rating,orgasms})))setSaved(true)}}>
+ {reviews.filter(r=>r.userId!==me).map(r=><div className="rounded-xl bg-surface-2 p-3 text-sm" key={r.userId}><b>{r.name}</b><p className="whitespace-pre-wrap break-words">{[r.feeling,r.highlight].filter(Boolean).join('\n')}</p>{r.rating!=null&&<p><SymbolIcon value="🔥" size={14}/> {r.rating}/5</p>}</div>)}
+ <form className="space-y-5" data-motion onSubmit={async e=>{e.preventDefault();setSaved(false);if(await run(()=>saveSessionFeeling(sessionId,{feeling:note,rating,orgasms})))setSaved(true)}}>
  <HeatRating value={rating} onChange={setRating}/>
  <div className="grid grid-cols-2 gap-3"><Stepper label={t('Her orgasms 💦')} value={isHer?orgasms:partnerOrg} onChange={setOrgasms} disabled={!isHer}/><Stepper label={t('His orgasms 🍆')} value={isHer?partnerOrg:orgasms} onChange={setOrgasms} disabled={isHer}/></div>
  <div><label className="label">{t('Dirty details')}</label><textarea className="input min-h-20" maxLength={1000} placeholder={t('What made it memorable…')} value={note} onChange={e=>setNote(e.target.value)}/></div>

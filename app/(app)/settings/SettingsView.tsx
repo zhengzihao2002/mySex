@@ -1,4 +1,5 @@
 'use client';
+import { SymbolIcon, symbolLabel } from '@/components/SymbolIcon';
 import { useT } from '@/components/I18nProvider';
 
 import Link from 'next/link';
@@ -39,7 +40,7 @@ export function SettingsView({
   const danger = useRun();
 
   return (
-    <div className="space-y-5 pt-2">
+    <div className="space-y-5 pt-2" data-motion>
       <header className="flex items-center gap-2">
         <Link href="/home" className="rounded-full bg-surface-2 p-2" aria-label="Back">
           <ChevronLeft size={20} />
@@ -69,10 +70,12 @@ export function SettingsView({
               <button
                 type="button"
                 key={a}
+                aria-label={t(symbolLabel(a))}
+                aria-pressed={avatar === a}
                 onClick={() => setAvatar(a)}
                 className={`flex h-10 w-10 items-center justify-center rounded-xl border text-xl ${avatar === a ? 'border-rose bg-rose/20' : 'border-line bg-surface-2'}`}
               >
-                {a}
+                <SymbolIcon value={a} size={20}/>
               </button>
             ))}
           </div>
@@ -123,7 +126,7 @@ export function SettingsView({
 
       <section className="card space-y-2">
         <p className="text-sm text-ink-2">
-          {t('Paired with')} <b className="text-ink">{partner.name}</b> {partner.avatar} · {t('since {date}', { date: f.prettyDate(pairedSince, { year: true }) })}
+          {t('Paired with')} <b className="text-ink">{partner.name}</b> <SymbolIcon value={partner.avatar} size={14}/> · {t('since {date}', { date: f.prettyDate(pairedSince, { year: true }) })}
         </p>
         <a href="/api/export" className="btn-ghost w-full">
           <Download size={16} /> {t('Export our data (JSON)')}
@@ -156,7 +159,7 @@ export function SettingsView({
           <button className="btn-ghost" onClick={() => setUnpairOpen(false)}>
             {t('Cancel')}
           </button>
-          <button className="btn bg-menstrual text-white" disabled={danger.pending} onClick={() => danger.run(() => unpair())}>
+          <button className="btn bg-menstrual text-bg" disabled={danger.pending} onClick={() => danger.run(() => unpair())}>
             {t('Unpair (keep our data)')}
           </button>
         </div>

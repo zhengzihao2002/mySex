@@ -1,5 +1,7 @@
 'use client';
+import { SymbolIcon } from '@/components/SymbolIcon';
 
+import { AnimatedContent } from '@/components/Motion';
 import {useViewState,useViewScroll} from '@/components/ViewMemory';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Droplet, Heart, Plus, SmilePlus } from 'lucide-react';
@@ -148,7 +150,7 @@ export function CalendarView({
 
       <Legend />
 
-      <DayPanel
+      <AnimatedContent value={selected}><DayPanel
         key={selected}
         date={selected}
         today={today}
@@ -161,7 +163,7 @@ export function CalendarView({
         me={me}
         partner={partner}
         hasModel={!!model}
-      />
+      /></AnimatedContent>
     </div>
   );
 }
@@ -194,11 +196,11 @@ function DayCell({
         isSelected ? 'ring-2 ring-ink/80' : ''
       }`}
       style={{ background: phase && !info?.isPeriod ? phase.tint : undefined }}
-      aria-label={`${f.prettyDate(date)}${info ? ', ' + t(phase!.name) : ''}${sex ? ` · ${sex} ♥` : ''}${oral ? ` · ${oral} 👅` : ''}`}
+      aria-label={`${f.prettyDate(date)}${info ? ', ' + t(phase!.name) : ''}${sex ? ` · ${sex} ${t('Intercourse')}` : ''}${oral ? ` · ${oral} ${t('Oral')}` : ''}`}
     >
       <span
         className={`relative flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold tabular-nums ${
-          info?.isPeriod ? 'bg-menstrual text-white' : ''
+          info?.isPeriod ? 'bg-menstrual text-bg' : ''
         } ${info?.isPredictedPeriod ? 'border-2 border-dashed border-menstrual' : ''} ${
           info?.isOvulation ? 'border-2 border-ovulation bg-ovulation/30' : ''
         } ${isToday && !info?.isPeriod ? 'bg-ink text-bg' : ''}`}
@@ -214,7 +216,7 @@ function DayCell({
         )}
         {oral > 0 && (
           <span className="flex items-center text-[9px] leading-none">
-            👅{oral > 1 && <span className="ml-px font-bold text-rose-2">{oral}</span>}
+            <SymbolIcon value="👅" size={10}/>{oral > 1 && <span className="ml-px font-bold text-rose-2">{oral}</span>}
           </span>
         )}
         {info?.isFertile && !info.isOvulation && sex === 0 && oral === 0 && <span className="h-1 w-1 rounded-full bg-ovulation" />}
@@ -233,7 +235,7 @@ function Legend() {
     [<span key="fw" className="h-1.5 w-1.5 rounded-full bg-ovulation" />, /*i18n*/ 'Fertile'],
     [<span key="l" className="h-3 w-3 rounded-full" style={{ background: PHASES.luteal.tint, border: `1px solid ${PHASES.luteal.color}` }} />, /*i18n*/ 'Luteal'],
     [<Heart key="h" size={11} className="fill-rose text-rose" />, /*i18n*/ 'Intercourse'],
-    [<span key="or" className="text-[10px]">👅</span>, /*i18n*/ 'Oral'],
+    [<span key="or" className="text-[10px]"><SymbolIcon value="👅" size={11}/></span>, /*i18n*/ 'Oral'],
   ];
   return (
     <div className="no-scrollbar mt-3 flex gap-3 overflow-x-auto px-1 text-[11px] text-ink-3">
@@ -310,7 +312,7 @@ function DayPanel({
         <div className="card" style={{ borderColor: phase.color + '66' }}>
           <div className="flex items-center gap-3">
             <span className="flex h-11 w-11 items-center justify-center rounded-2xl text-2xl" style={{ background: phase.tint }}>
-              {phase.emoji}
+              <SymbolIcon value={phase.emoji} size={25}/>
             </span>
             <div className="flex-1">
               <p className="font-bold">
@@ -318,7 +320,7 @@ function DayPanel({
               </p>
               <p className="text-xs text-ink-3">
                 {t('Cycle day {d} of {n}', { d: info.cycleDay, n: info.cycleLength })}
-                {info.isOvulation ? ` · ${t('Ovulation day')} 🥚` : info.isFertile ? ` · ${t('Fertile window')}` : ''}
+                {info.isOvulation ? ` · ${t('Ovulation day')}` : info.isFertile ? ` · ${t('Fertile window')}` : ''}
                 {info.isPms ? ` · ${t('PMS zone')}` : ''}
               </p>
             </div>
@@ -427,7 +429,7 @@ function LogLine({ name, log }: { name: string; log: DailyLog | null }) {
   if (!log) return <p className="py-1 text-sm text-ink-3">{name}: {t('no check-in')}</p>;
   return (
     <div className="py-1 text-sm">
-      <span className="font-medium">{name}:</span> {mood ? `${mood.emoji} ${t(mood.label)}` : ''}
+      <span className="font-medium">{name}:</span> {mood ? <><SymbolIcon value={mood.emoji} size={14}/> {t(mood.label)}</> : ''}
       {log.libido ? ` · ${t('horny')} ${log.libido}/5` : ''}
       {log.energy ? ` · ${t('energy')} ${log.energy}/5` : ''}
       {log.flow ? ` · ${t('flow')}: ${t(log.flow)}` : ''}

@@ -1,3 +1,4 @@
+import { SymbolIcon } from '@/components/SymbolIcon';
 import { Brand } from '@/components/Brand';
 import { LanguageSwitch } from '@/components/LanguageSwitch';
 import { getT } from '@/lib/i18n/server';
@@ -14,7 +15,7 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
       <Brand subtitle={t('Track your sex life, her cycle and every naughty little detail — together, privately.')} />
       {revoked && (
         <p className="rounded-2xl border border-luteal/50 bg-luteal/10 px-4 py-3 text-center text-sm text-ink-2">
-          🔒 {t('This device was signed out from another device. Sign in again if that was you.')}
+          <SymbolIcon value="🔒" size={14}/> {t('This device was signed out from another device. Sign in again if that was you.')}
         </p>
       )}
       <SignInForm />

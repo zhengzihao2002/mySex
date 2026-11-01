@@ -1,4 +1,5 @@
 'use client';
+import { AnimatedValue } from '@/components/Motion';
 import { useT } from './I18nProvider';
 
 import { formatDuration } from '@/lib/dates';
@@ -61,7 +62,7 @@ export function SessionTimes({
 function Stat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
     <div className="rounded-2xl bg-surface-2 px-2 py-2">
-      <p className={`text-base font-bold tabular-nums ${accent ? 'text-rose-2' : ''}`}>{value}</p>
+      <p className={`text-base font-bold tabular-nums ${accent ? 'text-rose-2' : ''}`}><AnimatedValue value={value}/></p>
       <p className="text-[10px] text-ink-3 uppercase">{label}</p>
     </div>
   );

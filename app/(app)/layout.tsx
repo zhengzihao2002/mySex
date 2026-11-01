@@ -2,6 +2,7 @@ import { getActiveSession, getUnreadCount, getInboxSnapshot, getViewer, requireC
 import {ViewMemory} from '@/components/ViewMemory';
 import {SessionViewer} from '@/components/SessionViewer';
 import { InboxProvider } from '@/components/InboxLink';
+import { AppFrame } from '@/components/Motion';
 import { TabBar } from '@/components/TabBar';
 import { RefreshOnFocus } from '@/components/RefreshOnFocus';
 import { TzProvider } from '@/components/TzProvider';
@@ -28,9 +29,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <ViewMemory key={`${ctx.me.userId}:${ctx.couple.id}`}><SessionViewer meId={ctx.me.userId} isHer={ctx.me.sex==='female'}>
       <RefreshOnFocus />
       <InboxProvider initial={inboxCount}>
-      <div className="mx-auto min-h-dvh max-w-lg px-4 pt-safe pb-[calc(env(safe-area-inset-bottom)+96px)]">
+      <AppFrame>
         {children}
-      </div>
+      </AppFrame>
       <TabBar unread={unread} live={!!active} />
       </InboxProvider>
     </SessionViewer></ViewMemory>

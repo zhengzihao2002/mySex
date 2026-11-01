@@ -2,11 +2,20 @@
 
 import {useEffect,useLayoutEffect,useId,useRef} from 'react';
 import {createPortal} from 'react-dom';
+import {AnimatePresence,motion,useIsPresent} from 'motion/react';
 import {X} from 'lucide-react';
 import {useT} from './I18nProvider';
 import {lockPageScroll} from '@/lib/page-scroll-lock';
 
-export function Sheet({open,onClose,title,children,viewKey,stableHeight=false}:{open:boolean;onClose:()=>void;title?:React.ReactNode;children:React.ReactNode;viewKey?:string;stableHeight?:boolean}) {
+type SheetProps={open:boolean;onClose:()=>void;title?:React.ReactNode;children:React.ReactNode;viewKey?:string;stableHeight?:boolean};
+
+export function Sheet(props:SheetProps) {
+  if(typeof document==='undefined')return null;
+  return createPortal(<AnimatePresence>{props.open&&<SheetPanel {...props}/>}</AnimatePresence>,document.body);
+}
+
+function SheetPanel({onClose,title,children,viewKey,stableHeight=false}:Omit<SheetProps,'open'>) {
+  const present=useIsPresent();
   const {t}=useT();
   const titleId=useId();
   const content=useRef<HTMLDivElement>(null);
@@ -14,16 +23,16 @@ export function Sheet({open,onClose,title,children,viewKey,stableHeight=false}:{
   const dialog=useRef<HTMLDivElement>(null);
   const previousView=useRef(viewKey);
   useLayoutEffect(()=>{
-    if(open&&content.current){
+    if(content.current){
       content.current.scrollTop=0;
       if(previousView.current!==viewKey)dialog.current?.focus({preventScroll:true});
     }
     previousView.current=viewKey;
-  },[open,viewKey]);
+  },[viewKey]);
   const close=useRef(onClose);
   useEffect(()=>{close.current=onClose;},[onClose]);
   useLayoutEffect(()=>{
-    if(!open||!root.current||!dialog.current)return;
+    if(!root.current||!dialog.current)return;
     const node=root.current;
     const panel=dialog.current;
     const trigger=document.activeElement instanceof HTMLElement?document.activeElement:null;
@@ -96,12 +105,11 @@ export function Sheet({open,onClose,title,children,viewKey,stableHeight=false}:{
       window.removeEventListener('resize',resize);
       if(trigger?.isConnected)trigger.focus({preventScroll:true});
     };
-  },[open,stableHeight]);
-  if(!open||typeof document==='undefined')return null;
-  return createPortal(<div ref={root} data-app-sheet className="fixed inset-0 z-50 flex items-end justify-center">
-    <div className="absolute inset-0 touch-none animate-fade bg-black/60 backdrop-blur-sm motion-reduce:animate-none" onClick={onClose}/>
-    <div ref={dialog} role="dialog" aria-modal="true" aria-labelledby={title?titleId:undefined} aria-label={title?undefined:t('Details')} tabIndex={-1}
-      className={`relative flex max-h-[92%] w-full max-w-lg animate-rise flex-col rounded-t-[32px] border-t border-line bg-surface shadow-2xl outline-none motion-reduce:animate-none ${stableHeight?'h-[92%]':''}`}>
+  },[stableHeight]);
+  return <motion.div ref={root} data-app-sheet inert={!present} initial="closed" animate="open" exit="closed" className="fixed inset-0 z-50 flex items-end justify-center" transition={{duration:.26,ease:[.22,1,.36,1]}}>
+    <motion.div variants={{closed:{opacity:0},open:{opacity:1}}} className="absolute inset-0 touch-none bg-black/65 backdrop-blur-sm" onClick={onClose}/>
+    <motion.div variants={{closed:{y:"100%",opacity:0},open:{y:0,opacity:1}}} transition={{duration:.28,ease:[.22,1,.36,1]}} ref={dialog} role="dialog" aria-modal="true" aria-labelledby={title?titleId:undefined} aria-label={title?undefined:t('Details')} tabIndex={-1}
+      className={`sheet-panel relative flex max-h-[92%] w-full max-w-lg flex-col rounded-t-[28px] outline-none ${stableHeight?'h-[92%]':''}`}>
       <div className="mx-auto mt-2.5 h-1.5 w-10 shrink-0 rounded-full bg-line"/>
       <div className="flex shrink-0 items-center justify-between gap-3 px-5 pt-3 pb-2">
         <div id={titleId} className="min-w-0 text-lg font-bold">{title}</div>
@@ -109,7 +117,7 @@ export function Sheet({open,onClose,title,children,viewKey,stableHeight=false}:{
       </div>
       {/* Keep the home-indicator inset inside the scrollport, so it does not
           become a fixed blank strip clipping content above the screen edge. */}
-      <div ref={content} data-sheet-scroll className={`min-h-0 overflow-y-auto overscroll-contain px-5 pb-[calc(env(safe-area-inset-bottom)+24px)] ${stableHeight?'flex-1':''}`}>{children}</div>
-    </div>
-  </div>,document.body);
+      <div ref={content} data-sheet-scroll data-motion className={`min-h-0 overflow-y-auto overscroll-contain px-5 pb-[calc(env(safe-area-inset-bottom)+24px)] ${stableHeight?'flex-1':''}`}>{children}</div>
+    </motion.div>
+  </motion.div>;
 }

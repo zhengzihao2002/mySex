@@ -1,4 +1,6 @@
 'use client';
+import { SelectionPill } from '@/components/Motion';
+import { SymbolIcon } from '@/components/SymbolIcon';
 import { useT } from '@/components/I18nProvider';
 
 import { useEffect, useRef, useState } from 'react';
@@ -14,7 +16,7 @@ import type { LoveNote } from '@/lib/types';
 
 // i18n:begin
 const PROMPTS: Record<LoveNote['kind'], string[]> = {
-  note: ['Last night was 🔥', 'I can’t stop thinking about you', 'You looked so good today', 'Thank you for being you 🥰'],
+  note: ['Last night was unforgettable', 'I can’t stop thinking about you', 'You looked so good today', 'Thank you for being you 🥰'],
   wish: ['Tonight I want you to take control', 'Lingerie night? I’ll pick 😏', 'Let’s try something new tonight', 'Shower together later?'],
   tease: ['Guess what I’m (not) wearing', 'Come home early 😈', 'I’m already wet thinking about tonight', 'Bedroom. 10 minutes. Don’t be late.'],
 };
@@ -38,7 +40,7 @@ export function NotesView({ notes, meId, partnerName, partnerAvatar }: { notes: 
     if (unread) markNotesRead();
   }, [unread]);
   useEffect(() => {
-    bottom.current?.scrollIntoView({ block: 'end' });
+    bottom.current?.scrollIntoView({ block: 'end', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
   }, [notes.length]);
 
   const ordered = [...notes].reverse();
@@ -48,13 +50,13 @@ export function NotesView({ notes, meId, partnerName, partnerAvatar }: { notes: 
       <h1 className="font-display text-3xl font-bold">{t('Dirty notes')}</h1>
       <p className="mb-4 text-sm text-ink-3">{t('Just between you and {name}.', { name: partnerName })}</p>
 
-      <div className="flex-1 space-y-2 pb-4">
+      <div className="flex-1 space-y-3 pb-6" data-motion>
         {ordered.length === 0 && <p className="card text-center text-sm text-ink-2">{t('No notes yet. Make the first move 😏')}</p>}
         {ordered.map((n) => {
           const mine = n.fromUser === meId;
           return (
             <div key={n.id} className={`flex items-end gap-2 ${mine ? 'justify-end' : ''}`}>
-              {!mine && <span className="text-xl">{partnerAvatar}</span>}
+              {!mine && <span className="text-xl"><SymbolIcon value={partnerAvatar} size={22}/></span>}
               <div className={`max-w-[78%] ${mine ? 'items-end' : ''} flex flex-col`}>
                 <button
                   type="button"
@@ -64,10 +66,10 @@ export function NotesView({ notes, meId, partnerName, partnerAvatar }: { notes: 
                     setEditing(null);
                   }}
                   className={`rounded-3xl text-left px-4 py-2.5 text-[15px] leading-snug ${
-                    mine ? 'rounded-br-lg bg-gradient-to-br from-rose to-plum text-white' : 'rounded-bl-lg border border-line bg-surface-2'
+                    mine ? 'notes-bubble-own rounded-br-lg text-ink' : 'rounded-bl-lg border border-line bg-surface-2'
                   } ${n.kind === 'tease' ? 'ring-1 ring-luteal/60' : n.kind === 'wish' ? 'ring-1 ring-ovulation/60' : ''}`}
                 >
-                  {n.kind !== 'note' && <span className="mr-1">{NOTE_KINDS[n.kind].emoji}</span>}
+                  {n.kind !== 'note' && <span className="mr-1"><SymbolIcon value={NOTE_KINDS[n.kind].emoji} size={15}/></span>}
                   {n.body}
                 </button>
                 <span className="mt-0.5 px-2 text-[10px] text-ink-3">
@@ -116,7 +118,7 @@ export function NotesView({ notes, meId, partnerName, partnerAvatar }: { notes: 
                     {t('Edit')}
                   </button>
                 )}
-                <button className="btn w-full bg-menstrual text-white" onClick={() => setConfirmDelete(true)}>
+                <button className="btn w-full bg-menstrual text-bg" onClick={() => setConfirmDelete(true)}>
                   {t('Delete for both of us')}
                 </button>
                 <button
@@ -139,7 +141,7 @@ export function NotesView({ notes, meId, partnerName, partnerAvatar }: { notes: 
                     {t('Keep')}
                   </button>
                   <button
-                    className="btn bg-menstrual text-white"
+                    className="btn bg-menstrual text-bg"
                     disabled={del.pending}
                     onClick={async () => {
                       if (await del.run(() => deleteNote(selected.id))) setSelected(null);
@@ -162,7 +164,7 @@ export function NotesView({ notes, meId, partnerName, partnerAvatar }: { notes: 
             {t('Cancel')}
           </button>
           <button
-            className="btn bg-menstrual text-white"
+            className="btn bg-menstrual text-bg"
             disabled={del.pending}
             onClick={async () => {
               if (await del.run(() => clearNotes())) setConfirmClear(false);
@@ -173,11 +175,11 @@ export function NotesView({ notes, meId, partnerName, partnerAvatar }: { notes: 
         </div>
       </Sheet>
 
-      <div className="sticky bottom-[calc(env(safe-area-inset-bottom)+84px)] -mx-4 space-y-2 bg-bg/90 px-4 pt-2 pb-2 backdrop-blur-xl">
+      <div className="notes-composer sticky bottom-[calc(env(safe-area-inset-bottom)+84px)] -mx-4 space-y-2 bg-bg/90 px-4 pt-2 pb-2 backdrop-blur-xl">
         <div className="flex gap-2">
           {(Object.keys(NOTE_KINDS) as LoveNote['kind'][]).map((k) => (
-            <button key={k} onClick={() => setKind(k)} className={`chip ${kind === k ? 'chip-on' : ''}`}>
-              {NOTE_KINDS[k].emoji} {t(NOTE_KINDS[k].label)}
+            <button key={k} onClick={() => setKind(k)} aria-pressed={kind === k} className={`selection-choice chip ${kind === k ? 'text-rose-2 border-rose/30' : ''}`}>
+              {kind === k && <SelectionPill id="note-kind"/>}<SymbolIcon value={NOTE_KINDS[k].emoji} size={15}/> {t(NOTE_KINDS[k].label)}
             </button>
           ))}
         </div>

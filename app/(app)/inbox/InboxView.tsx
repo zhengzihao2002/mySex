@@ -1,9 +1,10 @@
 'use client';
+import { SymbolIcon } from '@/components/SymbolIcon';
 
 import Link from 'next/link';
 import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Check, ChevronLeft, Inbox, RefreshCw } from 'lucide-react';
+import { Check, ChevronLeft, Inbox, RefreshCw, TriangleAlert } from 'lucide-react';
 import { markEditNoticeRead, cancelEditRequest, markEditOutcomeRead, respondToEditRequest, cancelDeletionRequest, markDeletionRequestRead, respondToDeletionRequest } from '@/app/actions';
 import { FormError } from '@/components/FormError';
 import {SessionEditDiff} from '@/components/SessionEditDiff';
@@ -33,7 +34,7 @@ export function InboxView({ requests, notices, edits, meId, partnerName }: {
     {title:t('Unread replies and updates'),items:items.filter(i=>i.type==='notice'||i.value.status!=='pending')},
   ];
   return (
-    <div className="space-y-5 pt-2">
+    <div className="space-y-5 pt-2" data-motion>
       <header className="flex items-center gap-2">
         <Link href="/home" className="rounded-full bg-surface-2 p-2" aria-label={t('Back')}><ChevronLeft size={20} /></Link>
         <h1 className="font-display flex-1 text-3xl font-bold">{t('Inbox')}</h1>
@@ -83,7 +84,7 @@ function RequestCard({ request: r, meId, partnerName, now }: {
       <p className="text-xs font-semibold text-ink-2">{t('Deletion request')}</p>
       <InboxExpiry createdAt={r.createdAt} now={now}/>
       <div className="flex items-start gap-2">
-        <span className="text-xl">{KIND_META[r.sessionKind].emoji}</span>
+        <span className="text-xl"><SymbolIcon value={KIND_META[r.sessionKind].emoji} size={20}/></span>
         <div className="min-w-0 flex-1">
           <h3 className="font-semibold">
             {t(KIND_META[r.sessionKind].label)} · {f.prettyDate(dayInTz(r.sessionStartedAt, tz), { year: true })}
@@ -100,7 +101,7 @@ function RequestCard({ request: r, meId, partnerName, now }: {
             <p>{t(KIND_META[s.kind].label)} · {f.dateTimeInTz(s.startedAt, tz)}</p>
             <p>{s.status === 'active' ? t('Live timer is still running or paused.') : f.formatDuration(s.durationSec ?? 0)}</p>
             {s.place && <p className="break-words">{t('Where')}: {s.place}</p>}
-            {s.rating && <p>{'🔥'.repeat(s.rating)}</p>}
+            {s.rating && <p><SymbolIcon value="🔥" size={14}/>{s.rating}/5</p>}
             <p>{t('Her orgasms 💦')}: {s.herOrgasms ?? '–'} · {t('His orgasms 🍆')}: {s.hisOrgasms ?? '–'}</p>
             {s.tags.length > 0 && <p>{s.tags.map((tag) => t(tag)).join(' · ')}</p>}
             {s.notes && <p className="break-words whitespace-pre-wrap">{s.notes}</p>}
@@ -113,7 +114,7 @@ function RequestCard({ request: r, meId, partnerName, now }: {
       ) : (
         <div className="grid grid-cols-2 gap-2">
           <button className="btn-ghost" disabled={pending} onClick={() => run(() => respondToDeletionRequest(r.id, 'declined'))}>{t('Decline & keep')}</button>
-          <button className="btn bg-menstrual text-white" disabled={pending} onClick={async () => {
+          <button className="btn bg-menstrual text-bg" disabled={pending} onClick={async () => {
             if (r.changed) await run(() => respondToDeletionRequest(r.id, 'approved'));
             else setConfirmApproval(true);
           }}>{r.changed ? t('Close outdated request') : t('Agree to delete')}</button>
@@ -126,7 +127,7 @@ function RequestCard({ request: r, meId, partnerName, now }: {
         <FormError error={error} />
         <div className="grid grid-cols-2 gap-3">
           <button className="btn-ghost" onClick={() => setConfirmApproval(false)}>{t('Cancel')}</button>
-          <button className="btn bg-menstrual text-white" disabled={pending} onClick={async () => {
+          <button className="btn bg-menstrual text-bg" disabled={pending} onClick={async () => {
             if (await run(() => respondToDeletionRequest(r.id, 'approved'))) setConfirmApproval(false);
           }}>{t('Agree & delete')}</button>
         </div>
@@ -146,7 +147,7 @@ function EditNotice({ notice: n, partnerName,now }: { notice: SessionEditNotice;
     <details className="rounded-2xl bg-surface-2 p-3 text-sm"><summary className="cursor-pointer">{t('Review current session')}</summary>
       <div className="mt-2 space-y-2"><p>{t(KIND_META[n.session.kind].label)} · {f.dateTimeInTz(n.session.startedAt, tz)}</p>
       <p>{f.formatDuration(n.session.durationSec ?? 0)}</p><p>{n.session.place}</p>
-      {n.session.rating && <p>{'🔥'.repeat(n.session.rating)}</p>}
+      {n.session.rating && <p><SymbolIcon value="🔥" size={14}/>{n.session.rating}/5</p>}
       <p>{t('Her orgasms 💦')}: {n.session.herOrgasms ?? '–'} · {t('His orgasms 🍆')}: {n.session.hisOrgasms ?? '–'}</p>
       <p>{n.session.tags.map(tag => t(tag)).join(' · ')}</p><p className="whitespace-pre-wrap break-words">{n.session.notes}</p></div>
     </details>
@@ -175,7 +176,7 @@ function EditRequestCard({ edit: e, meId, partnerName,now }: { edit: SessionEdit
       <p className="text-xs font-semibold text-ink-2">{t('Edit request')}</p>
       <InboxExpiry createdAt={e.createdAt} now={now}/>
       <div className="flex items-start gap-2">
-        <span className="text-xl">{KIND_META[s.kind].emoji}</span>
+        <span className="text-xl"><SymbolIcon value={KIND_META[s.kind].emoji} size={20}/></span>
         <div className="min-w-0 flex-1">
           <h3 className="font-semibold">{t(KIND_META[s.kind].label)} · {f.prettyDate(dayInTz(s.startedAt, tz), { year: true })}</h3>
           <p className="text-xs text-ink-3">{f.dateTimeInTz(e.createdAt, tz)}</p>
@@ -202,5 +203,5 @@ function InboxExpiry({createdAt,now}:{createdAt:string;now:number}) {
   const remaining=inboxTimeLeft(createdAt,now);
   const urgent=inboxUrgent(createdAt,now);
   const label=remaining===0?t('Expired — cancelled'):remaining<=3600000?t('Expires in {n} min',{n:Math.ceil(remaining/60000)}):urgent?t('Expires in {n} hours',{n:Math.ceil(remaining/3600000)}):t('Expires in {n} days',{n:Math.ceil(remaining/86400000)});
-  return <p className={urgent?'inline-flex rounded-full bg-menstrual/20 px-2.5 py-1 text-xs font-bold text-menstrual':'text-xs text-ink-3'}>{urgent&&<span aria-hidden="true">⚠︎&nbsp;</span>}{label}</p>;
+  return <p className={urgent?'inline-flex rounded-full bg-menstrual/20 px-2.5 py-1 text-xs font-bold text-menstrual':'text-xs text-ink-3'}>{urgent&&<TriangleAlert size={13} className="mr-1" aria-hidden="true"/>}{label}</p>;
 }

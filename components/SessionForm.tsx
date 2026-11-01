@@ -1,4 +1,6 @@
 'use client';
+import { AnimatedValue } from '@/components/Motion';
+import { SymbolIcon } from '@/components/SymbolIcon';
 import { useT } from './I18nProvider';
 
 import {ExperienceFields} from './ExperienceFields';
@@ -116,14 +118,14 @@ export function SessionForm({
   const unchangedTiming=v.durationMin===initial?.durationMin&&v.breakMin===initial?.breakMin&&Date.parse(v.startedAt)===Date.parse(initial?.startedAt??'');
   return (
     <form
-      className="space-y-5"
+      className="space-y-5" data-motion
       data-session-editor={mode === 'edit' ? '' : undefined}
       onSubmit={(e) => {
         e.preventDefault();
         onSubmit(mode==='edit' ? {...v,sharedFields:changedFields,...(exactTiming?{durationMin:v.durationMin===initial?.durationMin?exactTiming.durationSec/60:v.durationMin,breakMin:v.breakMin===initial?.breakMin?exactTiming.breakSec/60:v.breakMin}:{})}:{...v,...activityDetails(v.kind,v)});
       }}
     >
-      {mode==='finish'?<p className="text-sm font-semibold">{KIND_META[initial?.kind??v.kind].emoji} {t(KIND_META[initial?.kind??v.kind].label)}</p>:<KindPicker value={v.kind} onChange={changeKind} disabled={pending}/>}
+      {mode==='finish'?<p className="text-sm font-semibold"><SymbolIcon value={KIND_META[initial?.kind??v.kind].emoji}/> {t(KIND_META[initial?.kind??v.kind].label)}</p>:<KindPicker value={v.kind} onChange={changeKind} disabled={pending}/>}
 
       {mode !== 'finish' && (
         <div className="grid grid-cols-1 gap-3">
@@ -170,7 +172,7 @@ export function SessionForm({
               onClick={() => set('protection', v.protection === p.key ? null : p.key)}
               className={`chip ${v.protection === p.key ? 'chip-on' : ''}`}
             >
-              {p.emoji} {t(p.label)}
+              <SymbolIcon value={p.emoji} size={16}/> {t(p.label)}
             </button>
           ))}
         </div>
@@ -214,11 +216,11 @@ export function Stepper({ label, value, onChange, disabled = false }: { label: s
     <div className="rounded-2xl border border-line bg-surface-2 p-3">
       <p className="mb-2 text-xs text-ink-3">{label}</p>
       <div className="flex items-center justify-between">
-        <button type="button" disabled={disabled} className="rounded-full bg-surface p-2 active:scale-90 disabled:opacity-30" onClick={() => onChange(n > 0 ? n - 1 : null)} aria-label="Less">
+        <button type="button" disabled={disabled} className="flex min-h-11 min-w-11 items-center justify-center rounded-full bg-surface p-2 active:scale-90 disabled:opacity-30" onClick={() => onChange(n > 0 ? n - 1 : null)} aria-label="Less">
           <Minus size={16} />
         </button>
-        <span className="text-2xl font-bold tabular-nums">{value ?? '–'}</span>
-        <button type="button" disabled={disabled} className="rounded-full bg-surface p-2 active:scale-90 disabled:opacity-30" onClick={() => onChange(Math.min(20, n + 1))} aria-label="More">
+        <span className="text-2xl font-bold tabular-nums"><AnimatedValue value={value ?? '–'}/></span>
+        <button type="button" disabled={disabled} className="flex min-h-11 min-w-11 items-center justify-center rounded-full bg-surface p-2 active:scale-90 disabled:opacity-30" onClick={() => onChange(Math.min(20, n + 1))} aria-label="More">
           <Plus size={16} />
         </button>
       </div>
@@ -255,7 +257,7 @@ export function Toggle({
         {sub && <span className="block text-xs text-ink-3">{sub}</span>}
       </span>
       <span className={`relative h-7 w-12 rounded-full transition ${on ? 'bg-rose' : 'bg-line'}`}>
-        <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all ${on ? 'left-[22px]' : 'left-0.5'}`} />
+        <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all ${on ? 'translate-x-[22px]' : 'translate-x-0.5'}`} />
       </span>
     </button>
   );

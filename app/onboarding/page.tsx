@@ -1,3 +1,4 @@
+import { SymbolIcon } from '@/components/SymbolIcon';
 import { redirect } from 'next/navigation';
 import { signOutAction } from '@/app/actions';
 import { hasCoupleHistory, requireViewer } from '@/lib/data';
@@ -13,7 +14,7 @@ export default async function OnboardingPage() {
   if (!viewer.profile) {
     return (
       <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-4 px-5 pt-safe pb-10 text-center">
-        <p className="text-5xl">🔒</p>
+        <p className="text-5xl"><SymbolIcon value="🔒" size={32}/></p>
         <h1 className="font-display text-2xl font-bold">{t('Invite only')}</h1>
         <p className="text-sm text-ink-2">{t('This account wasn’t created with a mySex access code. Sign out and create an account with the code.')}</p>
         <form action={signOutAction}>
