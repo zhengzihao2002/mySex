@@ -108,7 +108,13 @@ h1.font-display { line-height: 1.15; font-size: clamp(2rem, 4vw, 2.6rem); }
 [data-sheet-scroll] form > div:not(.grid) + div:not(.grid) { margin-top: 22px; }
 [data-sheet-scroll] legend .symbol-icon { margin-right: 4px; }
 [data-sheet-scroll] .label { line-height: 1.5; }
-.notes-composer { border-top: 1px solid var(--color-line); }
+.app-frame:has(.notes-page) { position: fixed; top: var(--notes-top, 0px); left: 0; right: 0; height: var(--notes-height, 100dvh); min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding-bottom: calc(max(12px, env(safe-area-inset-bottom)) + 84px); transform: none !important; }
+.notes-page { display: flex; flex: 1; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden; }
+.notes-page > .notes-header { flex-shrink: 0; margin-bottom: 0; padding-bottom: 20px; }
+.notes-thread { flex: 1; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior-y: contain; padding: 4px 2px 20px; scrollbar-width: thin; scrollbar-color: var(--color-line) transparent; }
+.notes-composer { flex-shrink: 0; min-width: 0; border-top: 1px solid var(--color-line); background: var(--color-bg); padding-top: 12px; }
+.app-frame:has(.notes-page[data-keyboard-open='true']) { padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+body:has(.notes-page[data-keyboard-open='true']) .nav-dock { visibility: hidden; pointer-events: none; }
 .notes-bubble-own { background: linear-gradient(135deg, #b82669, #7c2566); }
 .timer-start { border: 1px solid #ff3d7f40; border-radius: 50%; background: radial-gradient(circle, #ff3d7f10, transparent 70%); }
 .timer-start > span:nth-child(3) { background: linear-gradient(135deg, #cf205e, #9b2c6f 55%, #7c3aed); box-shadow: 0 0 60px #ff3d7f55, 0 0 0 12px #ff3d7f12, 0 0 0 30px #ff3d7f06; }
@@ -147,7 +153,8 @@ summary::marker { color: var(--color-rose); }
   .nav-secondary { display: flex; flex-direction: column; border-top: 1px solid var(--color-line); padding-top: 22px; margin-top: 24px; gap: 5px; }
   .nav-privacy { display: flex; align-items: center; justify-content: center; gap: 7px; margin-top: auto; color: var(--color-ink-3); font-size: 10px; padding-top: 32px; }
   .sheet-panel { border-radius: 26px; margin-bottom: 24px; max-height: calc(100% - 48px); }
-  .notes-composer { bottom: 0; }
+  .app-frame:has(.notes-page) { left: 240px; width: min(calc(100% - 240px), 720px); padding-bottom: 24px; }
+  body:has(.notes-page[data-keyboard-open='true']) .nav-dock { visibility: visible; pointer-events: auto; }
 }
 @media (max-width: 480px) {
   .app-frame { padding-left: 18px; padding-right: 18px; }

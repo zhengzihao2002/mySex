@@ -3,7 +3,7 @@ import { SelectionPill } from '@/components/Motion';
 import { SymbolIcon } from '@/components/SymbolIcon';
 import { useT } from '@/components/I18nProvider';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Send } from 'lucide-react';
 import { clearNotes, deleteNote, editNote, markNotesRead, sendNote } from '@/app/actions';
 import { Sheet } from '@/components/Sheet';
@@ -11,7 +11,7 @@ import { FormError } from '@/components/FormError';
 import { useTz } from '@/components/TzProvider';
 import { useRun } from '@/components/useRun';
 import { NOTE_KINDS } from '@/lib/content';
-import { dateTimeInTz } from '@/lib/tz';
+import { lockPageScroll } from '@/lib/page-scroll-lock';
 import type { LoveNote } from '@/lib/types';
 
 // i18n:begin
@@ -33,24 +33,75 @@ export function NotesView({ notes, meId, partnerName, partnerAvatar }: { notes: 
   const [editing, setEditing] = useState<string | null>(null);
   const del = useRun();
   const { run, pending, error } = useRun();
-  const bottom = useRef<HTMLDivElement>(null);
+  const page = useRef<HTMLDivElement>(null);
+  const thread = useRef<HTMLDivElement>(null);
+  const scrolled = useRef(false);
   const unread = notes.some((n) => n.fromUser !== meId && !n.readAt);
+
+  useLayoutEffect(() => {
+    const node = page.current;
+    const frame = node?.closest<HTMLElement>('.app-frame');
+    if (!node || !frame) return;
+    const unlock = lockPageScroll();
+    const viewport = window.visualViewport;
+    let layoutHeight = window.innerHeight;
+    let layoutWidth = window.innerWidth;
+    let animationFrame = 0;
+    const resize = () => {
+      const active = document.activeElement;
+      const typing = active instanceof HTMLElement && node.contains(active) && active.matches('input,textarea,[contenteditable="true"]');
+      if (layoutWidth !== window.innerWidth || !typing) {
+        layoutWidth = window.innerWidth;
+        layoutHeight = window.innerHeight;
+      }
+      const height = viewport?.height ?? window.innerHeight;
+      frame.style.setProperty('--notes-height', `${height}px`);
+      frame.style.setProperty('--notes-top', `${viewport?.offsetTop ?? 0}px`);
+      node.dataset.keyboardOpen = String(typing && layoutHeight - height > 120);
+    };
+    const schedule = () => {
+      cancelAnimationFrame(animationFrame);
+      animationFrame = requestAnimationFrame(resize);
+    };
+    resize();
+    viewport?.addEventListener('resize', schedule);
+    viewport?.addEventListener('scroll', schedule);
+    window.addEventListener('resize', schedule);
+    node.addEventListener('focusin', schedule);
+    node.addEventListener('focusout', schedule);
+    return () => {
+      cancelAnimationFrame(animationFrame);
+      viewport?.removeEventListener('resize', schedule);
+      viewport?.removeEventListener('scroll', schedule);
+      window.removeEventListener('resize', schedule);
+      node.removeEventListener('focusin', schedule);
+      node.removeEventListener('focusout', schedule);
+      frame.style.removeProperty('--notes-height');
+      frame.style.removeProperty('--notes-top');
+      unlock();
+    };
+  }, []);
 
   useEffect(() => {
     if (unread) markNotesRead();
   }, [unread]);
   useEffect(() => {
-    bottom.current?.scrollIntoView({ block: 'end', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+    const list = thread.current;
+    if (!list) return;
+    list.scrollTo({ top: list.scrollHeight, behavior: !scrolled.current || window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+    scrolled.current = true;
   }, [notes.length]);
 
   const ordered = [...notes].reverse();
 
   return (
-    <div className="flex min-h-[calc(100dvh-140px)] flex-col pt-2">
-      <h1 className="font-display text-3xl font-bold">{t('Dirty notes')}</h1>
-      <p className="mb-4 text-sm text-ink-3">{t('Just between you and {name}.', { name: partnerName })}</p>
+    <div ref={page} className="notes-page">
+      <header className="notes-header">
+        <h1 className="font-display text-3xl font-bold">{t('Dirty notes')}</h1>
+        <p className="mt-1 text-sm text-ink-3">{t('Just between you and {name}.', { name: partnerName })}</p>
+      </header>
 
-      <div className="flex-1 space-y-3 pb-6" data-motion>
+      <div ref={thread} className="notes-thread space-y-3" role="region" aria-label={t('Notes')} tabIndex={0} data-motion>
         {ordered.length === 0 && <p className="card text-center text-sm text-ink-2">{t('No notes yet. Make the first move 😏')}</p>}
         {ordered.map((n) => {
           const mine = n.fromUser === meId;
@@ -86,7 +137,6 @@ export function NotesView({ notes, meId, partnerName, partnerAvatar }: { notes: 
             {t('Clear all notes')}
           </button>
         )}
-        <div ref={bottom} />
       </div>
 
       <Sheet open={!!selected} onClose={() => setSelected(null)} title={t('Note')}>
@@ -175,11 +225,11 @@ export function NotesView({ notes, meId, partnerName, partnerAvatar }: { notes: 
         </div>
       </Sheet>
 
-      <div className="notes-composer sticky bottom-[calc(env(safe-area-inset-bottom)+84px)] -mx-4 space-y-2 bg-bg/90 px-4 pt-2 pb-2 backdrop-blur-xl">
-        <div className="flex gap-2">
+      <footer className="notes-composer space-y-2">
+        <div className="grid grid-cols-3 gap-2">
           {(Object.keys(NOTE_KINDS) as LoveNote['kind'][]).map((k) => (
-            <button key={k} onClick={() => setKind(k)} aria-pressed={kind === k} className={`selection-choice chip ${kind === k ? 'text-rose-2 border-rose/30' : ''}`}>
-              {kind === k && <SelectionPill id="note-kind"/>}<SymbolIcon value={NOTE_KINDS[k].emoji} size={15}/> {t(NOTE_KINDS[k].label)}
+            <button key={k} onClick={() => setKind(k)} aria-pressed={kind === k} title={t(NOTE_KINDS[k].label)} className={`selection-choice chip min-w-0 px-2 text-xs ${kind === k ? 'text-rose-2 border-rose/30' : ''}`}>
+              {kind === k && <SelectionPill id="note-kind"/>}<SymbolIcon value={NOTE_KINDS[k].emoji} size={15}/><span className="truncate">{t(NOTE_KINDS[k].label)}</span>
             </button>
           ))}
         </div>
@@ -210,7 +260,7 @@ export function NotesView({ notes, meId, partnerName, partnerAvatar }: { notes: 
           </button>
         </form>
         {error && <p className="text-xs text-rose-2">{t(error)}</p>}
-      </div>
+      </footer>
     </div>
   );
 }
