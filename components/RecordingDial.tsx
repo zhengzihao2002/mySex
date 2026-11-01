@@ -1,6 +1,8 @@
 'use client';
 
 import {useId} from 'react';
+import {motion,useReducedMotion} from 'motion/react';
+import {useRingCompletion} from './useRingCompletion';
 import {useT} from './I18nProvider';
 import {formatClock} from '@/lib/dates';
 
@@ -9,6 +11,9 @@ const OUTER=132,INNER=112;
 export function RecordingDial({seconds,paused,pending,caption,breakNo,breakSeconds,totalBreak}:{seconds:number;paused:boolean;pending:boolean;caption:string;breakNo:number;breakSeconds:number;totalBreak:number}) {
   const {t,f}=useT();
   const id=useId();
+  const reduced=!!useReducedMotion();
+  const secondsLap=useRingCompletion(seconds,60,reduced);
+  const minutesLap=useRingCompletion(seconds,3600,reduced);
   const secondsFraction=(seconds%60)/60;
   const minutesFraction=(seconds%3600)/3600;
   const angle=secondsFraction*2*Math.PI-Math.PI/2;
@@ -21,8 +26,14 @@ export function RecordingDial({seconds,paused,pending,caption,breakNo,breakSecon
       })}
       <circle cx="150" cy="150" r={OUTER} fill="none" stroke="#ffffff12" strokeWidth="6"/>
       <circle className="recording-seconds-progress" cx="150" cy="150" r={OUTER} fill="none" stroke={`url(#${id})`} strokeWidth="6" strokeLinecap="round" strokeDasharray={`${secondsFraction*2*Math.PI*OUTER} ${2*Math.PI*OUTER}`} transform="rotate(-90 150 150)"/>
+      {secondsLap.completed!==null&&<motion.circle key={`seconds-${secondsLap.completed}`} className="recording-seconds-completion" cx="150" cy="150" r={OUTER} fill="none" stroke={`url(#${id})`} strokeWidth="6" style={{filter:'drop-shadow(0 0 3px #ff3d7f88)'}}
+        initial={{opacity:1,r:OUTER,strokeWidth:6}} animate={{opacity:[1,.75,0],r:[OUTER,OUTER+2,OUTER+8],strokeWidth:[6,7,1]}}
+        transition={{duration:.75,times:[0,.25,1],ease:'easeOut'}} onAnimationComplete={()=>secondsLap.complete(secondsLap.completed!)}/> }
       <circle cx="150" cy="150" r={INNER} fill="none" stroke="#a78bfa1f" strokeWidth="3"/>
       <circle className="recording-minutes-progress" cx="150" cy="150" r={INNER} fill="none" stroke="#a78bfa" strokeWidth="3" strokeLinecap="round" strokeDasharray={`${minutesFraction*2*Math.PI*INNER} ${2*Math.PI*INNER}`} transform="rotate(-90 150 150)"/>
+      {minutesLap.completed!==null&&<motion.circle key={`minutes-${minutesLap.completed}`} className="recording-minutes-completion" cx="150" cy="150" r={INNER} fill="none" stroke="#a78bfa" strokeWidth="3" style={{filter:'drop-shadow(0 0 3px #a78bfa88)'}}
+        initial={{opacity:1,r:INNER,strokeWidth:3}} animate={{opacity:[1,.75,0],r:[INNER,INNER+2,INNER+7],strokeWidth:[3,4,1]}}
+        transition={{duration:.75,times:[0,.25,1],ease:'easeOut'}} onAnimationComplete={()=>minutesLap.complete(minutesLap.completed!)}/> }
       <circle className="recording-marker" cx={150+OUTER*Math.cos(angle)} cy={150+OUTER*Math.sin(angle)} r="6" fill="#fff" stroke="#ff7aa8" strokeWidth="2"/>
     </svg>
     <div className="recording-dial-center">

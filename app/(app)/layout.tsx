@@ -3,6 +3,7 @@ import {ViewMemory} from '@/components/ViewMemory';
 import {SessionViewer} from '@/components/SessionViewer';
 import { InboxProvider } from '@/components/InboxLink';
 import { AppFrame } from '@/components/Motion';
+import {RecordingLayerProvider} from '@/components/RecordingLayer';
 import { TabBar } from '@/components/TabBar';
 import { RefreshOnFocus } from '@/components/RefreshOnFocus';
 import { TzProvider } from '@/components/TzProvider';
@@ -29,10 +30,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <ViewMemory key={`${ctx.me.userId}:${ctx.couple.id}`}><SessionViewer meId={ctx.me.userId} isHer={ctx.me.sex==='female'}>
       <RefreshOnFocus />
       <InboxProvider initial={inboxCount}>
+      <RecordingLayerProvider>
       <AppFrame>
         {children}
       </AppFrame>
       <TabBar unread={unread} live={!!active} />
+      </RecordingLayerProvider>
       </InboxProvider>
     </SessionViewer></ViewMemory>
     </TzProvider>

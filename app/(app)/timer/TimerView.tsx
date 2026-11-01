@@ -8,7 +8,8 @@ import { useT } from '@/components/I18nProvider';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import {createPortal,flushSync} from 'react-dom';
+import {flushSync} from 'react-dom';
+import {RecordingLayer} from '@/components/RecordingLayer';
 import {RecordingDial} from '@/components/RecordingDial';
 import {useRecordingClock} from '@/components/useRecordingClock';
 import {recordingElapsed as elapsedSec} from '@/lib/recording-clock';
@@ -76,7 +77,7 @@ export function TimerView({
       {current && !mounted ? (
         <div className="fixed inset-0 z-[45] bg-bg" />
       ) : current ? (
-        createPortal(<LiveTimer
+        <RecordingLayer><LiveTimer
           key="live-timer"
           session={current}
           missions={missions}
@@ -90,7 +91,7 @@ export function TimerView({
             const next=[...done.filter(s=>s.id!==current.id),saved];
             setCelebration(serverCelebration??savedCelebration(next,current.id,iso=>dayInTz(iso,tz))??null);
           }}
-        />, document.body)
+        /></RecordingLayer>
       ) : (
         <IdleTimer onSaved={setCelebration} initialKind={initialKind} places={places} done={done} startError={startError} onStart={(s) => {setStartError(null);setOptimistic(s);}} onStartFailed={(error) => {setOptimistic(null);setStartError(error);}} />
       )}
