@@ -2,13 +2,15 @@
 import { SymbolIcon } from '@/components/SymbolIcon';
 import { useT } from '@/components/I18nProvider';
 
-import { MonitorSmartphone } from 'lucide-react';
+import { Laptop, MonitorSmartphone, Smartphone, Tablet } from 'lucide-react';
 import { signOutDevice, signOutOtherDevices } from '@/app/actions';
 import { FormError } from '@/components/FormError';
 import { useTz } from '@/components/TzProvider';
 import { useRun } from '@/components/useRun';
 import type { Device } from '@/lib/devices';
 import { describeDevice } from '@/lib/ua';
+
+const deviceIcons = { phone: Smartphone, tablet: Tablet, computer: Laptop };
 
 function place(d: { city: string | null; region: string | null; country: string | null }, unknown = 'Unknown location') {
   return [d.city, d.region, d.country].filter(Boolean).join(', ') || unknown;
@@ -39,10 +41,11 @@ export function DevicesSection({ devices, currentId }: { devices: Device[]; curr
       <div className="space-y-2">
         {[...devices].sort((a, b) => Number(b.deviceId === currentId) - Number(a.deviceId === currentId)).map((d) => {
           const { icon, label } = describeDevice(d.userAgent);
+          const DeviceIcon = deviceIcons[icon];
           const isThis = d.deviceId === currentId;
           return (
             <div key={d.deviceId} className={`flex items-center gap-3 rounded-2xl bg-surface-2 p-3 ${d.revokedAt ? 'opacity-50' : ''}`}>
-              <span className="text-2xl">{icon}</span>
+              <DeviceIcon size={24} strokeWidth={1.65} className="shrink-0 text-rose-2" aria-hidden="true" />
               <div className="min-w-0 flex-1">
                 <p className="flex items-center gap-2 text-sm font-semibold">
                   {label}

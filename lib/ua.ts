@@ -23,6 +23,6 @@ export function describeDevice(ua: string | null | undefined) {
         : /Safari\//.test(s) || /AppleWebKit/.test(s)
           ? 'Safari'
           : '';
-  const icon = device === 'iPhone' || device === 'Android' ? '📱' : device === 'iPad' ? '📲' : '💻';
+  const icon: 'phone' | 'tablet' | 'computer' = device === 'iPhone' || device === 'Android' ? 'phone' : device === 'iPad' ? 'tablet' : 'computer';
   return { icon, label: browser ? `${device} · ${browser}` : device };
 }
