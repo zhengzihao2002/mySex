@@ -1,16 +1,19 @@
 'use client';
 import { AnimatedValue } from '@/components/Motion';
 import { SymbolIcon } from '@/components/SymbolIcon';
-import {endurancePoints,progression,sessionXp,type MissionRun} from '@/lib/progression';
+import {progression,sessionXp,type MissionRun} from '@/lib/progression';
 import {TimerPrompts} from '@/components/TimerPrompts';
-import {SessionFeelings} from '@/components/SessionFeelings';
-import {SessionPersonality} from '@/components/SessionPersonality';
 import { useT } from '@/components/I18nProvider';
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronDown, EyeOff, History, MapPin, Navigation, Pause, Play, Trash2 } from 'lucide-react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {createPortal,flushSync} from 'react-dom';
+import {RecordingDial} from '@/components/RecordingDial';
+import {useRecordingClock} from '@/components/useRecordingClock';
+import {recordingElapsed as elapsedSec} from '@/lib/recording-clock';
+import {lockPageScroll} from '@/lib/page-scroll-lock';
+import { ChevronDown, EyeOff, History, MapPin, Navigation, Pause, Play, Shuffle, Trash2 } from 'lucide-react';
 import { discardActiveSession, finishSession, logPastSession, setPaused, startSession } from '@/app/actions';
 import { useRecordingLocation } from '@/components/useRecordingLocation';
 import { FormError } from '@/components/FormError';
@@ -22,16 +25,10 @@ import { Sheet } from '@/components/Sheet';
 import { KIND_META, KindPicker } from '@/components/KindPicker';
 import { useRun } from '@/components/useRun';
 import { placeSuggestions, scoreSessions } from '@/lib/clientScore';
-import { formatClock, formatDuration, prettyDate } from '@/lib/dates';
-import { dayInTz, timeInTz } from '@/lib/tz';
+import { formatClock } from '@/lib/dates';
+import { dayInTz } from '@/lib/tz';
 import { useTz } from '@/components/TzProvider';
 import type { SessionKind, SexSession } from '@/lib/types';
-
-/** Elapsed seconds of a session, derived only from server timestamps — survives app quits. */
-function elapsedSec(s: Pick<SexSession, 'startedAt' | 'pausedAt' | 'pausedSec'>, now: number) {
-  const end = s.pausedAt ? new Date(s.pausedAt).getTime() : now;
-  return Math.max(0, (end - new Date(s.startedAt).getTime()) / 1000 - s.pausedSec);
-}
 
 function milestone(min: number) {
   if (min < 2) return /*i18n*/ 'And we’re off 😏';
@@ -61,12 +58,13 @@ export function TimerView({
   const done = useMemo(() => sessions.filter((s) => s.status === 'done'), [sessions]);
   const places = useMemo(() => placeSuggestions(sessions), [sessions]);
   const [optimistic, setOptimistic] = useState<SexSession | null>(null);
+  const [startError,setStartError]=useState<string|null>(null);
   const [celebration,setCelebration]=useState<SaveCelebration|null>(null);
   const { tz } = useTz();
 
   // The clock depends on Date.now(); render it only on the device to avoid hydration drift.
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  useLayoutEffect(() => setMounted(true), []);
   useEffect(() => {
     if (active) setOptimistic(null);
   }, [active]);
@@ -78,7 +76,7 @@ export function TimerView({
       {current && !mounted ? (
         <div className="fixed inset-0 z-[45] bg-bg" />
       ) : current ? (
-        <LiveTimer
+        createPortal(<LiveTimer
           key="live-timer"
           session={current}
           missions={missions}
@@ -92,9 +90,9 @@ export function TimerView({
             const next=[...done.filter(s=>s.id!==current.id),saved];
             setCelebration(serverCelebration??savedCelebration(next,current.id,iso=>dayInTz(iso,tz))??null);
           }}
-        />
+        />, document.body)
       ) : (
-        <IdleTimer onSaved={setCelebration} initialKind={initialKind} places={places} done={done} onStart={(s) => setOptimistic(s)} onStartFailed={() => setOptimistic(null)} />
+        <IdleTimer onSaved={setCelebration} initialKind={initialKind} places={places} done={done} startError={startError} onStart={(s) => {setStartError(null);setOptimistic(s);}} onStartFailed={(error) => {setOptimistic(null);setStartError(error);}} />
       )}
       {celebration&&<SavedSessionReveal celebration={celebration} onClose={()=>setCelebration(null)}/>}
     </>
@@ -110,13 +108,15 @@ function IdleTimer({
   done,
   onStart,
   onStartFailed,
+  startError,
 }: {
   onSaved:(saved:SaveCelebration)=>void;
   initialKind:SessionKind;
   places: string[];
   done: SexSession[];
   onStart: (s: SexSession) => void;
-  onStartFailed: () => void;
+  onStartFailed: (error:string) => void;
+  startError: string|null;
 }) {
   const { t, f } = useT();
   const place = '';
@@ -131,9 +131,11 @@ function IdleTimer({
 
   const begin = async () => {
     if (navigator.vibrate) navigator.vibrate(30);
+    let failure:string|null=null;
     const ok = await start.run(async () => {
       const gps = useLocation && useGps ? await getGps() : null;
-      onStart({
+      // The pending screen must commit before the asynchronous server action.
+      flushSync(()=>onStart({
         id: 'pending',
         scoreVersion:3,
         kind,
@@ -160,10 +162,12 @@ function IdleTimer({
         notes: null,
         updatedAt: new Date().toISOString(),
         breaks: [],
-      });
-      return startSession({ kind, place: place || null, useLocation, gps });
+      }));
+      const result=await startSession({ kind, place: place || null, useLocation, gps });
+      if(!result.ok)failure=result.error;
+      return result;
     });
-    if (!ok) onStartFailed();
+    if (!ok) onStartFailed(failure??'Something went wrong. Try again.');
   };
 
   return (
@@ -190,7 +194,7 @@ function IdleTimer({
         {useLocation && (
           <Toggle on={useGps} onChange={setUseGps} disabled={start.pending} icon={<Navigation size={16} />} title={t('Precise GPS pin')} sub={t('Asks for location permission')} />
         )}
-        <FormError error={start.error} />
+        <FormError error={start.error??startError} />
 
         <button onClick={() => setPastOpen(true)} disabled={start.pending} className="btn-ghost w-full">
           <History size={16} /> {t('Forgot the timer? Log a past session')}
@@ -249,27 +253,6 @@ export function toPayload(v: SessionFormValues, gps: { latitude: number; longitu
 
 // ─────────────────────────────── live ───────────────────────────────
 
-function useNow(running: boolean) {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    if (!running) return;
-    let raf = 0;
-    const loop = () => {
-      setNow(Date.now());
-      raf = requestAnimationFrame(loop);
-    };
-    raf = requestAnimationFrame(loop);
-    // rAF stops while the app is backgrounded; snap back to real time on return.
-    const onVis = () => setNow(Date.now());
-    document.addEventListener('visibilitychange', onVis);
-    return () => {
-      cancelAnimationFrame(raf);
-      document.removeEventListener('visibilitychange', onVis);
-    };
-  }, [running]);
-  return now;
-}
-
 function useWakeLock(enabled: boolean) {
   const [supported, setSupported] = useState(false);
   const [locked, setLocked] = useState(false);
@@ -301,11 +284,6 @@ function useWakeLock(enabled: boolean) {
   return { supported, locked };
 }
 
-const R_OUT = 132;
-const R_IN = 112;
-const C_OUT = 2 * Math.PI * R_OUT;
-const C_IN = 2 * Math.PI * R_IN;
-
 function LiveTimer({
   session,
   missions,
@@ -327,47 +305,56 @@ function LiveTimer({
 }) {
   const { t, f } = useT();
   const router = useRouter();
-  const paused = !!session.pausedAt;
-  // Keep ticking while paused too, so the break clock runs.
-  const now = useNow(true);
-  const breakNo = session.breaks.length;
-  const breakSecs = session.pausedAt ? Math.max(0, (now - new Date(session.pausedAt).getTime()) / 1000) : 0;
-  const totalBreak = session.pausedSec + breakSecs;
-  const secs = elapsedSec(session, now);
+  const [pauseIntent,setPauseIntent]=useState<boolean|null>(null);
+  const [clockReset,setClockReset]=useState(0);
+  const localPauseAt=useRef<number|null>(null);
+  const paused=pauseIntent??!!session.pausedAt;
+  const optimisticPause=pauseIntent!==null&&pauseIntent!==!!session.pausedAt;
+  const {seconds:secs,now}=useRecordingClock(session,{pending:pendingStart,paused,optimistic:optimisticPause,reset:clockReset});
+  const breakNo=session.breaks.length;
+  const pauseAt=session.pausedAt?Date.parse(session.pausedAt):localPauseAt.current;
+  const breakSecs=paused&&pauseAt!=null?Math.max(0,(now-pauseAt)/1000):0;
+  const totalBreak=session.pausedSec+breakSecs;
+  useLayoutEffect(()=>lockPageScroll(),[]);
+  useEffect(()=>{
+    if(pauseIntent!==null&&pauseIntent===!!session.pausedAt)setPauseIntent(null);
+  },[pauseIntent,session.pausedAt]);
   // The screen stays on automatically while a session is running (no toggle needed).
   useWakeLock(!paused);
   const [dim, setDim] = useState(false);
   const [finishOpen, setFinishOpen] = useState(false);
+  const [promptOpen,setPromptOpen]=useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const act = useRun();
   const finish = useRun();
   const frozenAt = useRef<number>(0);
 
   const minutes = secs / 60;
-  const secFrac = (secs % 60) / 60;
-  const minFrac = (minutes % 60) / 60;
-  const staminaMax=45;
-  const stamina=endurancePoints(secs);
-  const liveXp=sessionXp({...session,status:'done',durationSec:secs});
+  const recordedSeconds=pendingStart?0:elapsedSec(session,now);
+  const liveXp=sessionXp({...session,status:'done',durationSec:recordedSeconds});
   const mission=useMemo(()=>progression(sessions,missions).quests.find(q=>session.kind==='intercourse'&&!q.complete&&q.mission.path==='endurance'&&q.mission.rule==='session'),[sessions,missions,session.kind,session.startedAt]);
-  const headAngle = secFrac * 2 * Math.PI - Math.PI / 2;
   const { tz } = useTz();
   const startedLabel = f.timeInTz(session.startedAt, tz);
   const where = session.place || [session.city, session.country].filter(Boolean).join(', ');
 
+  const requestPause=async(next:boolean)=>{
+    if(next)localPauseAt.current=Date.now();
+    setPauseIntent(next);
+    const ok=await act.run(()=>setPaused(session.id,next));
+    if(!ok){setPauseIntent(null);setClockReset(n=>n+1);}
+    return ok;
+  };
   const openFinish = async () => {
     if (navigator.vibrate) navigator.vibrate([20, 40, 20]);
     frozenAt.current = secs;
-    // Freeze the clock first so filling in the details doesn't add minutes.
-    // Always an explicit pause (never a toggle), so a stale screen can't resume a partner-paused clock.
-    if(!await act.run(() => setPaused(session.id, true)))return;
+    if(!await requestPause(true))return;
     setFinishOpen(true);
   };
 
   return (
-    <div className="timer-screen fixed inset-0 z-[45] flex flex-col overflow-hidden bg-bg">
+    <div className="timer-screen">
       {/* Ambient light */}
-      <div className={`pointer-events-none absolute inset-0 transition-opacity duration-1000 ${paused ? 'opacity-30' : 'opacity-100'}`}>
+      <div className="pointer-events-none absolute inset-0 overflow-hidden transition-opacity duration-1000" style={{opacity:paused ? 0.3 : 0.75}}>
         <div className="absolute -top-1/4 -left-1/4 h-[80vh] w-[80vh] animate-[drift_22s_linear_infinite] rounded-full bg-rose/25 blur-[100px]" />
         <div className="absolute -right-1/4 -bottom-1/4 h-[70vh] w-[70vh] animate-[drift_28s_linear_infinite_reverse] rounded-full bg-ovulation/25 blur-[110px]" />
       </div>
@@ -387,133 +374,21 @@ function LiveTimer({
         </div>
       </header>
 
-      <main className="relative z-10 mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col items-center overflow-y-auto px-6 py-3">
-        <div className="my-auto flex w-full shrink-0 flex-col items-center py-1">
-        <div className="relative aspect-square w-full max-w-[340px] shrink-0">
-          {/* heartbeat ripples */}
-          {!paused && (
-            <>
-              <span className="absolute inset-[18%] rounded-full border border-rose/40 [animation:ripple_2s_ease-out_infinite]" />
-              <span className="absolute inset-[18%] rounded-full border border-ovulation/40 [animation:ripple_2s_ease-out_1s_infinite]" />
-            </>
-          )}
-          <svg viewBox="0 0 300 300" className="absolute inset-0 h-full w-full">
-            <defs>
-              <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#ff7aa8" />
-                <stop offset="55%" stopColor="#ff3d7f" />
-                <stop offset="100%" stopColor="#a78bfa" />
-              </linearGradient>
-              <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-                <feGaussianBlur stdDeviation="4" result="b" />
-                <feMerge>
-                  <feMergeNode in="b" />
-                  <feMergeNode in="SourceGraphic" />
-                </feMerge>
-              </filter>
-            </defs>
-            {/* minute ticks */}
-            {Array.from({ length: 60 }, (_, i) => {
-              const a = (i / 60) * 2 * Math.PI - Math.PI / 2;
-              const long = i % 5 === 0;
-              const r1 = 146;
-              const r2 = long ? 139 : 142;
-              const lit = i / 60 <= secFrac;
-              return (
-                <line
-                  key={i}
-                  x1={150 + r1 * Math.cos(a)}
-                  y1={150 + r1 * Math.sin(a)}
-                  x2={150 + r2 * Math.cos(a)}
-                  y2={150 + r2 * Math.sin(a)}
-                  stroke={lit ? '#ff7aa8' : 'rgba(255,255,255,0.14)'}
-                  strokeWidth={long ? 2 : 1}
-                  strokeLinecap="round"
-                />
-              );
-            })}
-            <circle cx="150" cy="150" r={R_OUT} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="6" />
-            <circle
-              cx="150"
-              cy="150"
-              r={R_OUT}
-              fill="none"
-              stroke="url(#ringGrad)"
-              strokeWidth="6"
-              strokeLinecap="round"
-              strokeDasharray={`${secFrac * C_OUT} ${C_OUT}`}
-              transform="rotate(-90 150 150)"
-              filter="url(#glow)"
-            />
-            <circle cx="150" cy="150" r={R_IN} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="3" />
-            <circle
-              cx="150"
-              cy="150"
-              r={R_IN}
-              fill="none"
-              stroke="#a78bfa"
-              strokeOpacity="0.85"
-              strokeWidth="3"
-              strokeLinecap="round"
-              strokeDasharray={`${minFrac * C_IN} ${C_IN}`}
-              transform="rotate(-90 150 150)"
-            />
-            <circle cx={150 + R_OUT * Math.cos(headAngle)} cy={150 + R_OUT * Math.sin(headAngle)} r="7" fill="#fff" filter="url(#glow)" />
-          </svg>
-
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <svg viewBox="0 0 24 24" className={`mb-2 h-7 w-7 fill-rose ${paused ? 'opacity-40' : 'animate-beat'}`}>
-              <path d="M12 21s-7.5-4.6-10-9.2C.4 8.6 2.3 4.5 6.2 4.5c2.2 0 3.8 1.3 4.6 2.6.2.3.6.3.8 0 .8-1.3 2.4-2.6 4.6-2.6 3.9 0 5.8 4.1 4.2 7.3C19.5 16.4 12 21 12 21z" />
-            </svg>
-            <span className={`text-[64px] leading-none font-extralight tracking-tight tabular-nums ${paused ? 'text-ink-2' : ''}`}>
-              <AnimatedValue value={formatClock(secs)}/>
-            </span>
-            <span className="mt-3 text-sm font-medium text-ink-2">
-              {paused ? (
-                <>
-                  {t('Break #{n}', { n: Math.max(1, breakNo) })} · <span className="tabular-nums text-luteal">{formatClock(breakSecs)}</span>
-                </>
-              ) : (
-                t(milestone(minutes))
-              )}
-            </span>
-            {breakNo > 0 && (
-              <span className="mt-1 text-[11px] text-ink-3 tabular-nums">
-                {f.plural(breakNo, t('{n} break', { n: breakNo }), t('{n} breaks', { n: breakNo }))} · {t('{d} total', { d: f.formatDuration(totalBreak) })}
-              </span>
-            )}
-          </div>
+      <main className="recording-main">
+        <div className="recording-dial-slot">
+          <RecordingDial seconds={secs} paused={paused} pending={pendingStart} caption={t(milestone(minutes))} breakNo={breakNo} breakSeconds={breakSecs} totalBreak={totalBreak}/>
         </div>
-
-        <div className="mt-6 flex items-center gap-2 text-xs text-ink-3">
-          <span>
-            {t('{name} started at {time}', { name: isMine ? t('You') : starterName, time: startedLabel })}
-          </span>
-          {where && (
-            <>
-              <span>·</span>
-              <span className="flex items-center gap-1">
-                <MapPin size={12} /> {where}
-              </span>
-            </>
-          )}
-        </div>
-
-
-        {session.kind==='intercourse'&&<div className="mb-2 w-full max-w-[300px] rounded-2xl border border-line bg-surface/40 px-3 py-2 text-center text-xs text-ink-2">
-          <span className="font-semibold text-rose-2">{t('On save')}: +{liveXp.total} XP</span>
-          {mission&&<p className="mt-1">{t(mission.mission.title)} · {Math.min(mission.mission.minMinutes,Math.floor(minutes))}/{mission.mission.minMinutes} {t('min')} · {mission.mission.minPositions} {t('Positions')}</p>}
-        </div>}
-        {session.kind === 'intercourse' && <div className="my-3 w-full max-w-[300px] shrink-0"><TimerPrompts paused={paused || pendingStart} kind={session.kind} /></div>}
-        <div className="mt-4 w-full max-w-[300px]">
-          <div className="mb-1 flex justify-between text-[11px] text-ink-3">
-            <span>{t('Stamina points')}</span>
-            <span className="tabular-nums">{stamina}/{staminaMax}</span>
+        <div className="recording-details">
+          <div className="recording-ring-legend" aria-label={t('Timer rings')}><span><i className="bg-rose"/>{t('Seconds')}</span><span><i className="bg-ovulation"/>{t('Minutes')}</span></div>
+          <div className="recording-origin text-xs text-ink-3">
+            <span>{t('{name} started at {time}', { name: isMine ? t('You') : starterName, time: startedLabel })}</span>
+            <span className="inline-flex items-center justify-center gap-1"><MapPin size={12}/>{where || (pendingStart?t('Starting…'):t('No recorded location'))}</span>
           </div>
-          <div className="h-1 overflow-hidden rounded-full bg-white/10">
-            <div className="h-full rounded-full bg-gradient-to-r from-rose to-ovulation" style={{ width: `${(stamina / staminaMax) * 100}%` }} />
-          </div>
-        </div>
+          {session.kind==='intercourse'&&<div className="recording-xp rounded-2xl border border-line bg-surface/40 px-3 py-2 text-center text-xs text-ink-2">
+            <span className="font-semibold text-rose-2">{t('On save')}: +{liveXp.total} XP</span>
+            {mission&&<p className="mt-1">{t(mission.mission.title)} · {Math.min(mission.mission.minMinutes,Math.floor(recordedSeconds/60))}/{mission.mission.minMinutes} {t('min')} · {mission.mission.minPositions} {t('Positions')}</p>}
+          </div>}
+          {session.kind==='intercourse'&&<button type="button" className="recording-prompt-trigger btn-ghost" onClick={()=>setPromptOpen(true)} disabled={pendingStart}><Shuffle size={16}/>{t('Shuffle a timer prompt')}</button>}
         </div>
       </main>
 
@@ -522,7 +397,7 @@ function LiveTimer({
         <div className="flex items-center justify-center gap-5">
           <button
             onClick={() => setConfirmDiscard(true)}
-            disabled={pendingStart}
+            disabled={pendingStart || act.pending}
             className="flex h-14 w-14 items-center justify-center rounded-full bg-surface-2/80 text-ink-3 backdrop-blur disabled:opacity-40"
             aria-label="Discard"
           >
@@ -536,7 +411,7 @@ function LiveTimer({
             {t('We’re done 💦')}
           </button>
           <button
-            onClick={() => act.run(() => setPaused(session.id, !paused))}
+            onClick={() => requestPause(!paused)}
             disabled={pendingStart || act.pending}
             className="flex h-14 w-14 items-center justify-center rounded-full bg-surface-2/80 text-ink backdrop-blur disabled:opacity-40"
             aria-label={paused ? 'Resume' : 'Pause'}
@@ -552,6 +427,10 @@ function LiveTimer({
           <span className="mt-2 text-[10px] text-white/15">{t('tap to wake')}</span>
         </button>
       )}
+
+      <Sheet open={promptOpen} onClose={()=>setPromptOpen(false)} title={t('Shuffle a timer prompt')}>
+        <div className="py-4"><TimerPrompts paused={paused||pendingStart} kind={session.kind}/></div>
+      </Sheet>
 
       <Sheet open={confirmDiscard} onClose={() => setConfirmDiscard(false)} title={t('Discard this unfinished recording?')}>
         <p className="mb-4 text-sm text-ink-2">{t('This removes the unfinished timer immediately. No saved session or partner request is created.')}</p>

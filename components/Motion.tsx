@@ -37,7 +37,7 @@ export function MotionProvider({ children }: { children: ReactNode }) {
 
 export function AppFrame({ children }: { children: ReactNode }) {
   const path = usePathname();
-  return <motion.main key={path} className="app-frame" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .28, ease: [.22, 1, .36, 1] }}>{children}</motion.main>;
+  return <motion.main key={path} className="app-frame" initial={path === '/timer' ? false : { opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .28, ease: [.22, 1, .36, 1] }}>{children}</motion.main>;
 }
 
 export function AnimatedContent({ value, children }: { value: string; children: ReactNode }) {

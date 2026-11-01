@@ -1,6 +1,9 @@
 // Simplified Chinese. Keys are the English UI text (see lib/i18n/core.ts).
 // Run `node scripts/check-i18n.mjs --missing` to find untranslated keys.
 export const zh: Record<string, string> = {
+  "Timer rings": "计时环",
+  "Minutes": "分钟",
+  "Seconds": "秒",
   "Both said yes": "双方都愿意",
   "At least one maybe": "至少一方选择也许",
   "View all {n} achievements": "查看全部{n}项成就",
