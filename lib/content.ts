@@ -21,8 +21,8 @@ export const PHASES: Record<
   menstrual: {
     name: 'Period',
     emoji: '🩸',
-    color: '#e995a0',
-    tint: 'rgba(233,149,160,0.13)',
+    color: '#fb527d',
+    tint: 'rgba(251,82,125,0.20)',
     blurb: 'The uterine lining sheds. Energy dips, cramps and cravings are common.',
     hormones: 'Estrogen & progesterone at their lowest.',
     her: 'Heat pad, iron-rich snacks, slow orgasms are a legit cramp reliever.',
@@ -32,8 +32,8 @@ export const PHASES: Record<
   follicular: {
     name: 'Follicular',
     emoji: '🌱',
-    color: '#88b7a2',
-    tint: 'rgba(136,183,162,0.13)',
+    color: '#2dd4bf',
+    tint: 'rgba(45,212,191,0.17)',
     blurb: 'A new egg matures. Estrogen climbs — mood, skin and confidence glow up.',
     hormones: 'Estrogen rising, FSH active.',
     her: 'Great time to try something new — energy and adventurousness are climbing.',
@@ -43,8 +43,8 @@ export const PHASES: Record<
   ovulation: {
     name: 'Ovulation',
     emoji: '🔥',
-    color: '#baa7df',
-    tint: 'rgba(186,167,223,0.13)',
+    color: '#a78bfa',
+    tint: 'rgba(167,139,250,0.22)',
     blurb: 'An egg is released. Peak fertility — and usually peak horniness.',
     hormones: 'LH surge, estrogen peaks, a little testosterone bump.',
     her: 'Peak sex drive. Also peak fertility — protect accordingly if you’re not trying.',
@@ -54,8 +54,8 @@ export const PHASES: Record<
   luteal: {
     name: 'Luteal',
     emoji: '🌙',
-    color: '#d9b67e',
-    tint: 'rgba(217,182,126,0.13)',
+    color: '#fbbf24',
+    tint: 'rgba(251,191,36,0.17)',
     blurb: 'Progesterone takes over. Bloating, tender breasts and PMS can show up near the end.',
     hormones: 'Progesterone high, estrogen dips then falls.',
     her: 'Cozy, slow sex and lots of foreplay. Magnesium and sleep help with PMS.',
@@ -65,9 +65,9 @@ export const PHASES: Record<
 };
 
 export const PREGNANCY_CHANCE = {
-  low: { label: 'Low', color: '#88b7a2' },
-  medium: { label: 'Medium', color: '#d9b67e' },
-  high: { label: 'High', color: '#e995a0' },
+  low: { label: 'Low', color: '#2dd4bf' },
+  medium: { label: 'Medium', color: '#fbbf24' },
+  high: { label: 'High', color: '#fb527d' },
 } as const;
 
 export const MOODS = [

@@ -13,7 +13,7 @@ export type Bar = { key: string; label: string; value: number; color?: string; d
 export function Bars({
   data,
   height = 120,
-  color = '#d88f86',
+  color = '#ff3d7f',
   format = (n: number) => String(n),
   avg,
 }: {
@@ -88,7 +88,7 @@ export function HBars({ data, format = (n: number) => String(n) }: { data: Bar[]
             <span className="tabular-nums text-ink-3"><AnimatedValue value={format(d.value)}/></span>
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-surface-2">
-            <div className="h-full rounded-full" style={{ width: `${(d.value / max) * 100}%`, background: d.color ?? '#d88f86' }} />
+            <div className="h-full rounded-full" style={{ width: `${(d.value / max) * 100}%`, background: d.color ?? '#ff3d7f' }} />
           </div>
         </div>
       ))}

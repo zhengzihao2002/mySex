@@ -73,7 +73,7 @@ function InteractiveMap({value, onChange, readOnly=false}: {value: GpsCoordinate
         noWrap: true, maxZoom: 19, attribution: `&copy; ${t('OpenStreetMap')} · ODbL`,
       }).addTo(map);
       tiles.on('tileerror', () => {if (!disposed) setError(true);});
-      const icon = L.divIcon({className: 'session-map-pin', iconSize: [32,42], iconAnchor: [16,42], html: '<svg viewBox="0 0 32 42" width="32" height="42" aria-hidden="true"><path d="M16 40C13 35 2 25 2 16a14 14 0 0 1 28 0c0 9-11 19-14 24Z" fill="#d88f86" stroke="white" stroke-width="2"/><circle cx="16" cy="16" r="5" fill="white"/></svg>'});
+      const icon = L.divIcon({className: 'session-map-pin', iconSize: [32,42], iconAnchor: [16,42], html: '<svg viewBox="0 0 32 42" width="32" height="42" aria-hidden="true"><path d="M16 40C13 35 2 25 2 16a14 14 0 0 1 28 0c0 9-11 19-14 24Z" fill="#ff3d7f" stroke="white" stroke-width="2"/><circle cx="16" cy="16" r="5" fill="white"/></svg>'});
       let marker: import('leaflet').Marker | undefined;
       const place = (latlng: import('leaflet').LatLng, notify: boolean,label?:string) => {
         const point = {latitude: Number(Math.max(-85,Math.min(85,latlng.lat)).toFixed(6)), longitude: Number(Math.max(-180,Math.min(180,latlng.lng)).toFixed(6))};

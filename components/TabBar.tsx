@@ -25,7 +25,7 @@ export function TabBar({ unread, live }: { unread: number; live: boolean }) {
         const timer = href === '/timer';
         return <Link key={href} href={href} className={`nav-item ${timer ? 'nav-record' : ''}`} aria-current={selected ? 'page' : undefined} aria-label={timer && live ? t('Live right now') : t(label)}>
           {selected && !timer && <SelectionPill id="main-navigation" />}
-          <span className="relative"><Icon size={21} strokeWidth={1.65} />{timer && live && <span className="absolute -right-1 -top-1 h-2 w-2 animate-pulse rounded-full bg-bg ring-2 ring-rose" />}</span>
+          <span className="relative"><Icon size={21} strokeWidth={1.65} className={timer && live ? 'animate-beat' : undefined} />{timer && live && <span className="absolute -right-1 -top-1 h-2 w-2 animate-pulse rounded-full bg-bg ring-2 ring-rose" />}</span>
           <span className={timer ? 'record-label hidden' : ''}>{t(label)}</span>
           {href === '/notes' && unread > 0 && <span className="absolute right-2 top-1 min-w-4 rounded-full bg-rose px-1 text-center text-[9px] leading-4 text-bg">{unread}</span>}
         </Link>;

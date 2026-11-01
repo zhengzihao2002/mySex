@@ -10,7 +10,7 @@ import { SessionTimes } from './SessionTimes';
 
 export function scoreColor(total: number) {
   const value = Number.isFinite(total) ? Math.max(0, Math.min(100, total)) : 0;
-  return `hsl(${(value * 1.2).toFixed(2)} 48% 66%)`;
+  return `hsl(${(value * 1.2).toFixed(2)} 80% 60%)`;
 }
 
 export function ScoreBadge({ score, size = 'sm' }: { score: Score; size?: 'sm' | 'md' }) {

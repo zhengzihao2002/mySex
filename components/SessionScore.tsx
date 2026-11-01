@@ -9,7 +9,7 @@ import {useT} from './I18nProvider';
 import {endurancePoints,positionTags,sessionXp} from '@/lib/progression';
 import {scoreColor} from './ScoreBadge';
 
-const COLORS=['#d88f86','#baa7df','#8da4bd','#d9b67e','#88b7a2','#d2a6bd'];
+const COLORS=['#ff3d7f','#a78bfa','#7c8dff','#fbbf24','#2dd4bf','#e992b6'];
 const R=66,C=2*Math.PI*R;
 
 /** Each coloured arc contributes its points out of 100, leaving unearned points muted. */

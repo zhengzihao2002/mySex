@@ -167,7 +167,7 @@ function IdleTimer({
   };
 
   return (
-    <div className="flex flex-col items-center pt-4">
+    <div className="flex flex-col items-center overflow-x-clip pt-4">
       <p className="text-xs font-semibold tracking-[0.3em] text-ink-3 uppercase">{t('Live timer')}</p>
       <h1 className="font-display mt-1 text-3xl font-bold">{t('Ready when you are')}</h1>
       <KindPicker value={kind} onChange={setKind} disabled={start.pending} className="mt-4 w-full max-w-xs" />
@@ -399,9 +399,9 @@ function LiveTimer({
           <svg viewBox="0 0 300 300" className="absolute inset-0 h-full w-full">
             <defs>
               <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#efb0a6" />
-                <stop offset="55%" stopColor="#d88f86" />
-                <stop offset="100%" stopColor="#baa7df" />
+                <stop offset="0%" stopColor="#ff7aa8" />
+                <stop offset="55%" stopColor="#ff3d7f" />
+                <stop offset="100%" stopColor="#a78bfa" />
               </linearGradient>
               <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
                 <feGaussianBlur stdDeviation="4" result="b" />
@@ -425,7 +425,7 @@ function LiveTimer({
                   y1={150 + r1 * Math.sin(a)}
                   x2={150 + r2 * Math.cos(a)}
                   y2={150 + r2 * Math.sin(a)}
-                  stroke={lit ? '#efb0a6' : 'rgba(255,255,255,0.14)'}
+                  stroke={lit ? '#ff7aa8' : 'rgba(255,255,255,0.14)'}
                   strokeWidth={long ? 2 : 1}
                   strokeLinecap="round"
                 />
@@ -450,7 +450,7 @@ function LiveTimer({
               cy="150"
               r={R_IN}
               fill="none"
-              stroke="#baa7df"
+              stroke="#a78bfa"
               strokeOpacity="0.85"
               strokeWidth="3"
               strokeLinecap="round"

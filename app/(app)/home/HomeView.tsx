@@ -246,7 +246,7 @@ function CycleCard({
                 strokeDasharray={`${Math.max(0, len - 2)} ${C}`}
                 strokeDashoffset={-offset}
                 transform="rotate(-90 64 64)"
-                opacity={s.phase === info.phase ? 1 : 0.25}
+                opacity={s.phase === info.phase ? 1 : 0.45}
               />
             );
             offset += len;

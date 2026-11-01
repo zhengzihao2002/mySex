@@ -12,13 +12,13 @@ export function renderIcon(size: number) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          background: '#1a1a1d',
+          background: 'radial-gradient(circle at 30% 20%, #ff3d7f 0%, #9b2c6f 55%, #1a0f18 100%)',
         }}
       >
         <svg width={heart} height={heart} viewBox="0 0 24 24">
           <path
             fill="none"
-            stroke="#efb0a6"
+            stroke="#fff"
             strokeWidth="1.25"
             d="M12 21s-7.5-4.6-10-9.2C.4 8.6 2.3 4.5 6.2 4.5c2.2 0 3.8 1.3 4.6 2.6.2.3.6.3.8 0 .8-1.3 2.4-2.6 4.6-2.6 3.9 0 5.8 4.1 4.2 7.3C19.5 16.4 12 21 12 21z"
           />
