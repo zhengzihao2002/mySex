@@ -173,8 +173,9 @@ function IdleTimer({
       <KindPicker value={kind} onChange={setKind} disabled={start.pending} className="mt-4 w-full max-w-xs" />
 
       <button onClick={begin} disabled={start.pending || !locationReady} className="timer-start group relative my-10 flex h-56 w-56 items-center justify-center" aria-label="Start timer">
-        <span className="absolute inset-0 rounded-full bg-rose/30 [animation:ripple_2.4s_ease-out_infinite]" />
-        <span className="absolute inset-0 rounded-full bg-ovulation/25 [animation:ripple_2.4s_ease-out_1.2s_infinite]" />
+        {/* Start both waves in the loop so no delayed ring appears as a solid disk. */}
+        <span aria-hidden="true" className="absolute inset-0 rounded-full bg-rose/30 opacity-0 [animation:ripple_2.4s_ease-out_infinite]" />
+        <span aria-hidden="true" className="absolute inset-0 rounded-full bg-ovulation/25 opacity-0 [animation:ripple_2.4s_ease-out_-1.2s_infinite]" />
         <span className="absolute inset-3 rounded-full bg-gradient-to-br from-rose via-plum to-ovulation shadow-[0_0_80px_rgba(255,61,127,0.45)] transition group-active:scale-95" />
         <span className="relative flex flex-col items-center text-white">
           <svg viewBox="0 0 24 24" className="h-14 w-14 animate-beat fill-white">
