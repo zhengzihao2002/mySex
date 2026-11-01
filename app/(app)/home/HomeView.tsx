@@ -262,7 +262,7 @@ function CycleCard({
       </div>
       <div className="min-w-0 flex-1 space-y-1.5">
         <p className="eyebrow mb-1">{t('Your cycle, today')}</p>
-        <p className="phase-heading">
+        <p className="phase-heading" style={{ color: phase.color }}>
           {t(phase.name)}
         </p>
         {model.daysLate > 0 ? (

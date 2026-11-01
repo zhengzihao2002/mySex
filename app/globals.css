@@ -178,13 +178,13 @@ summary::marker { color: var(--color-rose); }
 
 .achievement-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
 .achievement { border: 1px solid var(--color-line); border-radius: 16px; padding: 14px; background: #ffffff02; }
-.achievement[data-unlocked='true'] { background: #ff3d7f09; border-color: #ff3d7f33; }
+.achievement[data-unlocked='true'] { background: color-mix(in srgb, var(--achievement-accent) 5%, transparent); border-color: color-mix(in srgb, var(--achievement-accent) 24%, transparent); }
 .achievement-icon { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 11px; background: var(--color-surface-2); color: var(--color-ink-3); margin-bottom: 10px; }
-.achievement[data-unlocked='true'] .achievement-icon { background: #ff3d7f15; color: var(--color-rose-2); }
+.achievement[data-unlocked='true'] .achievement-icon { background: color-mix(in srgb, var(--achievement-accent) 14%, transparent); color: var(--achievement-accent); }
 .achievement-title { display: block; font-size: 12px; font-weight: 500; line-height: 1.4; }
 .achievement-description { display: block; margin-top: 5px; font-size: 10px; color: var(--color-ink-3); line-height: 1.5; }
 .achievement-status { display: block; margin-top: 10px; font-size: 9px; letter-spacing: .03em; color: var(--color-ink-3); }
-.achievement[data-unlocked='true'] .achievement-status { color: var(--color-rose-2); }
+.achievement[data-unlocked='true'] .achievement-status { color: var(--achievement-accent); }
 @media (min-width: 600px) { .achievement-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
 .auth-form > .label { margin-bottom: 6px; margin-top: 18px; }

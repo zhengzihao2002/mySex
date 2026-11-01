@@ -3,7 +3,7 @@ import { AnimatedContent, SelectionPill } from '@/components/Motion';
 import { SymbolIcon } from '@/components/SymbolIcon';
 import { useT } from '@/components/I18nProvider';
 
-import { useEffect,useMemo, useState } from 'react';
+import { useEffect,useMemo, useState, type CSSProperties } from 'react';
 import {useSearchParams} from 'next/navigation';
 import {useViewState,useViewScroll} from '@/components/ViewMemory';
 import { MapPin } from 'lucide-react';
@@ -391,12 +391,14 @@ function BadgeGrid({ badges }: { badges: ReturnType<typeof achievements> }) {
   const [filter, setFilter] = useViewState<'all' | 'stories' | 'unlocked' | 'remaining'>('insights:badges','all');
   const [search, setSearch] = useViewState('insights:badge-search','');
   const [expanded, setExpanded] = useViewState('insights:badges-expanded',false);
+  // Use the full collection so each badge keeps its accent through filtering.
+  const accents = new Map(badges.map((badge, index) => [badge.key, `hsl(${((index * 137.508 + 35) % 360).toFixed(2)} 78% 72%)`]));
   const visible = badges.filter(b => (filter === 'all' || (filter === 'stories' ? b.collection === 'stories' : filter === 'unlocked' ? b.unlocked : !b.unlocked)) &&
     `${t(b.title)} ${t(b.desc)}`.toLowerCase().includes(search.toLowerCase()));
   return <div className="mt-3 space-y-3">
     <input className="input" value={search} onChange={e => setSearch(e.target.value)} placeholder={t('Search achievements')} aria-label={t('Search achievements')} />
     <div className="flex flex-wrap gap-2">{(['all','stories','unlocked','remaining'] as const).map(k => <button key={k} className={`chip ${filter === k ? 'chip-on' : ''}`} aria-pressed={filter === k} onClick={() => {setFilter(k);setExpanded(false);}}>{t(k === 'all' ? 'All' : k === 'stories' ? 'Stories & surprises' : k === 'unlocked' ? 'Unlocked' : 'Still to discover')}</button>)}</div>
-    <div className="achievement-grid" data-motion>{(expanded || search.trim() ? visible : visible.slice(0,12)).map(b => <div key={b.key} className="achievement" data-unlocked={b.unlocked}>
+    <div className="achievement-grid" data-motion>{(expanded || search.trim() ? visible : visible.slice(0,12)).map(b => <div key={b.key} className="achievement" data-unlocked={b.unlocked} style={b.unlocked ? { '--achievement-accent': accents.get(b.key) } as CSSProperties : undefined}>
       <span className="achievement-icon"><SymbolIcon value={b.emoji} size={20}/></span><span className="achievement-title">{t(b.title)}</span>
       <span className="achievement-description">{t(b.desc)}</span><span className="achievement-status">{b.unlocked ? t('Unlocked') : t('Still to discover')}</span>
     </div>)}</div>
