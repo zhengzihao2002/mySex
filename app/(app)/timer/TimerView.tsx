@@ -389,7 +389,7 @@ function LiveTimer({
             <span className="font-semibold text-rose-2">{t('On save')}: +{liveXp.total} XP</span>
             {mission&&<p className="mt-1">{t(mission.mission.title)} · {Math.min(mission.mission.minMinutes,Math.floor(recordedSeconds/60))}/{mission.mission.minMinutes} {t('min')} · {mission.mission.minPositions} {t('Positions')}</p>}
           </div>}
-          {session.kind==='intercourse'&&<button type="button" className="recording-prompt-trigger btn-ghost" onClick={()=>setPromptOpen(true)} disabled={pendingStart}><Shuffle size={16}/>{t('Shuffle a timer prompt')}</button>}
+          {session.kind==='intercourse'&&<button type="button" className="recording-prompt-trigger btn-ghost" onClick={()=>setPromptOpen(true)} disabled={pendingStart}><Shuffle size={16}/>{t('Discover a random position')}</button>}
         </div>
       </main>
 
@@ -429,7 +429,8 @@ function LiveTimer({
         </button>
       )}
 
-      <Sheet open={promptOpen} onClose={()=>setPromptOpen(false)} title={t('Shuffle a timer prompt')}>
+      <Sheet open={promptOpen} onClose={()=>setPromptOpen(false)} title={t('Discover a random position')}>
+        <p className="mb-2 text-sm text-ink-2">{t('Flip the card to reveal a random intercourse position.')}</p>
         <div className="py-4"><TimerPrompts paused={paused||pendingStart} kind={session.kind}/></div>
       </Sheet>
 

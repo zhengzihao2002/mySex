@@ -2,7 +2,7 @@
 
 import {useEffect,useLayoutEffect,useId,useRef} from 'react';
 import {createPortal} from 'react-dom';
-import {AnimatePresence,motion,useIsPresent} from 'motion/react';
+import {AnimatePresence,motion,MotionConfig,useIsPresent} from 'motion/react';
 import {X} from 'lucide-react';
 import {useT} from './I18nProvider';
 import {lockPageScroll} from '@/lib/page-scroll-lock';
@@ -11,7 +11,7 @@ type SheetProps={open:boolean;onClose:()=>void;title?:React.ReactNode;children:R
 
 export function Sheet(props:SheetProps) {
   if(typeof document==='undefined')return null;
-  return createPortal(<AnimatePresence>{props.open&&<SheetPanel {...props}/>}</AnimatePresence>,document.body);
+  return createPortal(<MotionConfig reducedMotion="never"><AnimatePresence>{props.open&&<SheetPanel {...props}/>}</AnimatePresence></MotionConfig>,document.body);
 }
 
 function SheetPanel({onClose,title,children,viewKey,stableHeight=false}:Omit<SheetProps,'open'>) {
@@ -108,7 +108,7 @@ function SheetPanel({onClose,title,children,viewKey,stableHeight=false}:Omit<She
   },[stableHeight]);
   return <motion.div ref={root} data-app-sheet inert={!present} initial="closed" animate="open" exit="closed" className="fixed inset-0 z-50 flex items-end justify-center" transition={{duration:.26,ease:[.22,1,.36,1]}}>
     <motion.div variants={{closed:{opacity:0},open:{opacity:1}}} className="absolute inset-0 touch-none bg-black/65 backdrop-blur-sm" onClick={onClose}/>
-    <motion.div variants={{closed:{y:"100%",opacity:0},open:{y:0,opacity:1}}} transition={{duration:.28,ease:[.22,1,.36,1]}} ref={dialog} role="dialog" aria-modal="true" aria-labelledby={title?titleId:undefined} aria-label={title?undefined:t('Details')} tabIndex={-1}
+    <motion.div variants={{closed:{y:"100%",transition:{duration:.36,ease:[.4,0,1,1]}},open:{y:0,transition:{duration:.4,ease:[.22,1,.36,1]}}}} ref={dialog} role="dialog" aria-modal="true" aria-labelledby={title?titleId:undefined} aria-label={title?undefined:t('Details')} tabIndex={-1}
       className={`sheet-panel relative flex max-h-[92%] w-full max-w-lg flex-col rounded-t-[28px] outline-none ${stableHeight?'h-[92%]':''}`}>
       <div className="mx-auto mt-2.5 h-1.5 w-10 shrink-0 rounded-full bg-line"/>
       <div className="flex shrink-0 items-center justify-between gap-3 px-5 pt-3 pb-2">
