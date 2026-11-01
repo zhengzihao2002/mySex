@@ -50,7 +50,7 @@ Next.js 16 (App Router, server actions) · React 19 · Tailwind CSS 4 · **Neon 
 
 ## Local development
 
-After pulling changes that add dependencies, run `npm ci` before `npm run dev`. If development reports `Module not found: Can't resolve '@formkit/auto-animate'` (or `motion/react`), this reinstalls the dependencies from the committed lockfile. Installing dependencies does not run database migrations.
+After pulling changes that add dependencies, run `npm ci` before `npm run dev` to sync your local install with the committed lockfile. Layout animations are bundled with the app; `@formkit/auto-animate` no longer needs a separate package installation. Installing dependencies does not run database migrations.
 
 On macOS, use Node 22 LTS (or newer) and run commands inside this repository:
 

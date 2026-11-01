@@ -3,7 +3,7 @@
 import { useEffect, type ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
 import { AnimatePresence, motion, MotionConfig } from 'motion/react';
-import autoAnimate from '@formkit/auto-animate';
+import autoAnimate from '@/lib/vendor/auto-animate/index.mjs';
 
 export function MotionProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
