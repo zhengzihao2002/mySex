@@ -11,12 +11,12 @@ export function TimerPrompts({onClose}:{onClose:()=>void}) {
  const {t}=useT();
  const dialog=useRef<HTMLDialogElement>(null);
  const [index]=useState(()=>nextPrompt(-1,Math.random,true));
- const [front,setFront]=useState(false);
+ const [revealed,setRevealed]=useState(false);
  const [ready,setReady]=useState(false);
  const [closing,setClosing]=useState(false);
  const eligibleAt=useRef(Infinity);
  const reduced=useReducedMotion();
- const dismiss=()=>{if(performance.now()>=eligibleAt.current)setClosing(true);};
+ const dismiss=()=>{if(revealed&&performance.now()>=eligibleAt.current)setClosing(true);};
  useLayoutEffect(()=>{
    const node=dialog.current;if(!node)return;
    const previous=document.activeElement;
@@ -26,10 +26,9 @@ export function TimerPrompts({onClose}:{onClose:()=>void}) {
    return()=>{node.close();unlock();if(previous instanceof HTMLElement&&previous.isConnected)previous.focus({preventScroll:true});};
  },[]);
  useEffect(()=>{
-   const flip=setTimeout(()=>setFront(true),400);
    const allow=setTimeout(()=>setReady(true),3000);
    const expire=setTimeout(()=>setClosing(true),30000);
-   return()=>{clearTimeout(flip);clearTimeout(allow);clearTimeout(expire);};
+   return()=>{clearTimeout(allow);clearTimeout(expire);};
  },[]);
  const descriptions:Record<(typeof TIMER_PROMPTS)[number],string>={
  Missionary:t('One partner lies on their back; the other is above, face to face.'),
@@ -65,13 +64,13 @@ export function TimerPrompts({onClose}:{onClose:()=>void}) {
      onClick={event=>{if(event.target===event.currentTarget)dismiss();}}>
      <motion.div className="position-reveal-card" initial={{y:36,scale:.72,rotate:-8,opacity:0}} animate={closing?{y:30,scale:.8,rotate:5,opacity:0}:{y:0,scale:1,rotate:0,opacity:1}}
        transition={{duration:reduced?0:.45,ease:[.22,1,.36,1]}} onAnimationComplete={()=>{if(closing)onClose();}}>
-       <motion.button type="button" className="position-reveal-inner block text-center" aria-label={front?`${t(position)}. ${descriptions[position]} ${t('Put card away')}`:t('Revealing…')} aria-disabled={!ready||closing} onClick={dismiss}
-         initial={false} animate={{rotateY:front&&!closing?180:0}} transition={{duration:reduced?0:.65,ease:[.22,1,.36,1]}}>
-         <span aria-hidden={front} className="position-reveal-face"><span className="absolute left-5 top-4 text-rose-2"><SymbolIcon value="❤️" size={18}/></span><SymbolIcon value="🃏" size={64}/><span className="absolute bottom-4 right-5 rotate-180 text-rose-2"><SymbolIcon value="❤️" size={18}/></span></span>
-         <span aria-hidden={!front} className="position-reveal-face position-reveal-front"><span className="absolute left-5 top-4 text-rose-2"><SymbolIcon value="❤️" size={18}/></span><span className="font-display text-2xl leading-tight">{t(position)}</span><span className="text-sm leading-relaxed text-ink-2">{descriptions[position]}</span><span className="absolute bottom-4 right-5 rotate-180 text-rose-2"><SymbolIcon value="❤️" size={18}/></span></span>
-       </motion.button>
+       <button type="button" className="position-reveal-inner block text-center" aria-label={revealed?`${t(position)}. ${descriptions[position]} ${t('Put card away')}`:t('Revealing…')} aria-disabled={!revealed||!ready||closing} onClick={dismiss}
+         onAnimationEnd={event=>{if(event.target===event.currentTarget&&event.animationName==='position-reveal-flip')setRevealed(true);}}>
+         <span aria-hidden={revealed} className="position-reveal-face"><span className="absolute left-5 top-4 text-rose-2"><SymbolIcon value="❤️" size={18}/></span><SymbolIcon value="🃏" size={64}/><span className="absolute bottom-4 right-5 rotate-180 text-rose-2"><SymbolIcon value="❤️" size={18}/></span></span>
+         <span aria-hidden={!revealed} className="position-reveal-face position-reveal-front"><span className="absolute left-5 top-4 text-rose-2"><SymbolIcon value="❤️" size={18}/></span><span className="font-display text-2xl leading-tight">{t(position)}</span><span className="text-sm leading-relaxed text-ink-2">{descriptions[position]}</span><span className="absolute bottom-4 right-5 rotate-180 text-rose-2"><SymbolIcon value="❤️" size={18}/></span></span>
+       </button>
      </motion.div>
-     <button type="button" className="min-h-11 rounded-full border border-rose/20 bg-surface/70 px-5 text-sm text-ink-2 disabled:opacity-50" disabled={!ready||closing} onClick={dismiss}>{ready?t('Put card away'):t('Revealing…')}</button>
+     <div className="position-reveal-dismiss">{revealed&&<motion.button type="button" initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} transition={{duration:reduced?0:.2}} className="min-h-11 rounded-full border border-rose/20 bg-surface/70 px-5 text-sm text-ink-2 disabled:opacity-50" disabled={!ready||closing} onClick={dismiss}>{t('Put card away')}</motion.button>}</div>
    </motion.div>
  </dialog>,document.body);
 }

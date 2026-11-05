@@ -14,9 +14,9 @@ export function FontSettings({ initial }: { initial: FontPreferences }) {
   };
   return <section className="card space-y-5">
     <div><h2 className="flex items-center gap-2 text-lg"><Type size={18}/>{t('Fonts')}</h2>
-      <p className="mt-1 text-xs leading-relaxed text-ink-3">{t('Choose heading styles for each language. Body text stays easy to read. Saved on this device.')}</p></div>
+      <p className="mt-1 text-xs leading-relaxed text-ink-3">{t('Apply your chosen English and Chinese fonts throughout the app. Saved on this device.')}</p></div>
     {(['en', 'zh'] as const).map(language => <fieldset key={language}>
-      <legend className="label">{language === 'en' ? t('English headings') : t('Chinese headings')}</legend>
+      <legend className="label">{language === 'en' ? t('English font') : t('Chinese font')}</legend>
       <div className="grid gap-2 sm:grid-cols-3">{FONT_OPTIONS[language].map(option => <button key={option.id} type="button" aria-pressed={chosen[language] === option.id}
         onClick={() => choose(language, option.id)} className={`font-option rounded-2xl border p-3 text-left ${chosen[language] === option.id ? 'border-rose/60 bg-rose/10' : 'border-line bg-surface-2/40'}`}>
         <span className="mb-2 flex items-center justify-between gap-2 text-xs text-ink-2">{t(option.label)}{chosen[language] === option.id && <Check size={14} className="text-rose-2"/>}</span>

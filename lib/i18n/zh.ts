@@ -1,6 +1,9 @@
 // Simplified Chinese. Keys are the English UI text (see lib/i18n/core.ts).
 // Run `node scripts/check-i18n.mjs --missing` to find untranslated keys.
 export const zh: Record<string, string> = {
+  "Apply your chosen English and Chinese fonts throughout the app. Saved on this device.": "所选中英文字体应用于整个应用，设置保存在此设备上。",
+  "English font": "英文字体",
+  "Chinese font": "中文字体",
   "Fonts": "字体",
   "Choose heading styles for each language. Body text stays easy to read. Saved on this device.": "分别选择中英文标题字体，正文保持清晰易读。设置保存在此设备上。",
   "English headings": "英文标题",
