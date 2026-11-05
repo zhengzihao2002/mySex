@@ -3,7 +3,7 @@ import { AnimatedContent, SelectionPill } from '@/components/Motion';
 import { SymbolIcon } from '@/components/SymbolIcon';
 import { useT } from '@/components/I18nProvider';
 
-import { useEffect,useMemo, useState, type CSSProperties } from 'react';
+import { useEffect,useMemo, useRef, useState, type CSSProperties } from 'react';
 import {useSearchParams} from 'next/navigation';
 import {useViewState,useViewScroll} from '@/components/ViewMemory';
 import { MapPin } from 'lucide-react';
@@ -23,7 +23,7 @@ import { diffDays, formatDuration, MONTHS, prettyDate, prettyRange, relativeDays
 import { dayInTz, hourInTz } from '@/lib/tz';
 import type { DailyLog, LoveNote, Period, SessionKind, SexSession } from '@/lib/types';
 
-type Tab = 'cycle' | 'sex' | 'history' | 'places';
+type Tab = 'cycle' | 'sex' | 'history' | 'places' | 'achievements';
 const PHASE_ORDER: Phase[] = ['menstrual', 'follicular', 'ovulation', 'luteal'];
 
 export function InsightsView(props: {
@@ -39,26 +39,36 @@ export function InsightsView(props: {
 }) {
   const { t, f } = useT();
   const [tab,setTab]=useViewState<Tab>('insights:tab','sex');
+  const tabBar = useRef<HTMLDivElement>(null);
   const query=useSearchParams();
   const requested=query.get('session');
   const target=props.sessions.some(s=>s.id===requested)?requested:null;
   const visibleTab=target?'history':tab;
   useEffect(()=>{if(target)setTab('history');},[target,setTab]);
   useViewScroll(`insights:${visibleTab}`);
+  useEffect(() => {
+    const bar = tabBar.current;
+    const selected = bar?.querySelector<HTMLElement>('[aria-pressed="true"]');
+    if (!bar || !selected) return;
+    const bounds = bar.getBoundingClientRect(), item = selected.getBoundingClientRect();
+    const left = item.left < bounds.left ? item.left - bounds.left - 4 : item.right > bounds.right ? item.right - bounds.right + 4 : 0;
+    if (left) bar.scrollBy({left, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'});
+  }, [visibleTab]);
   const clearTarget=()=>{const url=new URL(window.location.href);url.searchParams.delete('session');window.history.replaceState(window.history.state,'',url.pathname+url.search+url.hash);};
   return (
     <div className="space-y-4 pt-2">
       <h1 className="font-display text-3xl font-bold">{t('Insights')}</h1>
-      <div className="selection-group grid grid-cols-4 gap-1 rounded-2xl border border-line bg-bg/40 p-1 text-xs font-medium" role="group" aria-label={t('Insights')}>
+      <div className="selection-group flex gap-1 overflow-x-auto rounded-2xl border border-line bg-bg/40 p-1 text-xs font-medium" ref={tabBar} role="group" aria-label={t('Insights')}>
         {(
           [
             ['sex', /*i18n*/ 'Sex 🔥'],
+            ['achievements', /*i18n*/ 'Achievements'],
             ['cycle', /*i18n*/ 'Cycle 🌙'],
             ['history', /*i18n*/ 'History 📖'],
             ['places', /*i18n*/ 'Places 📍'],
           ] as const
         ).map(([k, label]) => (
-          <button key={k} onClick={() => {clearTarget();setTab(k);}} aria-pressed={visibleTab === k} className={`selection-choice min-h-11 rounded-xl py-2 ${visibleTab === k ? 'text-rose-2' : 'text-ink-3'}`}>
+          <button key={k} onClick={() => {clearTarget();setTab(k);}} aria-pressed={visibleTab === k} className={`selection-choice min-h-11 min-w-max flex-1 rounded-xl px-3 py-2 ${visibleTab === k ? 'text-rose-2' : 'text-ink-3'}`}>
             {visibleTab === k && <SelectionPill id="insights-tabs"/>}<span>{t(label)}</span>
           </button>
         ))}
@@ -66,6 +76,7 @@ export function InsightsView(props: {
       <AnimatedContent value={visibleTab}>
       {visibleTab === 'cycle' && <CycleTab {...props} />}
       {visibleTab === 'sex' && <SexTab {...props} />}
+      {visibleTab === 'achievements' && <AchievementsTab {...props} />}
       {visibleTab === 'history' && <HistoryTab sessions={props.sessions} target={target} onTargetClosed={clearTarget}/>}
       {visibleTab === 'places' && <PlacesTab sessions={props.sessions} />}
       </AnimatedContent>
@@ -233,14 +244,12 @@ function CycleTab({ periods, sessions, herLogs, isHer, herName, defaults }: Para
 
 // ─────────────────────────────── sex ───────────────────────────────
 
-function SexTab({ sessions: allSessions, herName, hisName, logs, notes }: Parameters<typeof InsightsView>[0]) {
+function SexTab({ sessions: allSessions, herName, hisName }: Parameters<typeof InsightsView>[0]) {
   const { t } = useT();
-  const { tz, today } = useTz();
+  const { tz } = useTz();
   const [kind, setKind] = useViewState<'all' | SessionKind>('insights:sex-kind','all');
   const sessions = useMemo(() => (kind === 'all' ? allSessions : allSessions.filter((s) => s.kind === kind)), [allSessions, kind]);
-  // Achievements are always about everything, regardless of the filter.
   const allScores = useMemo(() => scoreSessions(allSessions, tz), [allSessions, tz]);
-  const badges = useMemo(() => achievements(allSessions, allScores, tz, today, { logs, notes }), [allSessions, allScores, tz, today, logs, notes]);
 
   return (
     <div className="space-y-4">
@@ -254,13 +263,24 @@ function SexTab({ sessions: allSessions, herName, hisName, logs, notes }: Parame
       ) : (
         <SexStats key={kind} sessions={sessions} kind={kind} allSessions={allSessions} scores={allScores} herName={herName} hisName={hisName} />
       )}
+
+    </div>
+  );
+}
+
+function AchievementsTab({ sessions, logs, notes }: Parameters<typeof InsightsView>[0]) {
+  const { t } = useT();
+  const { tz, today } = useTz();
+  // Always use the full history, independently of the Sex tab's activity filter.
+  const scores = useMemo(() => scoreSessions(sessions, tz), [sessions, tz]);
+  const badges = useMemo(() => achievements(sessions, scores, tz, today, { logs, notes }), [sessions, scores, tz, today, logs, notes]);
+  return (
       <section className="card">
         <h3 className="mb-1 font-semibold">{t('Achievements')}</h3>
         <p className="mb-2 text-xs text-ink-3">{t('A collection of your story, not a to-do list. There is no deadline or ideal pace.')}</p>
         <p className="text-xs text-ink-3">{t('{a} of {b} unlocked', { a: badges.filter((b) => b.unlocked).length, b: badges.length })}</p>
         <BadgeGrid badges={badges} />
       </section>
-    </div>
   );
 }
 
