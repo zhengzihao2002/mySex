@@ -1,4 +1,4 @@
-/** Display-only clock smoothing. Saved timing continues to use server timestamps. */
+/** Clock smoothing and bounded tap timestamps. Saved timing uses the persisted start. */
 export type RecordingClockSource = { id: string; startedAt: string; pausedAt: string | null; pausedSec: number };
 export type RecordingClockFrame = { id: string; seconds: number; at: number; pending: boolean; reset: number };
 
@@ -7,7 +7,7 @@ export function recordingElapsed(source: Pick<RecordingClockSource, 'startedAt' 
 }
 
 export function recordingClockFrame(source: RecordingClockSource, now: number, pending = false, reset = 0): RecordingClockFrame {
-  return { id: source.id, seconds: pending ? 0 : recordingElapsed(source, now), at: now, pending, reset };
+  return { id: source.id, seconds: recordingElapsed(source, now), at: now, pending, reset };
 }
 
 export function advanceRecordingClock(previous: RecordingClockFrame, source: RecordingClockSource, now: number, options: { pending: boolean; paused: boolean; optimistic: boolean; reset: number }): RecordingClockFrame {
@@ -30,4 +30,10 @@ export function advanceRecordingClock(previous: RecordingClockFrame, source: Rec
     seconds = Math.abs(error) > 2 ? raw : predicted + Math.max(-elapsed * .25, Math.min(elapsed * .25, error));
   }
   return { id: source.id, seconds, at: now, pending: false, reset: options.reset };
+}
+
+/** Preserve the Start tap through GPS/network waits; reject clock skew and old client timestamps. */
+export function recordingStartTime(requested: string | undefined, receivedAt: number): string {
+  const tap = requested ? Date.parse(requested) : NaN;
+  return new Date(Number.isFinite(tap) && Math.abs(receivedAt - tap) <= 60000 ? Math.min(tap, receivedAt) : receivedAt).toISOString();
 }

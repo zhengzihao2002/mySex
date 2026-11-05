@@ -1,18 +1,26 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { advanceRecordingClock, recordingClockFrame, recordingElapsed } from './recording-clock.ts';
+import { advanceRecordingClock, recordingClockFrame, recordingElapsed, recordingStartTime } from './recording-clock.ts';
 
 const epoch = Date.parse('2026-11-01T12:00:00Z');
 const source = { id: 'session', startedAt: new Date(epoch).toISOString(), pausedAt: null as string | null, pausedSec: 0 };
 const running = { pending: false, paused: false, optimistic: false, reset: 0 };
 
-test('startup stays at zero until the server confirms its later start time', () => {
+test('startup runs immediately through GPS/server latency and confirmation keeps the tap time', () => {
   const optimistic = { ...source, id: 'pending' };
   const initial = recordingClockFrame(optimistic, epoch, true);
-  const waiting = advanceRecordingClock(initial, optimistic, epoch + 700, { ...running, pending: true });
-  assert.equal(waiting.seconds, 0);
-  const confirmed = advanceRecordingClock(waiting, { ...source, startedAt: new Date(epoch + 650).toISOString() }, epoch + 720, running);
-  assert(confirmed.seconds >= 0 && confirmed.seconds <= .025);
+  const waiting = advanceRecordingClock(initial, optimistic, epoch + 1700, { ...running, pending: true });
+  assert.equal(waiting.seconds, 1.7);
+  const confirmed = advanceRecordingClock(waiting, source, epoch + 1720, running);
+  assert(Math.abs(confirmed.seconds - 1.72) < .00001);
+});
+
+test('saved start time preserves a recent tap but bounds device clock skew', () => {
+  assert.equal(recordingStartTime(new Date(epoch).toISOString(), epoch + 17000), new Date(epoch).toISOString());
+  for (const value of [undefined, 'invalid', new Date(epoch-61000).toISOString(), new Date(epoch+61000).toISOString()]) {
+    assert.equal(recordingStartTime(value,epoch),new Date(epoch).toISOString());
+  }
+  assert.equal(recordingStartTime(new Date(epoch+1000).toISOString(),epoch),new Date(epoch).toISOString());
 });
 
 test('pause freezes the dial through a delayed server response', () => {

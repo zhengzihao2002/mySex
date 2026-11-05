@@ -1,4 +1,5 @@
 'use server';
+import { recordingStartTime } from '@/lib/recording-clock';
 
 import { dismissEditOutcome, requestSessionEdit, respondToSessionEdit, withdrawSessionEdit } from '@/lib/session-edit-requests';
 import {storeSessionFeeling} from '@/lib/session-feelings';
@@ -278,6 +279,7 @@ async function locationFields(useLocation: boolean, gps?: { latitude: number; lo
 const kindSchema = z.enum(['intercourse', 'oral']);
 
 const startSchema = z.object({
+  startedAt: z.string().datetime({ offset: true }).optional(),
   kind: kindSchema.optional(),
   place: z.string().trim().max(60).optional().nullable(),
   useLocation: z.boolean(),
@@ -285,14 +287,16 @@ const startSchema = z.object({
 });
 
 export async function startSession(input: z.input<typeof startSchema>): Promise<ActionResult> {
+  const receivedAt = Date.now();
   const ctx = await couple();
   const p = startSchema.safeParse(input);
   if (!p.success) return fail('Invalid input');
+  const startedAt = recordingStartTime(p.data.startedAt, receivedAt);
   const loc = await locationFields(p.data.useLocation, p.data.gps);
   try {
     await sql`
       insert into sessions (couple_id, created_by, status, started_at, kind, ip, city, region, country, latitude, longitude, geo_source, gps_named_at, place, experiences_initialized)
-      values (${ctx.couple.id}, ${ctx.me.userId}, 'active', now(), ${p.data.kind ?? 'intercourse'}, ${loc.ip}, ${loc.city}, ${loc.region}, ${loc.country},
+      values (${ctx.couple.id}, ${ctx.me.userId}, 'active', ${startedAt}::timestamptz, ${p.data.kind ?? 'intercourse'}, ${loc.ip}, ${loc.city}, ${loc.region}, ${loc.country},
               ${loc.latitude}, ${loc.longitude}, ${loc.source}, ${loc.gpsNamedAt}, ${p.data.place || null}, false)`;
   } catch (e) {
     // One active session per couple (unique index): if the partner beat us to it, we simply join theirs.

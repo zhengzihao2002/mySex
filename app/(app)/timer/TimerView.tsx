@@ -134,15 +134,15 @@ function IdleTimer({
     if (navigator.vibrate) navigator.vibrate(30);
     let failure:string|null=null;
     const ok = await start.run(async () => {
-      const gps = useLocation && useGps ? await getGps() : null;
-      // The pending screen must commit before the asynchronous server action.
+      const startedAt = new Date().toISOString();
+      // Commit the live screen before waiting for GPS or the server.
       flushSync(()=>onStart({
         id: 'pending',
         scoreVersion:3,
         kind,
         createdBy: '',
         status: 'active',
-        startedAt: new Date().toISOString(),
+        startedAt,
         endedAt: null,
         pausedAt: null,
         pausedSec: 0,
@@ -151,9 +151,9 @@ function IdleTimer({
         city: null,
         region: null,
         country: null,
-        latitude: gps?.latitude ?? null,
-        longitude: gps?.longitude ?? null,
-        geoSource: gps ? 'gps' : null,
+        latitude: null,
+        longitude: null,
+        geoSource: null,
         place: place || null,
         rating: null,
         protection: null,
@@ -164,9 +164,15 @@ function IdleTimer({
         updatedAt: new Date().toISOString(),
         breaks: [],
       }));
-      const result=await startSession({ kind, place: place || null, useLocation, gps });
-      if(!result.ok)failure=result.error;
-      return result;
+      try {
+        const gps = useLocation && useGps ? await getGps() : null;
+        const result=await startSession({ kind, place: place || null, useLocation, gps, startedAt });
+        if(!result.ok)failure=result.error;
+        return result;
+      } catch (error) {
+        failure = error instanceof Error && error.message ? error.message : 'Something went wrong. Try again.';
+        return {ok:false,error:failure};
+      }
     });
     if (!ok) onStartFailed(failure??'Something went wrong. Try again.');
   };
@@ -334,7 +340,7 @@ function LiveTimer({
   const minutes = secs / 60;
   const recordedSeconds=pendingStart?0:elapsedSec(session,now);
   const liveXp=sessionXp({...session,status:'done',durationSec:recordedSeconds});
-  const mission=useMemo(()=>progression(sessions,missions).quests.find(q=>session.kind==='intercourse'&&!q.complete&&q.mission.path==='endurance'&&q.mission.rule==='session'),[sessions,missions,session.kind,session.startedAt]);
+  const mission=useMemo(()=>pendingStart?null:progression(sessions,missions).quests.find(q=>session.kind==='intercourse'&&!q.complete&&q.mission.path==='endurance'&&q.mission.rule==='session'),[sessions,missions,session.kind,session.startedAt,pendingStart]);
   const { tz } = useTz();
   const startedLabel = f.timeInTz(session.startedAt, tz);
   const where = session.place || [session.city, session.country].filter(Boolean).join(', ');
