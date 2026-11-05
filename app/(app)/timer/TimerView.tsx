@@ -31,6 +31,9 @@ import { dayInTz } from '@/lib/tz';
 import { useTz } from '@/components/TzProvider';
 import type { SessionKind, SexSession } from '@/lib/types';
 
+const EMPTY_MISSIONS: MissionRun[] = [];
+type RecordingMission = ReturnType<typeof progression>['quests'][number] | undefined;
+
 function milestone(min: number) {
   if (min < 2) return /*i18n*/ 'And we’re off 😏';
   if (min < 5) return /*i18n*/ 'Quickie territory ⚡';
@@ -46,7 +49,7 @@ export function TimerView({
   sessions,
   names,
   meId,
-  missions=[],
+  missions=EMPTY_MISSIONS,
   initialKind='intercourse',
 }: {
   missions?:MissionRun[];
@@ -57,6 +60,8 @@ export function TimerView({
 }) {
   const active = sessions.find((s) => s.status === 'active') ?? null;
   const done = useMemo(() => sessions.filter((s) => s.status === 'done'), [sessions]);
+  // Prepare the mission on the idle screen, not during Start or after confirmation.
+  const mission = useMemo(() => progression(done, missions).quests.find(q => !q.complete && q.mission.path === 'endurance' && q.mission.rule === 'session'), [done, missions]);
   const places = useMemo(() => placeSuggestions(sessions), [sessions]);
   const [optimistic, setOptimistic] = useState<SexSession | null>(null);
   const [startError,setStartError]=useState<string|null>(null);
@@ -80,8 +85,7 @@ export function TimerView({
         <RecordingLayer entrance={!active?'fade':'slide'}><LiveTimer
           key="live-timer"
           session={current}
-          missions={missions}
-          sessions={sessions}
+          mission={current.kind === 'intercourse' ? mission : undefined}
           pendingStart={!active}
           starterName={names[current.createdBy] ?? 'You'}
           isMine={current.createdBy === meId}
@@ -293,8 +297,7 @@ function useWakeLock(enabled: boolean) {
 
 function LiveTimer({
   session,
-  missions,
-  sessions,
+  mission,
   pendingStart,
   starterName,
   isMine,
@@ -302,8 +305,7 @@ function LiveTimer({
   onFinished,
 }: {
   session: SexSession;
-  missions:MissionRun[];
-  sessions:SexSession[];
+  mission:RecordingMission;
   pendingStart: boolean;
   starterName: string;
   isMine: boolean;
@@ -340,7 +342,6 @@ function LiveTimer({
   const minutes = secs / 60;
   const recordedSeconds=pendingStart?0:elapsedSec(session,now);
   const liveXp=sessionXp({...session,status:'done',durationSec:recordedSeconds});
-  const mission=useMemo(()=>pendingStart?null:progression(sessions,missions).quests.find(q=>session.kind==='intercourse'&&!q.complete&&q.mission.path==='endurance'&&q.mission.rule==='session'),[sessions,missions,session.kind,session.startedAt,pendingStart]);
   const { tz } = useTz();
   const startedLabel = f.timeInTz(session.startedAt, tz);
   const where = session.place || [session.city, session.country].filter(Boolean).join(', ');
@@ -390,11 +391,11 @@ function LiveTimer({
           <div className="recording-ring-legend" aria-label={t('Timer rings')}><span><i className="bg-rose"/>{t('Seconds')}</span><span><i className="bg-ovulation"/>{t('Minutes')}</span></div>
           <div className="recording-origin text-xs text-ink-3">
             <span>{t('{name} started at {time}', { name: isMine ? t('You') : starterName, time: startedLabel })}</span>
-            <span className="inline-flex items-center justify-center gap-1"><MapPin size={12}/>{where || (pendingStart?t('Starting…'):t('No recorded location'))}</span>
+            <span className="recording-location" title={where || undefined}><MapPin size={12}/><span>{where || (pendingStart?t('Starting…'):t('No recorded location'))}</span></span>
           </div>
           {session.kind==='intercourse'&&<div className="recording-xp rounded-2xl border border-line bg-surface/40 px-3 py-2 text-center text-xs text-ink-2">
             <span className="font-semibold text-rose-2">{t('On save')}: +{liveXp.total} XP</span>
-            {mission&&<p className="mt-1">{t(mission.mission.title)} · {Math.min(mission.mission.minMinutes,Math.floor(recordedSeconds/60))}/{mission.mission.minMinutes} {t('min')} · {mission.mission.minPositions} {t('Positions')}</p>}
+            {mission&&<p className="recording-mission mt-1">{t(mission.mission.title)} · {Math.min(mission.mission.minMinutes,Math.floor(recordedSeconds/60))}/{mission.mission.minMinutes} {t('min')} · {mission.mission.minPositions} {t('Positions')}</p>}
           </div>}
           {session.kind==='intercourse'&&<button type="button" className="recording-prompt-trigger btn-ghost" onClick={()=>setPromptOpen(true)} disabled={paused||pendingStart}><Shuffle size={16}/>{t('Discover a random position')}</button>}
         </div>

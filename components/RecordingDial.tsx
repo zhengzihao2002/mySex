@@ -17,6 +17,7 @@ export function RecordingDial({seconds,paused,pending,caption,breakNo,breakSecon
   const secondsFraction=(seconds%60)/60;
   const minutesFraction=(seconds%3600)/3600;
   const angle=secondsFraction*2*Math.PI-Math.PI/2;
+  const milliseconds = String(Math.floor(Math.max(0, seconds) * 1000) % 1000).padStart(3, '0');
   return <figure className="recording-dial" aria-label={t('Live timer')}>
     <svg viewBox="0 0 300 300" className="absolute inset-0 h-full w-full" aria-hidden="true">
       <defs><linearGradient id={id} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#ff7aa8"/><stop offset="55%" stopColor="#ff3d7f"/><stop offset="100%" stopColor="#a78bfa"/></linearGradient></defs>
@@ -39,6 +40,7 @@ export function RecordingDial({seconds,paused,pending,caption,breakNo,breakSecon
     <div className="recording-dial-center">
       <svg viewBox="0 0 24 24" className="recording-heart animate-beat fill-rose" style={{animationPlayState:paused?'paused':'running',opacity:paused ? 0.45 : 1}} aria-hidden="true"><path d="M12 21s-7.5-4.6-10-9.2C.4 8.6 2.3 4.5 6.2 4.5c2.2 0 3.8 1.3 4.6 2.6.2.3.6.3.8 0 .8-1.3 2.4-2.6 4.6-2.6 3.9 0 5.8 4.1 4.2 7.3C19.5 16.4 12 21 12 21z"/></svg>
       <span className={`recording-time tabular-nums ${seconds>=3600?'recording-time-long':''} ${paused?'text-ink-2':''}`} role="timer" aria-label={t('Active time')} aria-live="off">{formatClock(seconds)}</span>
+      <span className="recording-milliseconds tabular-nums text-rose-2" aria-hidden="true">.{milliseconds}</span>
       <span className="recording-caption">{pending?t('Starting…'):paused?<>{t('Break #{n}',{n:Math.max(1,breakNo)})} · <span className="tabular-nums text-luteal">{formatClock(breakSeconds)}</span></>:caption}</span>
       {breakNo>0&&<span className="recording-breaks text-ink-3">{f.plural(breakNo,t('{n} break',{n:breakNo}),t('{n} breaks',{n:breakNo}))} · {t('{d} total',{d:f.formatDuration(totalBreak)})}</span>}
     </div>

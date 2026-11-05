@@ -144,6 +144,7 @@ body:has(> .recording-layer[data-state='open']) :is(.app-frame, .nav-dock) { vis
 .recording-dial-center { position: absolute; inset: 18%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: clamp(3px, 2cqw, 8px); text-align: center; }
 .recording-heart { width: clamp(16px, 8cqw, 28px); height: clamp(16px, 8cqw, 28px); }
 .recording-time { font-size: clamp(24px, 19cqw, 64px); line-height: 1; font-weight: 250; letter-spacing: -.04em; }
+.recording-milliseconds { font-size: clamp(10px, 4cqw, 16px); line-height: 1; letter-spacing: .08em; }
 .recording-time-long { font-size: clamp(20px, 14.5cqw, 49px); }
 .recording-caption { font-size: clamp(9px, 4cqw, 13px); line-height: 1.35; color: var(--color-ink-2); }
 .recording-breaks { font-size: clamp(8px, 3cqw, 10px); line-height: 1.4; }
@@ -152,7 +153,11 @@ body:has(> .recording-layer[data-state='open']) :is(.app-frame, .nav-dock) { vis
 .recording-ring-legend span { display: inline-flex; align-items: center; gap: 5px; }
 .recording-ring-legend i { width: 6px; height: 6px; border-radius: 50%; }
 .recording-origin { display: flex; flex-direction: column; gap: 3px; width: 100%; text-align: center; line-height: 1.45; overflow-wrap: anywhere; }
+/* GPS resolves after Start; keep its two-line slot stable in every state. */
+.recording-location { display: flex; align-items: center; justify-content: center; gap: 4px; height: 2.9em; flex-shrink: 0; }
+.recording-location > span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .recording-xp { width: 100%; margin-top: 2px; }
+.recording-mission { height: 2.8em; line-height: 1.4; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .recording-prompt-trigger { width: 100%; }
 @media (max-height: 650px) {
   .timer-screen > header { padding-top: max(env(safe-area-inset-top), 12px); }
