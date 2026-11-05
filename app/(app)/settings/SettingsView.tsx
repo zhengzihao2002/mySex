@@ -10,6 +10,8 @@ import { FormError } from '@/components/FormError';
 import { Sheet } from '@/components/Sheet';
 import { useRun } from '@/components/useRun';
 import { RestoreBackup } from './RestoreBackup';
+import { FontSettings } from '@/components/FontSettings';
+import type { FontPreferences } from '@/lib/font-preferences';
 import { LanguageSwitch } from '@/components/LanguageSwitch';
 import { AVATARS } from '@/lib/content';
 import { prettyDate } from '@/lib/dates';
@@ -17,12 +19,14 @@ import type { Profile } from '@/lib/types';
 
 export function SettingsView({
   me,
+  fonts,
   partner,
   anniversary,
   pairedSince,
   devices,
 }: {
   me: Profile;
+  fonts: FontPreferences;
   partner: Profile;
   anniversary: string | null;
   pairedSince: string;
@@ -108,6 +112,8 @@ export function SettingsView({
         <span className="font-semibold">{t('Language')}</span>
         <LanguageSwitch />
       </section>
+
+      <FontSettings initial={fonts}/>
 
       {devices}
 

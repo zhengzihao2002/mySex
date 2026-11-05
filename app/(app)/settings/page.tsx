@@ -1,3 +1,4 @@
+import { getFontPreferences } from '@/lib/font-preferences-server';
 import { requireCouple } from '@/lib/data';
 import { currentDeviceId, getDevices } from '@/lib/devices';
 import { DevicesSection } from './DevicesSection';
@@ -7,9 +8,10 @@ export const metadata = { title: 'Settings · mySex' };
 
 export default async function SettingsPage() {
   const ctx = await requireCouple();
-  const [devices, current] = await Promise.all([getDevices(ctx.me.userId), currentDeviceId()]);
+  const [devices, current, fonts] = await Promise.all([getDevices(ctx.me.userId), currentDeviceId(), getFontPreferences()]);
   return (
     <SettingsView
+      fonts={fonts}
       me={ctx.me}
       partner={ctx.partner}
       anniversary={ctx.couple.anniversary}

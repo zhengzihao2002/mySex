@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { I18nProvider } from '@/components/I18nProvider';
+import { getFontPreferences } from '@/lib/font-preferences-server';
 import { getLang } from '@/lib/i18n/server';
 import './globals.css';
 import { MotionProvider } from '@/components/Motion';
@@ -23,9 +24,9 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const lang = await getLang();
+  const [lang, fonts] = await Promise.all([getLang(), getFontPreferences()]);
   return (
-    <html lang={lang === 'zh' ? 'zh-CN' : 'en'}>
+    <html lang={lang === 'zh' ? 'zh-CN' : 'en'} data-font-en={fonts.en} data-font-zh={fonts.zh}>
       <body className="antialiased">
         <I18nProvider lang={lang}><MotionProvider>{children}</MotionProvider></I18nProvider>
       </body>

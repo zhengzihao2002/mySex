@@ -1,10 +1,36 @@
 'use client';
 import { SymbolIcon } from '@/components/SymbolIcon';
-import {useEffect,useRef,useState} from 'react';
+import {useEffect,useLayoutEffect,useRef,useState} from 'react';
+import {createPortal} from 'react-dom';
+import {motion,useReducedMotion} from 'motion/react';
+import {lockPageScroll} from '@/lib/page-scroll-lock';
 import {TIMER_PROMPTS,nextPrompt} from '@/lib/session-play';
 import {useT} from './I18nProvider';
-export function TimerPrompts({paused,kind}:{paused:boolean;kind:'intercourse'|'oral'}){
- const {t}=useT();const [index,setIndex]=useState(-1);const [front,setFront]=useState(false);const lockedUntil=useRef(0);
+
+export function TimerPrompts({onClose}:{onClose:()=>void}) {
+ const {t}=useT();
+ const dialog=useRef<HTMLDialogElement>(null);
+ const [index]=useState(()=>nextPrompt(-1,Math.random,true));
+ const [front,setFront]=useState(false);
+ const [ready,setReady]=useState(false);
+ const [closing,setClosing]=useState(false);
+ const eligibleAt=useRef(Infinity);
+ const reduced=useReducedMotion();
+ const dismiss=()=>{if(performance.now()>=eligibleAt.current)setClosing(true);};
+ useLayoutEffect(()=>{
+   const node=dialog.current;if(!node)return;
+   const previous=document.activeElement;
+   const unlock=lockPageScroll();
+   eligibleAt.current=performance.now()+3000;
+   node.showModal();node.focus({preventScroll:true});
+   return()=>{node.close();unlock();if(previous instanceof HTMLElement&&previous.isConnected)previous.focus({preventScroll:true});};
+ },[]);
+ useEffect(()=>{
+   const flip=setTimeout(()=>setFront(true),400);
+   const allow=setTimeout(()=>setReady(true),3000);
+   const expire=setTimeout(()=>setClosing(true),30000);
+   return()=>{clearTimeout(flip);clearTimeout(allow);clearTimeout(expire);};
+ },[]);
  const descriptions:Record<(typeof TIMER_PROMPTS)[number],string>={
  Missionary:t('One partner lies on their back; the other is above, face to face.'),
  Doggy:t('One partner rests on hands and knees; the other kneels behind.'),
@@ -32,15 +58,20 @@ export function TimerPrompts({paused,kind}:{paused:boolean;kind:'intercourse'|'o
  'Standing from behind':t('Both stand close, facing the same direction.'),
  'Seated leaning back':t('Sit face to face, with one partner leaning back on their hands.'),
  };
- const position=index>=0?TIMER_PROMPTS[index]:null;
- useEffect(()=>{if(!front)return;const timer=setTimeout(()=>{lockedUntil.current=Date.now()+450;setFront(false)},30450);return()=>clearTimeout(timer)},[front]);
- const flip=()=>{if(Date.now()<lockedUntil.current)return;lockedUntil.current=Date.now()+450;
- if(front)setFront(false);else if(!paused){setIndex(i=>nextPrompt(i,Math.random,kind!=='oral'));setFront(true)}};
- return <div className="w-full text-center" style={{perspective:'900px'}}>
- <style>{'@media (prefers-reduced-motion: reduce) { .position-card-inner { transition: none !important; } }'}</style>
- <button type="button" aria-label={front&&position?`${t(position)}. ${descriptions[position]}`:t('Flip')} aria-pressed={front} disabled={paused&&!front} onClick={flip} className="relative mx-auto block rounded-2xl disabled:opacity-50" style={{width:'clamp(140px, 38vw, 156px)',aspectRatio:'5 / 7'}}>
- <span className="position-card-inner absolute inset-0 block" style={{transformStyle:'preserve-3d',transform:front?'rotateY(180deg)':'rotateY(0deg)',transition:'transform 450ms cubic-bezier(0.22, 0.61, 0.36, 1)'}}>
- <span aria-hidden={front} className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-2xl border border-rose/40 bg-gradient-to-br from-plum/30 to-rose/20 px-4 shadow-lg" style={{backfaceVisibility:'hidden',WebkitBackfaceVisibility:'hidden'}}><span className="pointer-events-none absolute inset-2 rounded-xl border border-rose/20"/><span className="absolute left-4 top-3 text-xs text-rose"><SymbolIcon value="❤️" size={12}/></span><span className="text-3xl"><SymbolIcon value="🃏" size={28}/></span><span className="text-sm font-semibold">{paused?t('Paused'):t('Flip')}</span><span className="absolute bottom-3 right-4 rotate-180 text-xs text-rose"><SymbolIcon value="❤️" size={12}/></span></span>
- <span aria-hidden={!front} className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-2xl border border-rose/40 bg-gradient-to-br from-plum/30 to-rose/20 px-4 shadow-lg" style={{transform:'rotateY(180deg)',backfaceVisibility:'hidden',WebkitBackfaceVisibility:'hidden'}}><span className="absolute left-3 top-2 text-xs text-rose"><SymbolIcon value="❤️" size={12}/></span><span className="text-base font-semibold leading-tight">{position?t(position):''}</span><span className="text-xs leading-relaxed text-ink-2">{position?descriptions[position]:''}</span><span className="absolute bottom-2 right-3 rotate-180 text-xs text-rose"><SymbolIcon value="❤️" size={12}/></span></span>
- </span></button></div>;
+ const position=TIMER_PROMPTS[index];
+ return createPortal(<dialog ref={dialog} className="position-reveal" aria-label={t('Discover a random position')} tabIndex={-1}
+   onCancel={event=>{event.preventDefault();dismiss();}}>
+   <motion.div className="position-reveal-stage" initial={{opacity:0}} animate={{opacity:closing?0:1}} transition={{duration:reduced?0:.35}}
+     onClick={event=>{if(event.target===event.currentTarget)dismiss();}}>
+     <motion.div className="position-reveal-card" initial={{y:36,scale:.72,rotate:-8,opacity:0}} animate={closing?{y:30,scale:.8,rotate:5,opacity:0}:{y:0,scale:1,rotate:0,opacity:1}}
+       transition={{duration:reduced?0:.45,ease:[.22,1,.36,1]}} onAnimationComplete={()=>{if(closing)onClose();}}>
+       <motion.button type="button" className="position-reveal-inner block text-center" aria-label={front?`${t(position)}. ${descriptions[position]} ${t('Put card away')}`:t('Revealing…')} aria-disabled={!ready||closing} onClick={dismiss}
+         initial={false} animate={{rotateY:front&&!closing?180:0}} transition={{duration:reduced?0:.65,ease:[.22,1,.36,1]}}>
+         <span aria-hidden={front} className="position-reveal-face"><span className="absolute left-5 top-4 text-rose-2"><SymbolIcon value="❤️" size={18}/></span><SymbolIcon value="🃏" size={64}/><span className="absolute bottom-4 right-5 rotate-180 text-rose-2"><SymbolIcon value="❤️" size={18}/></span></span>
+         <span aria-hidden={!front} className="position-reveal-face position-reveal-front"><span className="absolute left-5 top-4 text-rose-2"><SymbolIcon value="❤️" size={18}/></span><span className="font-display text-2xl leading-tight">{t(position)}</span><span className="text-sm leading-relaxed text-ink-2">{descriptions[position]}</span><span className="absolute bottom-4 right-5 rotate-180 text-rose-2"><SymbolIcon value="❤️" size={18}/></span></span>
+       </motion.button>
+     </motion.div>
+     <button type="button" className="min-h-11 rounded-full border border-rose/20 bg-surface/70 px-5 text-sm text-ink-2 disabled:opacity-50" disabled={!ready||closing} onClick={dismiss}>{ready?t('Put card away'):t('Revealing…')}</button>
+   </motion.div>
+ </dialog>,document.body);
 }

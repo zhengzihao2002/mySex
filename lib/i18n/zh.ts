@@ -1,6 +1,18 @@
 // Simplified Chinese. Keys are the English UI text (see lib/i18n/core.ts).
 // Run `node scripts/check-i18n.mjs --missing` to find untranslated keys.
 export const zh: Record<string, string> = {
+  "Fonts": "字体",
+  "Choose heading styles for each language. Body text stays easy to read. Saved on this device.": "分别选择中英文标题字体，正文保持清晰易读。设置保存在此设备上。",
+  "English headings": "英文标题",
+  "Chinese headings": "中文标题",
+  "Editorial": "优雅衬线",
+  "Modern": "现代简约",
+  "Literary": "文艺书卷",
+  "Elegant Song": "雅致宋体",
+  "Modern Hei": "现代黑体",
+  "Brush script": "灵动毛笔",
+  "Put card away": "收起卡片",
+  "Revealing…": "正在揭晓…",
   "Timer rings": "计时环",
   "Minutes": "分钟",
   "Seconds": "秒",
