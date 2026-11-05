@@ -394,8 +394,11 @@ function LiveTimer({
             <span className="recording-location" title={where || undefined}><MapPin size={12}/><span>{where || (pendingStart?t('Starting…'):t('No recorded location'))}</span></span>
           </div>
           {session.kind==='intercourse'&&<div className="recording-xp rounded-2xl border border-line bg-surface/40 px-3 py-2 text-center text-xs text-ink-2">
-            <span className="font-semibold text-rose-2">{t('On save')}: +{liveXp.total} XP</span>
-            {mission&&<p className="recording-mission mt-1">{t(mission.mission.title)} · {Math.min(mission.mission.minMinutes,Math.floor(recordedSeconds/60))}/{mission.mission.minMinutes} {t('min')} · {mission.mission.minPositions} {t('Positions')}</p>}
+            <div className={`flex items-center gap-2 ${mission ? 'justify-between' : 'justify-center'}`}>
+              <span className="shrink-0 font-semibold text-rose-2">{t('On save')}: +{liveXp.total} XP</span>
+              {mission&&<span className="recording-mission-title" title={t(mission.mission.title)}>{t(mission.mission.title)}</span>}
+            </div>
+            {mission&&<p className="recording-mission mt-1">{Math.min(mission.mission.minMinutes,Math.floor(recordedSeconds/60))}/{mission.mission.minMinutes} {t('min')} · {mission.mission.minPositions} {t('Positions')}</p>}
           </div>}
           {session.kind==='intercourse'&&<button type="button" className="recording-prompt-trigger btn-ghost" onClick={()=>setPromptOpen(true)} disabled={paused||pendingStart}><Shuffle size={16}/>{t('Discover a random position')}</button>}
         </div>

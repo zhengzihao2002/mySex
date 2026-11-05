@@ -157,7 +157,8 @@ body:has(> .recording-layer[data-state='open']) :is(.app-frame, .nav-dock) { vis
 .recording-location { display: flex; align-items: center; justify-content: center; gap: 4px; height: 2.9em; flex-shrink: 0; }
 .recording-location > span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .recording-xp { width: 100%; margin-top: 2px; }
-.recording-mission { height: 2.8em; line-height: 1.4; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.recording-mission-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.recording-mission { height: 1.4em; line-height: 1.4; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .recording-prompt-trigger { width: 100%; }
 @media (max-height: 650px) {
   .timer-screen > header { padding-top: max(env(safe-area-inset-top), 12px); }
