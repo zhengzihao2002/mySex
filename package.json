@@ -12,6 +12,9 @@
     "db:migrate": "node scripts/migrate.mjs"
   },
   "dependencies": {
+    "@fontsource-variable/cormorant-garamond": "5.3.0",
+    "@fontsource-variable/manrope": "5.3.0",
+    "@fontsource-variable/noto-serif-sc": "5.3.1",
     "@neondatabase/auth": "0.6.0-beta",
     "@neondatabase/serverless": "^1.2.0",
     "@next/env": "16.4.2",
