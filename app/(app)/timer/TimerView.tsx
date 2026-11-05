@@ -1,4 +1,5 @@
 'use client';
+import { WaterBackground } from '@/components/WaterBackground';
 import { AnimatedValue } from '@/components/Motion';
 import { SymbolIcon } from '@/components/SymbolIcon';
 import {progression,sessionXp,type MissionRun} from '@/lib/progression';
@@ -362,6 +363,7 @@ function LiveTimer({
 
   return (
     <div className="timer-screen">
+      <WaterBackground contained/>
       {/* Ambient light */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden transition-opacity duration-1000" style={{opacity:paused ? 0.3 : 0.75}}>
         <div className="absolute -top-1/4 -left-1/4 h-[80vh] w-[80vh] animate-[drift_22s_linear_infinite] rounded-full bg-rose/25 blur-[100px]" />

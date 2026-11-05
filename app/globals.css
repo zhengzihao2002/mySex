@@ -266,3 +266,34 @@ html[data-font-zh='brush']:lang(zh-CN) :is(.font-display, h1, h2, .sheet-panel h
 .position-reveal-face { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 24px; border: 1px solid #ff7aa860; border-radius: 24px; background: radial-gradient(ellipse at top, #5e264e, #251128 75%); box-shadow: 0 24px 90px #0009, inset 0 0 0 7px #ff7aa809; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
 .position-reveal-front { transform: rotateY(180deg); }
 @media (max-height: 480px) { .position-reveal-stage { gap: 10px; } .position-reveal-card { width: 31vh; } .position-reveal-face { padding: 14px; gap: 8px; } }
+
+/* Frosted water: quiet refracted light below the interface. Nothing above this
+   layer is transformed, so fixed sheets and the iPhone viewport keep their geometry. */
+.water-scene { isolation: isolate; }
+.water-background { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; contain: strict; }
+.water-background--contained { position: absolute; z-index: 0; opacity: .7; }
+.water-wash { position: absolute; inset: -15%; background:
+  radial-gradient(ellipse at 18% 24%, #c593b41f, transparent 48%),
+  radial-gradient(ellipse at 82% 58%, #81abb61a, transparent 46%),
+  radial-gradient(ellipse at 32% 92%, #aaa2dc19, transparent 50%);
+  animation: water-drift 46s -18s cubic-bezier(.45,0,.55,1) infinite alternate;
+}
+.water-current { position: absolute; inset: -12%; width: 124%; height: 124%; opacity: .65; animation: water-current 36s -12s cubic-bezier(.45,0,.55,1) infinite alternate; }
+.water-bloom { filter: blur(22px); }
+.water-filaments { filter: blur(2px); }
+.water-frost { position: absolute; inset: 0; opacity: .035; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Cpath fill='%23fff' filter='url(%23f)' d='M0 0h128v128H0z'/%3E%3C/svg%3E"); }
+.water-background::after { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at 48% 45%, transparent 35%, #0e070d55 100%); }
+@keyframes water-drift {
+  from { transform: translate3d(-3%, -2%, 0) rotate(-4deg) scale(1.02); }
+  to { transform: translate3d(3%, 3%, 0) rotate(4deg) scale(1.08); }
+}
+@keyframes water-current {
+  from { transform: translate3d(-3%, 2%, 0) rotate(-5deg) scale(1.02); }
+  to { transform: translate3d(3%, -3%, 0) rotate(5deg) scale(1.07); }
+}
+/* Pause the covered scene instead of compositing two animated backgrounds. */
+body:has(> .recording-layer) .water-background:not(.water-background--contained) :is(.water-wash, .water-current),
+body:has(dialog[open], [role="dialog"]) .water-background :is(.water-wash, .water-current) { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) {
+  .water-background :is(.water-wash, .water-current) { animation: none !important; }
+}

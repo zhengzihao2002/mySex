@@ -3,6 +3,7 @@ import { I18nProvider } from '@/components/I18nProvider';
 import { getFontPreferences } from '@/lib/font-preferences-server';
 import { getLang } from '@/lib/i18n/server';
 import './globals.css';
+import { WaterBackground } from '@/components/WaterBackground';
 import { MotionProvider } from '@/components/Motion';
 
 export const metadata: Metadata = {
@@ -27,7 +28,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const [lang, fonts] = await Promise.all([getLang(), getFontPreferences()]);
   return (
     <html lang={lang === 'zh' ? 'zh-CN' : 'en'} data-font-en={fonts.en} data-font-zh={fonts.zh}>
-      <body className="antialiased">
+      <body className="antialiased water-scene">
+        <WaterBackground />
         <I18nProvider lang={lang}><MotionProvider>{children}</MotionProvider></I18nProvider>
       </body>
     </html>
