@@ -70,7 +70,9 @@ export function TimerPrompts({onClose}:{onClose:()=>void}) {
          <span aria-hidden={!revealed} className="position-reveal-face position-reveal-front"><span className="absolute left-5 top-4 text-rose-2"><SymbolIcon value="❤️" size={18}/></span><span className="font-display text-2xl leading-tight">{t(position)}</span><span className="text-sm leading-relaxed text-ink-2">{descriptions[position]}</span><span className="absolute bottom-4 right-5 rotate-180 text-rose-2"><SymbolIcon value="❤️" size={18}/></span></span>
        </button>
      </motion.div>
-     <div className="position-reveal-dismiss">{revealed&&<motion.button type="button" initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} transition={{duration:reduced?0:.2}} className="min-h-11 rounded-full border border-rose/20 bg-surface/70 px-5 text-sm text-ink-2 disabled:opacity-50" disabled={!ready||closing} onClick={dismiss}>{t('Put card away')}</motion.button>}</div>
+     <div className="position-reveal-dismiss">{revealed&&<motion.div initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} transition={{duration:reduced?0:.2,ease:[.22,1,.36,1]}}>
+       <button type="button" className="position-reveal-close min-h-11 rounded-full border border-rose/20 bg-surface/70 px-5 text-sm text-ink-2" disabled={!ready||closing} onClick={dismiss}>{t('Put card away')}</button>
+     </motion.div>}</div>
    </motion.div>
  </dialog>,document.body);
 }

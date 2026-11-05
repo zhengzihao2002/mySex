@@ -260,6 +260,9 @@ html[data-font-zh='brush']:lang(zh-CN) :is(.font-display, h1, h2, .sheet-panel h
 .position-reveal-inner { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transition: none; animation: position-reveal-flip .65s .4s cubic-bezier(.22,1,.36,1) both; }
 @keyframes position-reveal-flip { from { transform: rotateY(0deg); } to { transform: rotateY(180deg); } }
 .position-reveal-dismiss { height: 44px; flex-shrink: 0; }
+/* Animate the wrapper only; native disabled styles and global transitions must not
+   compete with Motion or change the button's brightness/position at unlock. */
+.position-reveal-close { min-width: 140px; opacity: 1; transition: none; white-space: nowrap; }
 .position-reveal-face { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 24px; border: 1px solid #ff7aa860; border-radius: 24px; background: radial-gradient(ellipse at top, #5e264e, #251128 75%); box-shadow: 0 24px 90px #0009, inset 0 0 0 7px #ff7aa809; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
 .position-reveal-front { transform: rotateY(180deg); }
 @media (max-height: 480px) { .position-reveal-stage { gap: 10px; } .position-reveal-card { width: 31vh; } .position-reveal-face { padding: 14px; gap: 8px; } }
