@@ -1,6 +1,19 @@
 // Simplified Chinese. Keys are the English UI text (see lib/i18n/core.ts).
 // Run `node scripts/check-i18n.mjs --missing` to find untranslated keys.
 export const zh: Record<string, string> = {
+  "A moment for two.": "属于两人的此刻。",
+  "Your story starts here.": "从这里，写下你们的故事。",
+  "Today’s spark.": "今天的心动。",
+  "Keep the spark alive.": "让心动延续。",
+  "Finding your rhythm.": "找到你们的节奏。",
+  "Make room for each other.": "为彼此留点时间。",
+  "Ready to reconnect?": "准备好再次亲密了吗？",
+  "It’s been a while.": "好久没有亲密了。",
+  "Your recording is in progress.": "正在记录你们的时刻。",
+  "No intercourse recorded yet.": "还没有性交记录。",
+  "Intercourse recorded today.": "今天已有性交记录。",
+  "Last intercourse recorded yesterday.": "上次性交记录是昨天。",
+  "Last intercourse recorded {n} days ago.": "距上次性交记录已过{n}天。",
   "Apply your chosen English and Chinese fonts throughout the app. Saved on this device.": "所选中英文字体应用于整个应用，设置保存在此设备上。",
   "English font": "英文字体",
   "Chinese font": "中文字体",

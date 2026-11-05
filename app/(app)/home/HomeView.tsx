@@ -20,6 +20,7 @@ import { scoreSessions } from '@/lib/clientScore';
 import { MOODS, NOTE_KINDS, PHASES, PREGNANCY_CHANCE } from '@/lib/content';
 import { buildCycleModel, dayInfo, findCycle, phaseSpans, upcomingCycles } from '@/lib/cycle';
 import { addDays, diffDays, formatClock, formatDuration, prettyDate, prettyRange, relativeDays } from '@/lib/dates';
+import { homeHeadline } from '@/lib/home-headline';
 import { weeklyStreak } from '@/lib/stats';
 import { dayInTz } from '@/lib/tz';
 import type { CoupleContext, DailyLog, LoveNote, Period, SexSession } from '@/lib/types';
@@ -46,6 +47,17 @@ export function HomeView({
   const [togetherOpen, setTogetherOpen] = useState(false);
   const active = sessions.find((s) => s.status === 'active');
   const done = useMemo(() => sessions.filter((s) => s.status === 'done'), [sessions]);
+  const headline = useMemo(() => homeHeadline(sessions, today, tz), [sessions, today, tz]);
+  const titles = {
+    recording: /*i18n*/ 'A moment for two.',
+    first: /*i18n*/ 'Your story starts here.',
+    today: /*i18n*/ 'Today’s spark.',
+    yesterday: /*i18n*/ 'Keep the spark alive.',
+    rhythm: /*i18n*/ 'Finding your rhythm.',
+    recent: /*i18n*/ 'Make room for each other.',
+    week: /*i18n*/ 'Ready to reconnect?',
+    longBreak: /*i18n*/ 'It’s been a while.',
+  };
   const scores = useMemo(() => scoreSessions(done, tz), [done, tz]);
   const model = useMemo(
     () => buildCycleModel(periods, { cycleLength: her.cycleLengthDefault, periodLength: her.periodLengthDefault }, today),
@@ -99,8 +111,10 @@ export function HomeView({
       </header>
 
       <div className="home-heading">
-        <div><p className="eyebrow mb-2">{t('Your shared space')}</p><h1 className="font-display">{t('A little closer.')}</h1></div>
-        <p className="home-date">{f.prettyDate(today, { weekday: true })}</p>
+        <div className="min-w-0"><p className="eyebrow mb-2">{t('Your shared space')}</p><h1 className="font-display">{t(titles[headline.state])}</h1>
+          <p className="mt-2 text-xs leading-relaxed text-ink-3">{headline.state === 'recording' ? t('Your recording is in progress.') : headline.daysSince === null ? t('No intercourse recorded yet.') : headline.daysSince === 0 ? t('Intercourse recorded today.') : headline.daysSince === 1 ? t('Last intercourse recorded yesterday.') : t('Last intercourse recorded {n} days ago.', {n: headline.daysSince})}</p>
+        </div>
+        <p className="home-date shrink-0">{f.prettyDate(today, { weekday: true })}</p>
       </div>
 
       {active && <LiveBanner session={active} />}

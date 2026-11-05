@@ -244,7 +244,6 @@ function SexTab({ sessions: allSessions, herName, hisName, logs, notes }: Parame
 
   return (
     <div className="space-y-4">
-      <ConnectionInsights sessions={sessions} logs={logs} />
       {allSessions.length > 0 && <KindFilter value={kind} onChange={setKind} />}
       {!allSessions.length ? (
         <div className="card text-center text-sm text-ink-2">{t('Nothing logged yet. Hit the ❤️ button and start the clock 😏')}</div>
@@ -405,26 +404,6 @@ function BadgeGrid({ badges }: { badges: ReturnType<typeof achievements> }) {
     {!search.trim() && visible.length > 12 && <button type="button" className="btn-ghost w-full" aria-expanded={expanded} onClick={()=>setExpanded(!expanded)}>{expanded?t('Show fewer achievements'):t('View all {n} achievements',{n:visible.length})}</button>}
     {!visible.length && <p className="text-sm text-ink-3">{t('No matching achievements.')}</p>}
   </div>;
-}
-
-function ConnectionInsights({ sessions, logs }: { sessions: SexSession[]; logs: DailyLog[] }) {
-  const { t } = useT();
-  const rated = sessions.filter(s => s.rating != null);
-  const average = rated.length ? (rated.reduce((n,s) => n + s.rating!, 0) / rated.length).toFixed(1) : null;
-  const reflective = sessions.filter(s => s.notes?.trim()).length;
-  const loved = logs.filter(l => l.mood === 'loved').length;
-  return <section className="card space-y-3">
-    <h3 className="font-semibold">{t('Connection, in your own words')}</h3>
-    <p className="text-sm text-ink-2">{t('Comfort, consent and enjoyment matter more than frequency, duration, scores or orgasm counts. Your numbers describe moments, not the quality of your relationship.')}</p>
-    <div className="grid grid-cols-2 gap-2 text-sm">
-      <div className="rounded-xl bg-surface-2 p-3"><b>{average ?? '–'}</b><p className="text-xs text-ink-3">{t('Average personal rating · {n} rated sessions', { n:rated.length })}</p></div>
-      <div className="rounded-xl bg-surface-2 p-3"><b>{reflective}</b><p className="text-xs text-ink-3">{t('Memories with your own notes')}</p></div>
-    </div>
-    {logs.length > 0 && <p className="text-xs text-ink-3">{t('“Loved” appeared in {n} of {total} shared check-ins. These are individual entries, not a measure of both partners’ feelings.', { n:loved, total:logs.length })}</p>}
-    <details className="text-sm"><summary className="cursor-pointer text-rose-2">{t('Something to talk about together')}</summary><ul className="mt-2 list-disc space-y-2 pl-5 text-ink-2">
-      <li>{t('What helped you feel comfortable and close?')}</li><li>{t('Is there anything you would like more of, less of, or to pause?')}</li><li>{t('What would feel good for both of us next time, including rest or cuddles?')}</li>
-    </ul></details>
-  </section>;
 }
 
 function Highlight({ title, s, score, tz }: { title: string; s: SexSession; score?: Score; tz: string }) {
