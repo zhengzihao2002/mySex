@@ -137,6 +137,7 @@ body:has(.notes-page[data-keyboard-open='true']) .nav-dock { visibility: hidden;
 .recording-layer { position: fixed; inset: 0; z-index: 45; width: 100%; overflow: hidden; }
 .recording-layer:is([data-state='entering'],[data-state='exiting']) { will-change: transform; }
 body:has(> .recording-layer:not([data-state='exiting'])) :is(.app-frame, .nav-dock) { visibility: hidden; }
+.timer-screen[data-obscured='true'] * { animation-play-state: paused !important; }
 .timer-screen > header, .timer-screen > footer { flex-shrink: 0; }
 .timer-screen > header :is(a,button) { min-width: 44px; min-height: 44px; }
 .recording-main { position: relative; z-index: 1; display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 8px; flex: 1; min-height: 0; width: min(100%, 512px); align-self: center; padding: 8px 24px 0; overflow: hidden; }

@@ -319,7 +319,11 @@ function LiveTimer({
   const localPauseAt=useRef<number|null>(null);
   const paused=pauseIntent??!!session.pausedAt;
   const optimisticPause=pauseIntent!==null&&pauseIntent!==!!session.pausedAt;
-  const {seconds:secs,now}=useRecordingClock(session,{pending:pendingStart,paused,optimistic:optimisticPause,reset:clockReset});
+  const [finishOpen, setFinishOpen] = useState(false);
+  const [promptOpen,setPromptOpen]=useState(false);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const obscured=finishOpen||promptOpen||confirmDiscard;
+  const {seconds:secs,now}=useRecordingClock(session,{pending:pendingStart,paused,optimistic:optimisticPause,reset:clockReset,suspended:obscured});
   const breakNo=session.breaks.length;
   const pauseAt=session.pausedAt?Date.parse(session.pausedAt):localPauseAt.current;
   const breakSecs=paused&&pauseAt!=null?Math.max(0,(now-pauseAt)/1000):0;
@@ -331,9 +335,6 @@ function LiveTimer({
   // The screen stays on automatically while a session is running (no toggle needed).
   useWakeLock(!paused);
   const [dim, setDim] = useState(false);
-  const [finishOpen, setFinishOpen] = useState(false);
-  const [promptOpen,setPromptOpen]=useState(false);
-  const [confirmDiscard, setConfirmDiscard] = useState(false);
   const setDismissal=useRecordingDismissal();
   const act = useRun();
   const finish = useRun();
@@ -361,7 +362,7 @@ function LiveTimer({
   };
 
   return (
-    <div className="timer-screen">
+    <div className="timer-screen" data-obscured={obscured}>
       {/* Ambient light */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden transition-opacity duration-1000" style={{opacity:paused ? 0.3 : 0.75}}>
         <div className="absolute -top-1/4 -left-1/4 h-[80vh] w-[80vh] animate-[drift_22s_linear_infinite] rounded-full bg-rose/25 blur-[100px]" />
