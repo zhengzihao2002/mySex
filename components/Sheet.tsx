@@ -4,6 +4,7 @@ import {useEffect,useLayoutEffect,useId,useRef} from 'react';
 import {createPortal} from 'react-dom';
 import {AnimatePresence,motion,MotionConfig,useIsPresent,useDragControls} from 'motion/react';
 import {X} from 'lucide-react';
+import {OVERLAY_TRANSITION} from '@/lib/overlay-motion';
 import {useT} from './I18nProvider';
 import {lockPageScroll} from '@/lib/page-scroll-lock';
 
@@ -107,9 +108,9 @@ function SheetPanel({onClose,title,children,viewKey,stableHeight=false}:Omit<She
       if(trigger?.isConnected)trigger.focus({preventScroll:true});
     };
   },[stableHeight]);
-  return <motion.div ref={root} data-app-sheet inert={!present} initial="closed" animate="open" exit="closed" className="fixed inset-0 z-50 flex items-end justify-center" transition={{duration:.26,ease:[.22,1,.36,1]}}>
-    <motion.div variants={{closed:{opacity:0},open:{opacity:1}}} className="absolute inset-0 touch-none bg-black/65 backdrop-blur-sm" onClick={onClose}/>
-    <motion.div variants={{closed:{y:"100%",transition:{duration:.36,ease:[.4,0,1,1]}},open:{y:0,transition:{duration:.4,ease:[.22,1,.36,1]}}}} drag="y" dragControls={dragControls} dragListener={false} dragConstraints={{top:0,bottom:0}} dragElastic={{top:0,bottom:1}} dragTransition={{bounceStiffness:380,bounceDamping:34}} onDragEnd={(_,info)=>{if(info.offset.y>=(dialog.current?.offsetHeight??Infinity)*.25)onClose();}} ref={dialog} role="dialog" aria-modal="true" aria-labelledby={title?titleId:undefined} aria-label={title?undefined:t('Details')} tabIndex={-1}
+  return <motion.div ref={root} data-app-sheet inert={!present} initial="closed" animate="open" exit="closed" className="fixed inset-0 z-50 flex items-end justify-center" transition={OVERLAY_TRANSITION}>
+    <motion.div variants={{closed:{opacity:0},open:{opacity:1}}} transition={OVERLAY_TRANSITION} className="absolute inset-0 touch-none bg-black/65 backdrop-blur-sm" onClick={onClose}/>
+    <motion.div variants={{closed:{y:"100%",transition:OVERLAY_TRANSITION},open:{y:0,transition:OVERLAY_TRANSITION}}} drag="y" dragControls={dragControls} dragListener={false} dragConstraints={{top:0,bottom:0}} dragElastic={{top:0,bottom:1}} dragTransition={{bounceStiffness:380,bounceDamping:34}} onDragEnd={(_,info)=>{if(info.offset.y>=(dialog.current?.offsetHeight??Infinity)*.25)onClose();}} ref={dialog} role="dialog" aria-modal="true" aria-labelledby={title?titleId:undefined} aria-label={title?undefined:t('Details')} tabIndex={-1}
       className={`sheet-panel relative flex max-h-[92%] w-full max-w-lg flex-col rounded-t-[28px] outline-none ${stableHeight?'h-[92%]':''}`}>
       <div data-sheet-drag-handle onPointerDown={e=>dragControls.start(e)} className="flex h-7 shrink-0 touch-none cursor-grab items-center justify-center active:cursor-grabbing"><div className="h-1.5 w-10 rounded-full bg-line"/></div>
       <div onPointerDown={e=>{if(!(e.target as HTMLElement).closest('button,input,textarea,a,select'))dragControls.start(e);}} className="flex shrink-0 touch-none items-center justify-between gap-3 px-5 pt-1 pb-2">

@@ -2,6 +2,7 @@
 
 import {createContext,useCallback,useContext,useId,useLayoutEffect,useMemo,useState,type ReactNode} from 'react';
 import {createPortal} from 'react-dom';
+import {OVERLAY_TRANSITION} from '@/lib/overlay-motion';
 import {AnimatePresence,motion,MotionConfig,useIsPresent} from 'motion/react';
 
 type Entrance='fade'|'slide';
@@ -31,8 +32,8 @@ function RecordingPanel({children,entrance}:{children:ReactNode;entrance:Entranc
   useLayoutEffect(()=>{if(present)setSettled(false);},[present]);
   return <motion.div className="recording-layer" data-state={!present?'exiting':settled?'open':'entering'} inert={!present}
     initial={entrance==='fade'?'faded':'hidden'} animate="shown" exit="dismissed"
-    variants={{faded:{y:0,opacity:0},hidden:{y:'100%',opacity:1},shown:{y:0,opacity:1,scale:1,filter:'blur(0px)'},dismissed:(dismissal:Dismissal)=>dismissal==='discard'?{y:-24,scale:.88,opacity:0,filter:'blur(5px)',transition:{duration:.38,ease:[.4,0,.2,1]}}:{y:'100%',scale:1,opacity:1,filter:'blur(0px)'}}}
-    transition={{duration:.44,ease:[.22,1,.36,1]}}
+    variants={{faded:{y:0,opacity:0},hidden:{y:'100%',opacity:1},shown:{y:0,opacity:1,scale:1,filter:'none'},dismissed:(dismissal:Dismissal)=>dismissal==='discard'?{y:-24,scale:.88,opacity:0,filter:'blur(5px)',transition:OVERLAY_TRANSITION}:{y:'100%',scale:1,opacity:1,filter:'none'}}}
+    transition={OVERLAY_TRANSITION}
     onAnimationComplete={definition=>{if(definition==='shown')setSettled(true);}}>
     {children}
   </motion.div>;
