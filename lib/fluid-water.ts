@@ -26,9 +26,14 @@ void main(){
   vec2 r=vec2(mist(p+q*2.8+vec2(t*.13,t*.09)),mist(p+q*2.8+vec2(8.3,2.8)+vec2(-t*.11,t*.15)));
   float fluid=mist(p+r*3.1+vec2(-t*.1,t*.08));
   float light=smoothstep(.18,.82,fluid);
-  vec3 deep=vec3(.045,.019,.042);
-  vec3 frost=mix(vec3(.22,.16,.21),vec3(.16,.21,.23),q.y);
-  vec3 color=mix(deep,frost,light);
+  float roseAxis=p.x*.72+p.y*.48+(r.x-.5)*1.1+1.8*sin(t*.65);
+  float violetAxis=-p.x*.45+p.y*.62+(q.y-.5)*1.1+1.5*cos(t*.47+1.7);
+  float roseBeam=exp(-roseAxis*roseAxis*1.9);
+  float violetBeam=exp(-violetAxis*violetAxis*1.35);
+  vec3 color=vec3(.052,.018,.045);
+  color+=vec3(.16,.035,.11)*roseBeam*(.35+.65*light);
+  color+=vec3(.07,.035,.14)*violetBeam*.6;
+  color+=vec3(.02,.007,.025)*light;
   color+=(hash(gl_FragCoord.xy)-.5)*.003;
   gl_FragColor=vec4(color,1.);
 }`;

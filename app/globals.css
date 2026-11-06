@@ -272,12 +272,12 @@ html[data-font-zh='brush']:lang(zh-CN) :is(.font-display, h1, h2, .sheet-panel h
 .water-background { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; contain: strict; background: #110910; }
 .water-background--contained { position: absolute; z-index: 0; }
 .water-scene .timer-screen { background: transparent; }
-.water-canvas { position: absolute; left: -32px; top: -32px; display: block; width: calc(100% + 64px); height: calc(100% + 64px); filter: blur(9px); opacity: 0; transition: opacity .5s; }
+.water-canvas { position: absolute; left: -84px; top: -84px; display: block; width: calc(100% + 168px); height: calc(100% + 168px); filter: blur(26px); opacity: 0; transition: opacity .5s; }
 .water-background[data-water-renderer='webgl'] > .water-canvas { opacity: 1; }
 .water-fallback { position: absolute; inset: 0; background:
-  radial-gradient(ellipse at 20% 30%, #57506250, transparent 65%),
-  radial-gradient(ellipse at 75% 65%, #46596050, transparent 65%),
-  radial-gradient(ellipse at 45% 85%, #55314740, transparent 70%), #110910;
+  radial-gradient(ellipse at 20% 30%, #7e28534a, transparent 65%),
+  radial-gradient(ellipse at 75% 65%, #66296840, transparent 65%),
+  radial-gradient(ellipse at 45% 85%, #6e215640, transparent 70%), #110910;
   background-size: 180% 180%; animation: water-fallback 24s ease-in-out infinite alternate;
 }
 .water-background[data-water-renderer='webgl'] > .water-fallback { animation-play-state: paused; }
