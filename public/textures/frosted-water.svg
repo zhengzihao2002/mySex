@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200" viewBox="0 0 1200 1200" fill="none" preserveAspectRatio="xMidYMid slice" focusable="false">
+      <defs>
+        <radialGradient id="water-pearl" cx=".48" cy=".45" r=".62">
+          <stop stop-color="#bfdde1" stop-opacity=".24"/>
+          <stop offset=".5" stop-color="#a8baca" stop-opacity=".16"/>
+          <stop offset="1" stop-color="#a8baca" stop-opacity="0"/>
+        </radialGradient>
+        <radialGradient id="water-rose" cx=".5" cy=".4" r=".65">
+          <stop stop-color="#d5b6cc" stop-opacity=".2"/>
+          <stop offset=".55" stop-color="#b7a0c8" stop-opacity=".12"/>
+          <stop offset="1" stop-color="#b7a0c8" stop-opacity="0"/>
+        </radialGradient>
+        <radialGradient id="water-lilac" cx=".5" cy=".5" r=".6">
+          <stop stop-color="#c0bee0" stop-opacity=".16"/>
+          <stop offset="1" stop-color="#a4b9d3" stop-opacity="0"/>
+        </radialGradient>
+        <filter id="water-diffuse" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
+          <feTurbulence type="fractalNoise" baseFrequency=".006 .009" numOctaves="2" seed="7" result="flow"/>
+          <feDisplacementMap in="SourceGraphic" in2="flow" scale="220" xChannelSelector="R" yChannelSelector="G"/>
+          <feGaussianBlur stdDeviation="16"/>
+        </filter>
+      </defs>
+      <g filter="url(#water-diffuse)">
+        <path fill="url(#water-pearl)" d="M-220 1040C-100 660 260 770 280 490C300 200 610 140 740 390C870 640 620 740 820 1010C1000 1260 380 1470-220 1040Z"/>
+        <path fill="url(#water-rose)" d="M-180-180C340-250 770-100 640 220C500 540 220 280 80 560C-60 830-420 320-180-180Z"/>
+        <path fill="url(#water-lilac)" d="M850-120C1230 70 1450 550 1150 690C880 820 1070 1120 780 1340C510 1510 420 1000 630 780C860 540 590 110 850-120Z"/>
+      </g>
+    </svg>
