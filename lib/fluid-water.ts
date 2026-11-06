@@ -10,30 +10,29 @@ float hash(vec2 p){
   q+=dot(q,q.yzx+33.33);
   return fract((q.x+q.y)*q.z);
 }
-float noise(vec2 p){
-  vec2 i=floor(p),f=fract(p);
-  vec2 u=f*f*f*(f*(f*6.0-15.0)+10.0);
-  return mix(mix(hash(i),hash(i+vec2(1.,0.)),u.x),mix(hash(i+vec2(0.,1.)),hash(i+vec2(1.,1.)),u.x),u.y);
-}
-float mist(vec2 p){
-  return .55*noise(p)+.3*noise(p*1.93+vec2(7.1,3.4))+.15*noise(p*3.71+vec2(2.4,9.2));
+vec3 circle(vec2 p,vec2 center,float radius,float hue){
+  vec2 d=(p-center)/radius;
+  // Gaussian circles have no visible boundary or sharp center. The canvas
+  // diffusion adds another layer of frost without deforming their round shape.
+  float glow=exp(-dot(d,d)*1.8);
+  vec3 blend=.5+.5*cos(6.2831853*(hue+vec3(0.,.333333,.666667)));
+  blend*=blend;
+  vec3 tint=(vec3(.24,.025,.105)*blend.x+vec3(.075,.035,.25)*blend.y+vec3(.025,.155,.18)*blend.z)/(blend.x+blend.y+blend.z);
+  return tint*glow;
 }
 void main(){
   vec2 uv=gl_FragCoord.xy/u_resolution;
-  vec2 p=(uv-.5)*vec2(u_resolution.x/u_resolution.y,1.)*3.2;
-  float t=u_time*.42;
-  vec2 q=vec2(mist(p+vec2(t*.18,-t*.12)),mist(p+vec2(5.2,1.3)+vec2(-t*.14,t*.16)));
-  vec2 r=vec2(mist(p+q*2.8+vec2(t*.13,t*.09)),mist(p+q*2.8+vec2(8.3,2.8)+vec2(-t*.11,t*.15)));
-  float fluid=mist(p+r*3.1+vec2(-t*.1,t*.08));
-  float light=smoothstep(.18,.82,fluid);
-  float roseAxis=p.x*.72+p.y*.48+(r.x-.5)*1.1+1.8*sin(t*.65);
-  float violetAxis=-p.x*.45+p.y*.62+(q.y-.5)*1.1+1.5*cos(t*.47+1.7);
-  float roseBeam=exp(-roseAxis*roseAxis*1.9);
-  float violetBeam=exp(-violetAxis*violetAxis*1.35);
-  vec3 color=vec3(.052,.018,.045);
-  color+=vec3(.16,.035,.11)*roseBeam*(.35+.65*light);
-  color+=vec3(.07,.035,.14)*violetBeam*.6;
-  color+=vec3(.02,.007,.025)*light;
+  float aspect=u_resolution.x/u_resolution.y;
+  vec2 p=(uv-.5)*vec2(aspect,1.);
+  float t=u_time;
+  vec3 color=vec3(.045,.018,.04);
+  // Separate horizontal/vertical periods let each circle drift and reverse
+  // independently. Aspect-correct distances keep circles round on every screen.
+  color+=circle(p,vec2(.52*aspect*sin(t*.17+.4),.55*cos(t*.13+.7)),.34,t*.006+.94)*.85;
+  color+=circle(p,vec2(.55*aspect*cos(t*.11+1.6),.53*sin(t*.19+2.3)),.28,t*.007+.60)*.75;
+  color+=circle(p,vec2(.50*aspect*sin(t*.14+3.5),.56*cos(t*.09+4.1)),.37,t*.005+.29)*.70;
+  color+=circle(p,vec2(.57*aspect*cos(t*.20+4.3),.51*sin(t*.12+.3)),.26,t*.008+.79)*.65;
+  color+=circle(p,vec2(.54*aspect*sin(t*.08+2.4),.55*cos(t*.16+2.2)),.31,t*.006+.08)*.60;
   color+=(hash(gl_FragCoord.xy)-.5)*.003;
   gl_FragColor=vec4(color,1.);
 }`;
