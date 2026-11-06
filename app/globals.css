@@ -271,6 +271,7 @@ html[data-font-zh='brush']:lang(zh-CN) :is(.font-display, h1, h2, .sheet-panel h
 /* A full-viewport fluid field: no translated image edges, masks or corner vignette. */
 .water-scene { isolation: isolate; background-image: none; }
 .water-background { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; contain: strict; background: #110910; }
+body:has(> .recording-layer) > .water-background { top: var(--recording-top, 0px); left: var(--recording-left, 0px); height: var(--recording-height, 100%); width: var(--recording-width, 100%); bottom: auto; right: auto; }
 .water-background--contained { position: absolute; z-index: 0; }
 .water-scene .timer-screen { background: transparent; }
 .water-canvas { position: absolute; left: -84px; top: -84px; display: block; width: calc(100% + 168px); height: calc(100% + 168px); filter: blur(26px); opacity: 0; transition: opacity .5s; }
