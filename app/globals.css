@@ -122,7 +122,7 @@ h1.font-display { line-height: 1.15; font-size: clamp(2rem, 4vw, 2.6rem); }
 [data-sheet-scroll] form > div:not(.grid) + div:not(.grid) { margin-top: 22px; }
 [data-sheet-scroll] legend .symbol-icon { margin-right: 4px; }
 [data-sheet-scroll] .label { line-height: 1.5; }
-.app-frame:has(.notes-page) { position: fixed; top: var(--notes-top, 0px); left: 0; right: 0; height: var(--notes-height, 100dvh); min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding-bottom: calc(max(12px, env(safe-area-inset-bottom)) + 84px); transform: none !important; }
+.app-frame:has(.notes-page) { position: fixed; top: var(--notes-top, 0px); left: 0; right: 0; height: var(--notes-height, 100dvh); min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding-bottom: calc(max(12px, env(safe-area-inset-bottom)) + 84px); }
 .notes-page { display: flex; flex: 1; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden; }
 .notes-page > .notes-header { flex-shrink: 0; margin-bottom: 0; padding-bottom: 20px; }
 .notes-thread { flex: 1; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior-y: contain; padding: 4px 12px 20px 2px; scrollbar-gutter: stable; scrollbar-width: thin; scrollbar-color: var(--color-line) transparent; }

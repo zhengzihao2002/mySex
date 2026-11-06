@@ -41,7 +41,7 @@ export function AppFrame({ children }: { children: ReactNode }) {
   const order=['/home','/calendar','/timer','/insights','/notes'];
   const direction=order.indexOf(path)>=order.indexOf(previous.current)?1:-1;
   useLayoutEffect(()=>{previous.current=path;},[path]);
-  return <motion.main key={path} className="app-frame" initial={path === '/timer' ? false : { opacity: 0, x: direction*22 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: .32, ease: [.22, 1, .36, 1] }}>{children}</motion.main>;
+  return <motion.main key={path} className="app-frame" initial={path === '/timer' || (previous.current === '/timer' && path === '/home') ? false : { opacity: 0, x: direction*22 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: .32, ease: [.22, 1, .36, 1] }}>{children}</motion.main>;
 }
 
 export function AnimatedContent({ value, children }: { value: string; children: ReactNode }) {
