@@ -369,7 +369,7 @@ function LiveTimer({
       </div>
 
       <header className="relative z-10 mx-auto flex w-full max-w-lg items-center justify-between px-5 pt-safe">
-        <Link href="/home" className="rounded-full bg-surface-2/70 p-2.5 text-ink-2 backdrop-blur" aria-label="Minimize">
+        <Link href="/home" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface-2/70 text-ink-2 backdrop-blur" aria-label="Minimize">
           <ChevronDown size={20} />
         </Link>
         <div className="flex items-center gap-2 rounded-full bg-surface-2/70 px-3 py-1.5 text-xs font-semibold tracking-widest uppercase backdrop-blur">
@@ -377,7 +377,7 @@ function LiveTimer({
           <SymbolIcon value={KIND_META[session.kind].emoji} size={14}/> <AnimatedValue value={pendingStart ? t('Starting') : paused ? t('Paused') : t('Live')}/>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => setDim(true)} className="rounded-full bg-surface-2/70 p-2.5 text-ink-2 backdrop-blur" aria-label="Discreet mode">
+          <button onClick={() => setDim(true)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface-2/70 text-ink-2 backdrop-blur" aria-label="Discreet mode">
             <EyeOff size={18} />
           </button>
         </div>

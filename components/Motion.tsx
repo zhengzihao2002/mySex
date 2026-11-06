@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
 import { AnimatePresence, motion, MotionConfig } from 'motion/react';
 import autoAnimate from '@/lib/vendor/auto-animate/index.mjs';
@@ -37,7 +37,11 @@ export function MotionProvider({ children }: { children: ReactNode }) {
 
 export function AppFrame({ children }: { children: ReactNode }) {
   const path = usePathname();
-  return <motion.main key={path} className="app-frame" initial={path === '/timer' ? false : { opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .28, ease: [.22, 1, .36, 1] }}>{children}</motion.main>;
+  const previous=useRef(path);
+  const order=['/home','/calendar','/timer','/insights','/notes'];
+  const direction=order.indexOf(path)>=order.indexOf(previous.current)?1:-1;
+  useLayoutEffect(()=>{previous.current=path;},[path]);
+  return <motion.main key={path} className="app-frame" initial={path === '/timer' ? false : { opacity: 0, x: direction*22 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: .32, ease: [.22, 1, .36, 1] }}>{children}</motion.main>;
 }
 
 export function AnimatedContent({ value, children }: { value: string; children: ReactNode }) {
