@@ -1,9 +1,11 @@
-/** The shared SVG texture is cached; only its outer layers move, without a JS loop. */
-export function WaterBackground({ contained = false }: { contained?: boolean }) {
-  return <div aria-hidden="true" className={`water-background${contained ? ' water-background--contained' : ''}`}>
-    <div className="water-wash" />
-    <div className="water-current" />
-    <div className="water-current water-current--undertow" />
-    <div className="water-frost" />
+'use client';
+import {useLayoutEffect,useRef} from 'react';
+import {attachFluidWater} from '@/lib/fluid-water';
+
+export function WaterBackground({contained=false}:{contained?:boolean}) {
+  const host=useRef<HTMLDivElement>(null);
+  useLayoutEffect(()=>{if(host.current)return attachFluidWater(host.current,contained);},[contained]);
+  return <div ref={host} aria-hidden="true" className={`water-background${contained?' water-background--contained':''}`}>
+    <div className="water-fallback"/>
   </div>;
 }

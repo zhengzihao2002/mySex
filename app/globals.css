@@ -135,7 +135,7 @@ body:has(.notes-page[data-keyboard-open='true']) .nav-dock { visibility: hidden;
 .timer-start > span:last-child { color: #fbeff6; }
 .timer-screen { position: fixed; inset: 0; z-index: 45; display: flex; flex-direction: column; width: 100%; height: 100dvh; overflow: hidden; background: #0e070d; overscroll-behavior: none; }
 .recording-layer { position: fixed; inset: 0; z-index: 45; width: 100%; height: 100dvh; overflow: hidden; will-change: transform; }
-body:has(> .recording-layer[data-state='open']) :is(.app-frame, .nav-dock) { visibility: hidden; }
+body:has(> .recording-layer:not([data-state='exiting'])) :is(.app-frame, .nav-dock) { visibility: hidden; }
 .timer-screen > header, .timer-screen > footer { flex-shrink: 0; }
 .timer-screen > header :is(a,button) { min-width: 44px; min-height: 44px; }
 .recording-main { position: relative; z-index: 1; display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 8px; flex: 1; min-height: 0; width: min(100%, 512px); align-self: center; padding: 8px 24px 0; overflow: hidden; }
@@ -267,38 +267,28 @@ html[data-font-zh='brush']:lang(zh-CN) :is(.font-display, h1, h2, .sheet-panel h
 .position-reveal-front { transform: rotateY(180deg); }
 @media (max-height: 480px) { .position-reveal-stage { gap: 10px; } .position-reveal-card { width: 31vh; } .position-reveal-face { padding: 14px; gap: 8px; } }
 
-/* Frosted water: continuous, diffused liquid light below the interface. Nothing above this
-   layer is transformed, so fixed sheets and the iPhone viewport keep their geometry. */
+/* A full-viewport fluid field: no translated image edges, masks or corner vignette. */
 .water-scene { isolation: isolate; background-image: none; }
-.water-background { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; contain: strict; }
-.water-background--contained { position: absolute; z-index: 0; opacity: .7; }
-.water-wash { position: absolute; inset: -15%; background:
-  radial-gradient(ellipse at 18% 24%, #c593b41c, transparent 52%),
-  radial-gradient(ellipse at 82% 58%, #81abb61c, transparent 50%),
-  radial-gradient(ellipse at 32% 92%, #aaa2dc19, transparent 55%);
-  opacity: .7; animation: water-drift 32s -9s cubic-bezier(.45,0,.55,1) infinite alternate;
+.water-background { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; contain: strict; background: #110910; }
+.water-background--contained { position: absolute; z-index: 0; }
+.water-scene .timer-screen { background: transparent; }
+.water-canvas { position: absolute; left: -32px; top: -32px; display: block; width: calc(100% + 64px); height: calc(100% + 64px); filter: blur(9px); opacity: 0; transition: opacity .5s; }
+.water-background[data-water-renderer='webgl'] > .water-canvas { opacity: 1; }
+.water-fallback { position: absolute; inset: 0; background:
+  radial-gradient(ellipse at 20% 30%, #57506250, transparent 65%),
+  radial-gradient(ellipse at 75% 65%, #46596050, transparent 65%),
+  radial-gradient(ellipse at 45% 85%, #55314740, transparent 70%), #110910;
+  background-size: 180% 180%; animation: water-fallback 24s ease-in-out infinite alternate;
 }
-.water-current { position: absolute; left: 50%; top: 50%; width: max(130vw, 130vh); height: max(130vw, 130vh); opacity: .5; transform: translate3d(-50%, -50%, 0); background: url('/textures/frosted-water.svg') center / cover no-repeat; mask-image: radial-gradient(ellipse, #000 38%, transparent 72%); -webkit-mask-image: radial-gradient(ellipse, #000 38%, transparent 72%); animation: water-current 28s -7s cubic-bezier(.45,0,.55,1) infinite alternate; }
-.water-current--undertow { opacity: .2; transform: translate3d(-50%, -50%, 0) rotate(165deg); animation: water-undertow 34s -19s cubic-bezier(.45,0,.55,1) infinite alternate; }
-.water-frost { position: absolute; inset: 0; opacity: .025; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Cpath fill='%23fff' filter='url(%23f)' d='M0 0h128v128H0z'/%3E%3C/svg%3E"); }
-.water-background::after { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at 48% 45%, transparent 35%, #0e070d25 100%); }
-@keyframes water-drift {
-  from { transform: translate3d(-12%, 8%, 0) rotate(-12deg) scale(1.06); }
-  to { transform: translate3d(12%, -8%, 0) rotate(12deg) scale(1.12); }
+.water-background[data-water-renderer='webgl'] > .water-fallback { animation-play-state: paused; }
+.water-background[data-water-state='paused'] > .water-fallback,
+.water-background[data-water-state='covered'] > .water-fallback { animation-play-state: paused; }
+@keyframes water-fallback {
+  0% { background-position: 0% 20%, 100% 80%, 20% 100%; }
+  50% { background-position: 100% 80%, 0% 30%, 90% 0%; }
+  100% { background-position: 20% 100%, 80% 0%, 0% 70%; }
 }
-@keyframes water-current {
-  0% { transform: translate3d(-68%, -34%, 0) rotate(-24deg) scale(.96, 1.08) skew(-4deg, 2deg); opacity: .35; }
-  50% { transform: translate3d(-32%, -66%, 0) rotate(10deg) scale(1.1, .94) skew(4deg, -2deg); opacity: .65; }
-  100% { transform: translate3d(-64%, -70%, 0) rotate(28deg) scale(1, 1.12) skew(-3deg, 2deg); opacity: .3; }
-}
-@keyframes water-undertow {
-  0% { transform: translate3d(-32%, -66%, 0) rotate(150deg) scale(1.08, .94); opacity: .3; }
-  50% { transform: translate3d(-68%, -36%, 0) rotate(195deg) scale(.94, 1.1); opacity: .15; }
-  100% { transform: translate3d(-36%, -32%, 0) rotate(165deg) scale(1.06, 1); opacity: .4; }
-}
-/* Pause the covered scene instead of compositing two animated backgrounds. */
-body:has(> .recording-layer) .water-background:not(.water-background--contained) :is(.water-wash, .water-current),
-body:has(dialog[open], [role="dialog"]) .water-background :is(.water-wash, .water-current) { animation-play-state: paused; }
 @media (prefers-reduced-motion: reduce) {
-  .water-background :is(.water-wash, .water-current) { animation: none !important; }
+  .water-fallback { animation: none !important; }
+  .water-canvas { transition: none; }
 }
