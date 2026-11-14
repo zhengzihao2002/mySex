@@ -69,7 +69,7 @@ h1.font-display { line-height: 1.15; font-size: clamp(2rem, 4vw, 2.6rem); }
   .chip-on { @apply border-rose/50 bg-rose/10 text-rose-2; }
 }
 
-.app-frame { width: min(100%, 720px); margin: 0 auto; padding: max(env(safe-area-inset-top), 28px) 22px calc(env(safe-area-inset-bottom) + 118px); }
+.app-frame { --page-gutter: 22px; width: min(100%, 720px); margin: 0 auto; padding: max(env(safe-area-inset-top), 28px) 22px calc(env(safe-area-inset-bottom) + 118px); }
 .app-frame > div > h1, .app-frame > div > header { margin-bottom: 24px; }
 .app-frame > div > h1 { margin-bottom: 20px; }
 .app-frame > div > header h1 { margin-bottom: 4px; }
@@ -123,9 +123,10 @@ h1.font-display { line-height: 1.15; font-size: clamp(2rem, 4vw, 2.6rem); }
 [data-sheet-scroll] legend .symbol-icon { margin-right: 4px; }
 [data-sheet-scroll] .label { line-height: 1.5; }
 .app-frame:has(.notes-page) { position: fixed; top: var(--notes-top, 0px); left: 0; right: 0; height: var(--notes-height, 100dvh); min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding-bottom: calc(max(12px, env(safe-area-inset-bottom)) + 84px); }
-.notes-page { display: flex; flex: 1; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden; }
+.notes-page { margin-inline: calc(-1 * var(--page-gutter)); padding-inline: var(--page-gutter); display: flex; flex: 1; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden; }
 .notes-page > .notes-header { flex-shrink: 0; margin-bottom: 0; padding-bottom: 20px; }
 .notes-thread { flex: 1; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior-y: contain; padding: 4px 12px 20px 2px; scrollbar-gutter: stable; scrollbar-width: thin; scrollbar-color: var(--color-line) transparent; }
+.notes-options { margin-inline: calc(-1 * var(--page-gutter)); padding-inline: var(--page-gutter); scroll-padding-inline: var(--page-gutter); }
 .notes-composer { flex-shrink: 0; min-width: 0; border-top: 1px solid var(--color-line); background: transparent; padding-top: 12px; }
 .app-frame:has(.notes-page[data-keyboard-open='true']) { padding-bottom: max(12px, env(safe-area-inset-bottom)); }
 body:has(.notes-page[data-keyboard-open='true']) .nav-dock { visibility: hidden; pointer-events: none; }
@@ -207,7 +208,7 @@ summary::marker { color: var(--color-rose); }
   body:has(.notes-page[data-keyboard-open='true']) .nav-dock { visibility: visible; pointer-events: auto; }
 }
 @media (max-width: 480px) {
-  .app-frame { padding-left: 18px; padding-right: 18px; }
+  .app-frame { --page-gutter: 18px; padding-left: 18px; padding-right: 18px; }
   .card { padding: 18px; }
   .cycle-card { gap: 16px; padding: 22px 18px; }
   .cycle-card .cycle-ring { width: 114px; height: 114px; }

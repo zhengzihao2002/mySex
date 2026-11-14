@@ -226,14 +226,14 @@ export function NotesView({ notes, meId, partnerName, partnerAvatar }: { notes: 
       </Sheet>
 
       <footer className="notes-composer space-y-2">
-        <div className="grid grid-cols-3 gap-2">
+        <div className="notes-options grid grid-cols-3 gap-2">
           {(Object.keys(NOTE_KINDS) as LoveNote['kind'][]).map((k) => (
             <button key={k} onClick={() => setKind(k)} aria-pressed={kind === k} title={t(NOTE_KINDS[k].label)} className={`selection-choice chip min-w-0 px-2 text-xs ${kind === k ? 'text-rose-2 border-rose/30' : ''}`}>
               {kind === k && <SelectionPill id="note-kind"/>}<SymbolIcon value={NOTE_KINDS[k].emoji} size={15}/><span className="truncate">{t(NOTE_KINDS[k].label)}</span>
             </button>
           ))}
         </div>
-        <div className="no-scrollbar flex gap-1.5 overflow-x-auto">
+        <div className="notes-options no-scrollbar flex gap-1.5 overflow-x-auto">
           {PROMPTS[kind].map((p) => (
             <button key={p} onClick={() => setText(t(p))} className="chip shrink-0 text-xs">
               {t(p)}
