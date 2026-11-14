@@ -233,7 +233,7 @@ export function NotesView({ notes, meId, partnerName, partnerAvatar }: { notes: 
             </button>
           ))}
         </div>
-        <div className="notes-options no-scrollbar flex gap-1.5 overflow-x-auto">
+        <div key={kind} className="notes-options no-scrollbar flex gap-1.5 overflow-x-auto">
           {PROMPTS[kind].map((p) => (
             <button key={p} onClick={() => setText(t(p))} className="chip shrink-0 text-xs">
               {t(p)}
