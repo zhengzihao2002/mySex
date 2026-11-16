@@ -5,7 +5,7 @@ import { AnimatedContent } from '@/components/Motion';
 import {useViewState,useViewScroll} from '@/components/ViewMemory';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Droplet, Heart, Plus, SmilePlus } from 'lucide-react';
-import { deletePeriod, endPeriod, logPastSession, startPeriod, updatePeriod } from '@/app/actions';
+import { deletePeriod, endPeriod, logPastSession, setPeriodNotStarted, startPeriod, updatePeriod } from '@/app/actions';
 import { CheckInSheet } from '@/components/CheckInSheet';
 import { FormError } from '@/components/FormError';
 import { SessionCard } from '@/components/SessionCard';
@@ -58,7 +58,7 @@ export function CalendarView({
   const lastOffset = Math.max(1, glideDelta ?? 0);
   const pageOffsets = Array.from({ length: lastOffset - firstOffset + 1 }, (_, i) => firstOffset + i);
 
-  const model = useMemo(() => buildCycleModel(periods, defaults, today, 18), [periods, defaults, today]);
+  const model = useMemo(() => buildCycleModel(periods, defaults, today, 18, logs.filter(l=>l.userId===(me.sex==='female'?me.userId:partner.userId)&&l.periodNotStarted).map(l=>l.date)), [periods, defaults, today, logs, me, partner]);
   const scores = useMemo(() => scoreSessions(sessions, tz), [sessions, tz]);
   const places = useMemo(() => placeSuggestions(sessions), [sessions]);
   const byDay = useMemo(() => {
@@ -363,6 +363,9 @@ function DayPanel({
               <button className="btn-ghost flex-1 border-menstrual/50" disabled={per.pending} onClick={() => per.run(() => startPeriod(date))}>
                 <Droplet size={16} className="text-menstrual" /> {t('Period started')}
               </button>
+              <button className="btn-ghost flex-1" disabled={per.pending} aria-pressed={!!myLog?.periodNotStarted} onClick={() => per.run(() => setPeriodNotStarted(date, !myLog?.periodNotStarted))}>
+                {myLog?.periodNotStarted ? t('Undo: period hasn’t started') : t('Period hasn’t started')}
+              </button>
               {openBefore && (
                 <button className="btn-ghost flex-1" disabled={per.pending} onClick={() => per.run(() => endPeriod(date))}>
                   {t('Period ended')}
@@ -372,6 +375,7 @@ function DayPanel({
           )}
         </div>
       )}
+      {!containing && (isHer ? myLog : partnerLog)?.periodNotStarted && <p className="text-sm text-ink-2">{t('Recorded: period hasn’t started on this day. Predictions are estimates, not confirmed periods.')}</p>}
       <FormError error={per.error} />
 
       <div className="space-y-2">
@@ -432,6 +436,7 @@ function LogLine({ name, log }: { name: string; log: DailyLog | null }) {
       <span className="font-medium">{name}:</span> {mood ? <><SymbolIcon value={mood.emoji} size={14}/> {t(mood.label)}</> : ''}
       {log.libido ? ` · ${t('horny')} ${log.libido}/5` : ''}
       {log.energy ? ` · ${t('energy')} ${log.energy}/5` : ''}
+      {log.periodNotStarted && <span> · {t('Period hasn’t started')}</span>}
       {log.flow ? ` · ${t('flow')}: ${t(log.flow)}` : ''}
       {log.symptoms.length > 0 && <span className="block text-xs text-ink-3">{log.symptoms.map((x) => t(x)).join(', ')}</span>}
       {log.note && <span className="block text-xs text-ink-2 italic">“{log.note}”</span>}

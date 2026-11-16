@@ -179,7 +179,7 @@ export async function getPeriods(herUserId: string): Promise<Period[]> {
 /** All of my check-ins, but only the partner's check-ins made while paired with me. */
 export async function getDailyLogs(ctx: CoupleContext, since?: string): Promise<DailyLog[]> {
   const rows = await sql`
-    select user_id, log_date::text as date, mood, energy, libido, flow, symptoms, note
+    select user_id, log_date::text as date, mood, energy, libido, flow, symptoms, note, period_not_started
     from daily_logs
     where (user_id = ${ctx.me.userId} or (user_id = ${ctx.partner.userId} and couple_id = ${ctx.couple.id}))
       and (${since ?? null}::date is null or log_date >= ${since ?? null}::date)
@@ -191,6 +191,7 @@ export async function getDailyLogs(ctx: CoupleContext, since?: string): Promise<
     energy: r.energy,
     libido: r.libido,
     flow: r.flow,
+    periodNotStarted: r.period_not_started,
     symptoms: r.symptoms ?? [],
     note: r.note,
   }));

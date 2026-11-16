@@ -89,7 +89,7 @@ export function InsightsView(props: {
 function CycleTab({ periods, sessions, herLogs, isHer, herName, defaults }: Parameters<typeof InsightsView>[0]) {
   const { t, f } = useT();
   const { tz, today } = useTz();
-  const model = useMemo(() => buildCycleModel(periods, defaults, today, 12), [periods, defaults, today]);
+  const model = useMemo(() => buildCycleModel(periods, defaults, today, 12, herLogs.filter(l=>l.periodNotStarted).map(l=>l.date)), [periods, defaults, today, herLogs]);
   if (!model) {
     return <div className="card text-sm text-ink-2">{isHer ? t('Log your period on the calendar to see cycle insights.') : t('No cycle data yet — {name} logs her period on the calendar.', { name: herName })}</div>;
   }

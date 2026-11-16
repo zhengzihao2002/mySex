@@ -39,6 +39,7 @@ export type CycleModel = {
   today: string;
   nextPeriod: string;
   daysLate: number;
+  periodNotStartedThrough?: string;
 };
 
 export type DayInfo = {
@@ -127,6 +128,7 @@ export function buildCycleModel(
   defaults: CycleDefaults,
   today: string,
   futureCycles = 12,
+  notStartedDates: string[] = [],
 ): CycleModel | null {
   if (!periods.length) return null;
   const sorted = [...periods].sort((a, b) => a.start.localeCompare(b.start));
@@ -163,6 +165,10 @@ export function buildCycleModel(
   const expectedNext = toDayNum(last.start) + cycleLen;
   const daysLate = Math.max(0, todayN - expectedNext);
   const lastCycle = cycles[cycles.length - 1];
+  // A negative confirmation is evidence only for this cycle and past/today.
+  // Do not move historical starts, learned averages or the ovulation estimate.
+  const periodNotStartedThrough = notStartedDates.filter(date => date <= today && toDayNum(date) >= expectedNext).sort().at(-1);
+  if (periodNotStartedThrough) lastCycle.length = Math.max(lastCycle.length, toDayNum(periodNotStartedThrough) - toDayNum(last.start) + 1);
   let nextStartN = toDayNum(lastCycle.start) + lastCycle.length;
   // Only predict forward from today-ish if the last logged period is recent enough to matter.
   if (nextStartN < todayN - cycleLen * 2) nextStartN = todayN + 1;
@@ -178,7 +184,7 @@ export function buildCycleModel(
     });
   }
 
-  return { stats, cycles, today, nextPeriod: fromDayNum(nextStartN), daysLate };
+  return { stats, cycles, today, nextPeriod: fromDayNum(nextStartN), daysLate, periodNotStartedThrough };
 }
 
 export function findCycle(model: CycleModel, date: string): Cycle | null {

@@ -1,6 +1,9 @@
 // Simplified Chinese. Keys are the English UI text (see lib/i18n/core.ts).
 // Run `node scripts/check-i18n.mjs --missing` to find untranslated keys.
 export const zh: Record<string, string> = {
+  "Period hasn’t started": "月经还没来",
+  "Undo: period hasn’t started": "撤销“月经还没来”",
+  "Recorded: period hasn’t started on this day. Predictions are estimates, not confirmed periods.": "已记录：这天月经还没来。预测日期仅供参考，不代表月经已经开始。",
   "A moment for two.": "属于两人的此刻。",
   "Your story starts here.": "从这里，写下你们的故事。",
   "Today’s spark.": "今天的心动。",

@@ -74,3 +74,37 @@ test('phase spans cover the whole cycle', () => {
   assert.equal(up.length, 3);
   assert.equal(up[1].periodStart, addDays('2026-10-01', 28));
 });
+
+test('not-started confirmation excludes today from predicted bleeding without changing learned stats', () => {
+  const periods = [{start:'2026-10-01',end:'2026-10-05'}];
+  const baseline=buildCycleModel(periods,defaults,'2026-10-29')!;
+  const model=buildCycleModel(periods,defaults,'2026-10-29',12,['2026-10-29'])!;
+  assert.equal(model.nextPeriod,'2026-10-30');
+  assert.equal(model.periodNotStartedThrough,'2026-10-29');
+  assert.equal(dayInfo(model,'2026-10-29')!.isPredictedPeriod,false);
+  assert.equal(dayInfo(model,'2026-10-29')!.isPeriod,false);
+  assert.equal(dayInfo(model,'2026-10-29')!.phase,'luteal');
+  assert.deepEqual(model.stats,baseline.stats);
+  assert.equal(model.cycles[0].ovulationIndex,baseline.cycles[0].ovulationIndex);
+});
+
+test('repeated absence reports keep days late anchored to original prediction', () => {
+  const model=buildCycleModel([{start:'2026-10-01',end:'2026-10-05'}],defaults,'2026-11-02',12,['2026-10-29','2026-11-02'])!;
+  assert.equal(model.daysLate,4);
+  assert.equal(model.nextPeriod,'2026-11-03');
+  assert.equal(dayInfo(model,'2026-11-02')!.isPredictedPeriod,false);
+});
+
+test('future or previous-cycle absence reports do not change the current prediction', () => {
+  const periods=[{start:'2026-10-01',end:'2026-10-05'},{start:'2026-10-31',end:'2026-11-04'}];
+  const baseline=buildCycleModel(periods,defaults,'2026-11-05')!;
+  const model=buildCycleModel(periods,defaults,'2026-11-05',12,['2026-10-29','2026-10-30','2026-12-01'])!;
+  assert.deepEqual(model,baseline);
+  assert.equal(dayInfo(model,'2026-10-31')!.isPeriod,true);
+});
+
+test('undoing an absence report restores the original predicted day', () => {
+  const model=buildCycleModel([{start:'2026-10-01',end:'2026-10-05'}],defaults,'2026-10-29',12,[])!;
+  assert.equal(dayInfo(model,'2026-10-29')!.isPredictedPeriod,true);
+  assert.equal(model.nextPeriod,'2026-10-29');
+});

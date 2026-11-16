@@ -7,7 +7,8 @@ import {isUnverified} from '@/lib/auth-errors';
 import {initializeExperiences,submitSessionChanges} from '@/lib/session-experiences';
 import {completeRecording} from '@/lib/session-recording';
 import {savedCelebration,type SessionSaveResult} from '@/lib/session-rewards';
-import {getTz} from '@/lib/today';
+import {storePeriodNotStarted} from '@/lib/period-status';
+import {getTz, getToday} from '@/lib/today';
 import {dayInTz} from '@/lib/tz';
 import {activityDetails} from '@/lib/activity-details';
 import { randomInt, timingSafeEqual } from 'node:crypto';
@@ -499,8 +500,20 @@ export async function startPeriod(date: string): Promise<ActionResult> {
           and start_date <= ${date}::date and coalesce(end_date, start_date + 9) >= ${date}::date)
       on conflict (user_id, start_date) do nothing
       returning id`,
+    tx`update daily_logs set period_not_started = false, updated_at = now()
+      where user_id = ${uid} and period_not_started = true
+        and exists (select 1 from periods p where p.user_id = ${uid} and p.start_date = ${date}::date
+          and daily_logs.log_date between p.start_date and coalesce(p.end_date, p.start_date + 9))`,
   ]);
   if (!(inserted as unknown[]).length) return fail('That day is already part of a period.');
+  return done();
+}
+
+export async function setPeriodNotStarted(date: string, value: boolean): Promise<ActionResult> {
+  const ctx = await herOnly();
+  if (!isoDate.safeParse(date).success || typeof value !== 'boolean') return fail('Bad date');
+  if (date > (await getToday()).today) return fail('That date is in the future.');
+  if (!await storePeriodNotStarted(db(), ctx.couple.id, ctx.me.userId, date, value)) return fail('That day is already part of a period.');
   return done();
 }
 
@@ -527,6 +540,10 @@ export async function updatePeriod(id: string, start: string, end: string | null
   } catch {
     return fail('Another period already starts that day.');
   }
+  await sql`update daily_logs set period_not_started = false, updated_at = now()
+    where user_id = ${ctx.me.userId} and period_not_started = true
+      and exists (select 1 from periods p where p.id = ${id} and p.user_id = ${ctx.me.userId}
+        and daily_logs.log_date between p.start_date and coalesce(p.end_date, p.start_date + 9))`;
   return done();
 }
 
@@ -559,7 +576,8 @@ export async function saveDailyLog(input: z.input<typeof logSchema>): Promise<Ac
     values (${ctx.me.userId}, ${d.date}, ${ctx.couple.id}, ${d.mood}, ${d.energy}, ${d.libido}, ${flow}, ${d.symptoms}, ${d.note || null}, now())
     on conflict (user_id, log_date) do update set
       mood = excluded.mood, energy = excluded.energy, libido = excluded.libido, flow = excluded.flow,
-      symptoms = excluded.symptoms, note = excluded.note, couple_id = excluded.couple_id, updated_at = now()`;
+      symptoms = excluded.symptoms, note = excluded.note, couple_id = excluded.couple_id,
+      period_not_started = case when excluded.flow is not null then false else daily_logs.period_not_started end, updated_at = now()`;
   return done();
 }
 

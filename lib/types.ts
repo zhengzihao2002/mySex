@@ -83,6 +83,7 @@ export type Break = { start: string; end: string | null };
 export type Period = { id: string; start: string; end: string | null };
 
 export type DailyLog = {
+  periodNotStarted?: boolean;
   userId: string;
   date: string;
   mood: string | null;

@@ -60,8 +60,8 @@ export function HomeView({
   };
   const scores = useMemo(() => scoreSessions(done, tz), [done, tz]);
   const model = useMemo(
-    () => buildCycleModel(periods, { cycleLength: her.cycleLengthDefault, periodLength: her.periodLengthDefault }, today),
-    [periods, her, today],
+    () => buildCycleModel(periods, { cycleLength: her.cycleLengthDefault, periodLength: her.periodLengthDefault }, today, 12, logs.filter(l=>l.userId===her.userId&&l.periodNotStarted).map(l=>l.date)),
+    [periods, her, today, logs],
   );
   const info = model ? dayInfo(model, today) : null;
 
@@ -279,7 +279,7 @@ function CycleCard({
         <p className="phase-heading" style={{ color: phase.color }}>
           {t(phase.name)}
         </p>
-        {model.daysLate > 0 ? (
+        {model.periodNotStartedThrough === today ? (<p className="text-sm font-semibold text-menstrual">{t('Period hasn’t started')}</p>) : model.daysLate > 0 ? (
           <p className="text-sm font-semibold text-menstrual">{t('Period is {n} days late', { n: model.daysLate })}</p>
         ) : info.isPeriod || info.isPredictedPeriod ? (
           <p className="text-sm">{t('Period day {n}', { n: info.cycleDay })}</p>
