@@ -1,5 +1,17 @@
 // Partner goals and Storage — Simplified Chinese.
 export const partnerMissionZh: Record<string, string> = {
+  "Previous screen": "上一页",
+  "Review item requests in Inbox": "前往收件箱处理道具请求",
+  "Meet all of these targets": "需要满足以下所有条件",
+  "Remove condition": "移除此条件",
+  "Add another condition": "再加一项条件",
+  "Also complete": "还需完成",
+  "Set minutes per day": "按每天的分钟数设定",
+  "{minutes} min/day × {days} days = {total} min total": "每天{minutes}分钟 × {days}天，共{total}分钟",
+  "{minutes} min/day × {days} days": "每天{minutes}分钟 × {days}天",
+  "Amount": "金额",
+  "Currency": "币种",
+  "Raw pass": "无套券",
   "Choose our next date": "选择下一次约会",
   "Dinner treat": "请吃晚餐",
   "Dessert treat": "请吃甜点",

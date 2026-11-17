@@ -1,6 +1,6 @@
 # Partner goals and Storage
 
-Partner missions are separate from the existing automatic XP quests. Either partner may send an invitation with a custom goal, timeframe, optional prize, optional multiplier bonus and optional reverse-claim item. Item titles and conditions are free text; icons change only appearance. The recipient joins or declines. Either participant may end a joined mission without a failure claim. Ending preserves already-earned items.
+Partner missions are separate from the existing automatic XP quests. Either partner may send an invitation with a custom goal, timeframe, optional prize, optional multiplier bonus and optional reverse-claim item. A focused catalogue supplies item names and icons automatically. Money has amount/currency fields; Raw pass is an explicit option. Custom naming is available only as the fallback, while restrictions remain freely editable. The recipient joins or declines. Either participant may end a joined mission without a failure claim. Ending preserves already-earned items.
 
 Only completed intercourse records count. Metrics: cumulative active minutes (breaks excluded), cumulative total minutes (breaks included), saved record count, and distinct known intercourse positions. Records must start after both window start and acceptance, end inside the window, and be saved before the deadline. Existing records, oral and ongoing recordings do not qualify. No XP formula changes. Both partners can open successful mission proof in Insights.
 
@@ -17,3 +17,9 @@ All reads and writes require current membership in the active couple. Mission ou
 New goals use a system-generated name and no custom description. Up to eight conditions can be combined with AND, each specifying intercourse or oral and a recorded metric. Every condition must pass; stretch rewards multiply every target. Oral partner goals do not change the existing intercourse-only XP quests. Existing single-condition missions remain compatible.
 
 Rewards and reverse claims offer a catalogue first, with system-selected labels and icons; only Something else opens custom naming. Every option keeps a separate restrictions field. Storage-use approvals appear directly in Inbox. Back follows app navigation history, falling back to Home on direct entry.
+
+## Daily target and navigation refinement
+
+Minutes per day is a planning shortcut for one cumulative goal: daily minutes multiplied by the number of selected local calendar dates. End-midnight excludes that date, and DST does not change the date count. Progress may be unevenly distributed across days. The normalized total and daily breakdown are stored with the goal.
+
+Storage is the owner’s collection, not a second approval screen. Counterparty approvals live in Inbox. The return control is labelled with the originating screen. Metric changes reset defaults to minutes=30, records=1, positions=3.
