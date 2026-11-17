@@ -78,7 +78,7 @@ export function progressForMission(rule: MissionRule, sessions: MissionSession[]
   return {value, sessionIds, baseComplete: value >= rule.target, expired};
 }
 
-export type MissionGoal={perDay?:number;days?:number;timeZone?:string;kind:'intercourse'|'oral';metric:Metric;target:number};
+export type MissionGoal={dailyTargets?:Record<string,number>;perDay?:number;days?:number;timeZone?:string;kind:'intercourse'|'oral';metric:Metric;target:number};
 export function progressForGoals(rule:MissionRule,goals:MissionGoal[],sessions:MissionSession[],now:Date){
  const checks=goals.map(g=>({...g,...progressForMission({...rule,...g},sessions,now)}));
  const ratio=checks.length?Math.min(...checks.map(g=>g.value/g.target)):0;

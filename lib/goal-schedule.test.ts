@@ -13,3 +13,12 @@ test('calendar-day count handles DST and a changed date window',()=>{
  assert.equal(goalDays('2026-10-31T04:00:00Z','2026-11-03T05:00:00Z','America/New_York'),3);
  assert.equal(goalDays('2026-11-17T05:00:00Z','2026-11-18T05:00:00Z','America/New_York'),1);
 });
+
+test('individually chosen partial-day targets sum to one cumulative goal; out-of-period dates never add minutes',()=>{
+ const goal=scheduledGoal({kind:'intercourse',metric:'active_minutes',target:30,perDay:30,dailyTargets:{'2026-11-17':10,'2026-11-19':5,'2026-12-01':999}},'2026-11-17T20:00:00Z','2026-11-19T15:00:00Z','America/New_York');
+ assert.equal(goal.target,45);assert.equal(goal.days,3);assert.deepEqual(goal.dailyTargets,{'2026-11-17':10,'2026-11-18':30,'2026-11-19':5});
+});
+test('days across month boundaries and daylight saving remain editable without duplication',()=>{
+ const goal=scheduledGoal({kind:'oral',metric:'active_minutes',target:10,perDay:10,dailyTargets:{'2026-11-01':0}},'2026-10-31T04:00:00Z','2026-11-03T05:00:00Z','America/New_York');
+ assert.equal(goal.target,20);assert.equal(Object.keys(goal.dailyTargets!).length,3);
+});

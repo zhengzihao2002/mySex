@@ -1,6 +1,6 @@
 # Partner goals and Storage
 
-Partner missions are separate from the existing automatic XP quests. Either partner may send an invitation with a custom goal, timeframe, optional prize, optional multiplier bonus and optional reverse-claim item. A focused catalogue supplies item names and icons automatically. Money has amount/currency fields; Raw pass is an explicit option. Custom naming is available only as the fallback, while restrictions remain freely editable. The recipient joins or declines. Either participant may end a joined mission without a failure claim. Ending preserves already-earned items.
+Partner missions are separate from the existing automatic XP quests. Either partner may send an invitation with a custom goal, timeframe, optional prize, optional multiplier bonus and optional reverse-claim item. The catalogue has exactly Money, Delete ugly photos, Raw pass and Something else, with no preselected reward, bonus or claim. Item names and icons are assigned automatically. Money has amount/currency fields; Raw pass is an explicit option. Custom naming is available only as the fallback, while restrictions remain freely editable. The recipient joins or declines. Either participant may end a joined mission without a failure claim. Ending preserves already-earned items.
 
 Only completed intercourse records count. Metrics: cumulative active minutes (breaks excluded), cumulative total minutes (breaks included), saved record count, and distinct known intercourse positions. Records must start after both window start and acceptance, end inside the window, and be saved before the deadline. Existing records, oral and ongoing recordings do not qualify. No XP formula changes. Both partners can open successful mission proof in Insights.
 
@@ -23,3 +23,7 @@ Rewards and reverse claims offer a catalogue first, with system-selected labels 
 Minutes per day is a planning shortcut for one cumulative goal: daily minutes multiplied by the number of selected local calendar dates. End-midnight excludes that date, and DST does not change the date count. Progress may be unevenly distributed across days. The normalized total and daily breakdown are stored with the goal.
 
 Storage is the owner’s collection, not a second approval screen. Counterparty approvals live in Inbox. The return control is labelled with the originating screen. Metric changes reset defaults to minutes=30, records=1, positions=3.
+
+## Per-date calendar plan
+
+The minutes-per-day planner displays the selected local dates in a month calendar. Every date has an editable minutes amount, including zero for a partial or unavailable day. The date-only range selector uses a first tap for the start and a second tap for the inclusive end. Dates outside the selected range then become gray and disabled. A Change dates control unlocks a new selection. Only dates inside the current window are normalized and stored; their amounts sum to one cumulative goal. These are planning amounts, not independent daily completion requirements. Existing uniform per-day goals remain supported.
