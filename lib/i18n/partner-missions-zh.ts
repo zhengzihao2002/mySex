@@ -1,5 +1,6 @@
 // Partner goals and Storage — Simplified Chinese.
 export const partnerMissionZh: Record<string, string> = {
+  "Nothing": "无",
   "Change dates": "更改日期",
   "Tap a selected date to set its minutes.": "点击所选范围内的日期，分别设置分钟数。",
   "Plan for": "正在设置",

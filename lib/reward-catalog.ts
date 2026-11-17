@@ -1,6 +1,6 @@
 // i18n:begin
 export const REWARD_CATALOG=[
- ['contribution','Money','coins'],['photos','Delete ugly photos','camera'],['protection','Raw pass','ticket'],['custom','Something else','gift']
+ ['contribution','Money','coins'],['photos','Delete ugly photos','camera'],['protection','Raw pass','ticket'],['custom','Something else','gift'],['nothing','Nothing','gift']
 ] as const;
 // i18n:end
 export function catalogReward(value:{catalogKey?:string;title:string;details:string;icon?:string;amount?:number;currency?:string}){
