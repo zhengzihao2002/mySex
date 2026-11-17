@@ -3,6 +3,7 @@ import {z} from 'zod';
 import {revalidatePath} from 'next/cache';
 import {requireCouple} from '@/lib/data';
 import {db} from '@/lib/db';
+import {safeTz} from '@/lib/tz';
 import {scheduledGoal} from '@/lib/goal-schedule';
 import {catalogReward} from '@/lib/reward-catalog';
 import {ACTIVITY_GROUPS, INTERCOURSE_POSITIONS} from '@/lib/activity-details';
@@ -10,7 +11,7 @@ import type {ActionResult} from '@/lib/types';
 import {insertPartnerMission,decidePartnerMission,changeStorageItem,type PartnerMissionActor} from '@/lib/partner-mission-store';
 const reward=z.object({amount:z.number().finite().min(0.01).multipleOf(0.01).max(1000000).optional(),currency:z.enum(['USD','CNY','EUR','GBP']).optional(),catalogKey:z.string().max(40).optional(),title:z.string().trim().max(100).default(''),details:z.string().trim().max(600).default(''),icon:z.string().optional()});
 const goal=z.object({dailyTargets:z.record(z.string().regex(/^\d{4}-\d{2}-\d{2}$/),z.number().finite().min(0).max(1440)).optional(),perDay:z.number().finite().positive().max(1440).optional(),kind:z.enum(['intercourse','oral']),metric:z.enum(['active_minutes','total_minutes','sessions','positions']),target:z.number().finite().positive().max(1000000)});
-const schema=z.object({timeZone:z.string().max(80).default('UTC'),goals:z.array(goal).min(1).max(8).optional(),metric:z.enum(['active_minutes','total_minutes','sessions','positions']),target:z.number().finite().positive().max(1000000),startsAt:z.string().datetime(),endsAt:z.string().datetime(),reward:reward.nullable().default(null),bonusMultiplier:z.number().finite().min(2).max(10).nullable().default(null),bonusReward:reward.nullable().default(null),failureClaim:reward.nullable().default(null)}).superRefine((v,ctx)=>{
+const schema=z.object({dateOnly:z.boolean().default(false),timeZone:z.string().max(80).default('UTC'),goals:z.array(goal).min(1).max(8).optional(),metric:z.enum(['active_minutes','total_minutes','sessions','positions']),target:z.number().finite().positive().max(1000000),startsAt:z.string().datetime(),endsAt:z.string().datetime(),reward:reward.nullable().default(null),bonusMultiplier:z.number().finite().min(2).max(10).nullable().default(null),bonusReward:reward.nullable().default(null),failureClaim:reward.nullable().default(null)}).superRefine((v,ctx)=>{
  const start=Date.parse(v.startsAt),end=Date.parse(v.endsAt),now=Date.now();
  if(start<now-86400000||end<=now||end<=start||end-start>366*86400000)ctx.addIssue({code:'custom',message:'Invalid goal window.'});
  if((v.metric==='sessions'||v.metric==='positions')&&!Number.isInteger(v.target))ctx.addIssue({code:'custom',message:'Use a whole-number target.'});
@@ -25,7 +26,7 @@ async function actor():Promise<PartnerMissionActor>{const ctx=await requireCoupl
 export async function createPartnerMission(input:unknown):Promise<ActionResult>{
  const a=await actor(),parsed=schema.safeParse(input);
  if(!parsed.success)return fail(/*i18n*/'Check the goal conditions, dates and reward details.');
- const d=parsed.data;const goals=d.goals?.map(g=>scheduledGoal(g,d.startsAt,d.endsAt,d.timeZone));
+ const d=parsed.data;const timeZone=safeTz(d.timeZone);const goals=d.goals?.map(g=>({...scheduledGoal(g,d.startsAt,d.endsAt,timeZone),dateOnly:d.dateOnly,timeZone}));
  if(goals?.some(g=>!Number.isFinite(g.target)||g.target<=0))return fail('Check the goal conditions, dates and reward details.');
  return finish(await insertPartnerMission(db(),a,{...d,goals,metric:goals?.[0].metric??d.metric,target:goals?.[0].target??d.target,title:'Partner goal',description:'',reward:d.reward?catalogReward(d.reward):null,bonusReward:d.bonusReward?catalogReward(d.bonusReward):null,failureClaim:d.failureClaim?catalogReward(d.failureClaim):null}));
 }
