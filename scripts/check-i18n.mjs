@@ -44,16 +44,16 @@ if (want('--untranslated')) {
 }
 
 if (want('--missing')) {
-  const zhSrc = readFileSync('lib/i18n/zh.ts', 'utf8');
+  const zhSrc = readdirSync('lib/i18n').filter(name=>name==='zh.ts'||name.endsWith('-zh.ts')).map(name=>readFileSync(join('lib/i18n',name),'utf8')).join('\n');
   const keys = new Set();
   for (const m of zhSrc.matchAll(/^\s*(['"`])((?:\\.|(?!\1).)*)\1\s*:/gm)) keys.add(m[2].replace(/\\(['"`\\])/g, '$1'));
   const used = new Set();
-  const scan = [...files, 'app/actions.ts', 'app/mission-actions.ts', 'lib/progression.ts', 'lib/content.ts', 'lib/activity-details.ts', 'lib/achievements.ts', 'lib/story-achievements.ts', 'lib/score.ts', 'lib/cycle.ts'];
+  const scan = [...files, 'app/partner-mission-actions.ts', 'app/actions.ts', 'app/mission-actions.ts', 'lib/progression.ts', 'lib/content.ts', 'lib/activity-details.ts', 'lib/achievements.ts', 'lib/story-achievements.ts', 'lib/score.ts', 'lib/cycle.ts'];
   for (const f of scan) {
     const src = readFileSync(f, 'utf8');
-    for (const m of src.matchAll(/\bt\(\s*(['"`])((?:\\.|(?!\1).)*)\1/g)) used.add(m[2].replace(/\\(['"`\\])/g, '$1'));
+    for (const m of src.matchAll(/\bt\(\s*(['"`])((?:\\.|(?!\1).)*)\1/g)) if(!m[2].includes('${')) used.add(m[2].replace(/\\(['"`\\])/g, '$1'));
     for (const m of src.matchAll(/\bfail\(\s*(['"`])((?:\\.|(?!\1).)*)\1/g)) if (!m[2].includes('${')) used.add(m[2].replace(/\\(['"`\\])/g, '$1'));
-    for (const m of src.matchAll(/\/\*i18n\*\/\s*(['"`])((?:\\.|(?!\1).)*)\1/g)) used.add(m[2].replace(/\\(['"`\\])/g, '$1'));
+    for (const m of src.matchAll(/\/\*i18n\*\/\s*(['"`])((?:\\.|(?!\1).)*)\1/g)) if(!m[2].includes('${')) used.add(m[2].replace(/\\(['"`\\])/g, '$1'));
     // every human-looking string literal inside // i18n:begin … // i18n:end blocks
     for (const block of src.matchAll(/\/\/ i18n:begin([\s\S]*?)\/\/ i18n:end/g)) {
       for (const m of block[1].matchAll(/(['"])((?:\\.|(?!\1).)*)\1/g)) {

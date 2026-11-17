@@ -1,4 +1,5 @@
 'use client';
+import {PartnerMissionEntry} from '@/components/PartnerMissionEntry';
 import { SymbolIcon } from '@/components/SymbolIcon';
 
 import Link from 'next/link';
@@ -17,7 +18,8 @@ import { useRun } from '@/components/useRun';
 import { dayInTz } from '@/lib/tz';
 import type { SessionDeletionRequest, SessionEditNotice, SessionEditRequest } from '@/lib/types';
 
-export function InboxView({ requests, notices, edits, meId, partnerName }: {
+export function InboxView({ requests, notices, edits, meId, partnerName, partnerMissionSummary }: {
+  partnerMissionSummary?: {invitations:number;active:number;ready:number;approvals:number};
   requests: SessionDeletionRequest[]; notices: SessionEditNotice[]; edits: SessionEditRequest[]; meId: string; partnerName: string;
 }) {
   const { t } = useT();
@@ -42,12 +44,13 @@ export function InboxView({ requests, notices, edits, meId, partnerName }: {
           <RefreshCw size={18} className={refreshing ? 'animate-spin' : ''} />
         </button>
       </header>
+      <PartnerMissionEntry {...partnerMissionSummary}/>
       <p className="text-sm text-ink-2">{t('Shared sessions are changed or deleted only when both of you agree. Declining keeps the record as it is and notifies the requester.')}</p>
       <p className="text-xs text-ink-3">{t('Inbox items are deleted from the database after 7 days. Unanswered requests are cancelled without changing the record. Handled requests and read replies are deleted sooner.')}</p>
       {!requests.length && !notices.length && !edits.length && (
         <div className="card py-10 text-center text-ink-3">
           <Inbox className="mx-auto mb-3" size={30} />
-          <p className="font-semibold text-ink">{t('Your inbox is empty')}</p>
+          <p className="font-semibold text-ink">{t(partnerMissionSummary?.invitations||partnerMissionSummary?.approvals?'No shared-record requests':'Your inbox is empty')}</p>
           <p className="mt-1 text-sm">{t('Deletion requests and your partner’s replies will appear here.')}</p>
         </div>
       )}

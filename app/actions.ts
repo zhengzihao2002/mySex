@@ -7,6 +7,7 @@ import {isUnverified} from '@/lib/auth-errors';
 import {initializeExperiences,submitSessionChanges} from '@/lib/session-experiences';
 import {completeRecording} from '@/lib/session-recording';
 import {savedCelebration,type SessionSaveResult} from '@/lib/session-rewards';
+import {partnerMissionBoard} from '@/lib/partner-mission-data';
 import {storePeriodNotStarted} from '@/lib/period-status';
 import {getTz, getToday} from '@/lib/today';
 import {dayInTz} from '@/lib/tz';
@@ -432,6 +433,7 @@ export async function deleteSession(id: string, version: string): Promise<Action
 export async function respondToDeletionRequest(id: string, decision: 'approved' | 'declined'): Promise<ActionResult> {
   const ctx = await couple();
   if (!z.uuid().safeParse(id).success || !['approved', 'declined'].includes(decision)) return fail('Invalid input');
+  if (decision==='approved') await partnerMissionBoard(ctx.couple.id,ctx.me.userId,ctx.partner.userId);
   const status = await respondToSessionDeletion(db(), {
     coupleId: ctx.couple.id, userId: ctx.me.userId, partnerId: ctx.partner.userId,
   }, id, decision);
@@ -451,6 +453,7 @@ export async function respondToEditRequest(id: string, decision: 'approved' | 'd
   if (!z.uuid().safeParse(id).success || !['approved', 'declined'].includes(decision)) return fail('Invalid input');
   if(!expectedProposal||expectedProposal.length>20000)return fail('This request changed. Refresh your inbox and review the latest changes.');
   try{JSON.parse(expectedProposal);}catch{return fail('Invalid input');}
+  if (decision==='approved') await partnerMissionBoard(ctx.couple.id,ctx.me.userId,ctx.partner.userId);
   const status = await respondToSessionEdit(db(), { coupleId: ctx.couple.id, userId: ctx.me.userId, partnerId: ctx.partner.userId }, id, decision,expectedProposal);
   if (!status) return fail('This request is no longer pending or is not addressed to you.');
   return done();

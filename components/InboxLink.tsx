@@ -30,7 +30,7 @@ export function InboxProvider({ initial, children }: { initial: Snapshot; childr
           previous.current = next;
           setState(next);
           if (next.active && path === '/inbox') router.replace('/timer');
-          else if ((changed && path === '/inbox') || activeChanged) router.refresh();
+          else if ((changed && ['/inbox','/home','/missions/partner','/storage'].includes(path) && !document.querySelector('[role="dialog"],dialog[open]')) || activeChanged) router.refresh();
         }
       } catch { /* Retry when connected again; no notification or popup. */ }
       finally { controller = null; if (!stopped) timer = setTimeout(poll, 15000); }

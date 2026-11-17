@@ -1,0 +1,99 @@
+import {randomUUID} from 'node:crypto';
+import type {NeonQueryFunction} from '@neondatabase/serverless';
+import {progressForMission,type Metric} from './partner-mission-rules.ts';
+type Client=NeonQueryFunction<false,false>;
+export type PartnerMissionActor={coupleId:string;userId:string;partnerId:string};
+export type RewardIcon='gift'|'ticket'|'sparkles'|'camera'|'coins'|'heart'|'crown';
+export type RewardInput={title:string;details:string;icon:RewardIcon};
+export type MissionInput={title:string;description:string;metric:Metric;target:number;startsAt:string;endsAt:string;reward:RewardInput|null;bonusMultiplier:number|null;bonusReward:RewardInput|null;failureClaim:RewardInput|null};
+export type PartnerMission=MissionInput & {id:string;createdAt:string;issuerId:string;assigneeId:string;status:'invited'|'active'|'declined'|'cancelled'|'settled';acceptedAt:string|null;value:number;sessionIds:string[];baseComplete:boolean;bonusComplete:boolean;expired:boolean};
+export type StorageItem={id:string;missionId:string;missionTitle:string;title:string;details:string;icon:RewardIcon;kind:'prize'|'bonus'|'claim';ownerId:string;issuerId:string;status:'ready'|'requested'|'used'|'revoked';createdAt:string;requestedAt:string|null};
+const iso=(v:unknown)=>v instanceof Date?v.toISOString():String(v);
+export async function partnerMissionMember(client:Client,a:PartnerMissionActor){
+ const rows=await client`select c.id from couples c join profiles p on p.user_id=${a.userId} and p.couple_id=c.id join profiles other on other.user_id=${a.partnerId} and other.couple_id=c.id
+ where c.id=${a.coupleId} and c.unpaired_at is null and ((c.male_id=${a.userId} and c.female_id=${a.partnerId}) or (c.female_id=${a.userId} and c.male_id=${a.partnerId}))`;
+ return rows.length>0;
+}
+export async function insertPartnerMission(client:Client,a:PartnerMissionActor,input:MissionInput,now=new Date()){
+ if(!await partnerMissionMember(client,a))return false;
+ const rows=await client`insert into partner_missions(couple_id,issuer_id,assignee_id,title,description,metric,target,starts_at,ends_at,reward,bonus_multiplier,bonus_reward,failure_claim,created_at,updated_at)
+ select c.id,${a.userId},${a.partnerId},${input.title},${input.description},${input.metric},${input.target},${input.startsAt},${input.endsAt},${JSON.stringify(input.reward)}::jsonb,${input.bonusMultiplier},${JSON.stringify(input.bonusReward)}::jsonb,${JSON.stringify(input.failureClaim)}::jsonb,${now.toISOString()},${now.toISOString()}
+ from couples c join profiles p on p.user_id=${a.userId} and p.couple_id=c.id join profiles other on other.user_id=${a.partnerId} and other.couple_id=c.id
+ where c.id=${a.coupleId} and c.unpaired_at is null and ${a.userId} in (c.male_id,c.female_id) and ${a.partnerId} in (c.male_id,c.female_id)
+ returning id`;
+ return rows.length>0;
+}
+export async function decidePartnerMission(client:Client,a:PartnerMissionActor,id:string,decision:'accept'|'decline'|'cancel',now=new Date()){
+ if(!await partnerMissionMember(client,a))return false;
+ if(decision==='cancel')await getPartnerMissionBoard(client,a,now);
+ const status=decision==='accept'?'active':decision==='decline'?'declined':'cancelled';
+ const results=await client.transaction(tx=>[
+  tx`select user_id from profiles where user_id in (${a.userId},${a.partnerId}) order by user_id for share`,
+  tx`update partner_missions m set status=${status},accepted_at=case when ${decision}='accept' then ${now.toISOString()}::timestamptz else accepted_at end,updated_at=${now.toISOString()},revision=revision+1
+  from couples c,profiles p,profiles other where m.id=${id} and m.couple_id=${a.coupleId} and c.id=m.couple_id and c.unpaired_at is null and p.user_id=${a.userId} and p.couple_id=c.id and other.user_id=${a.partnerId} and other.couple_id=c.id and ${a.userId} in (c.male_id,c.female_id) and ${a.partnerId} in(c.male_id,c.female_id)
+  and (( ${decision} in ('accept','decline') and m.assignee_id=${a.userId} and m.status='invited' and m.ends_at>${now.toISOString()}::timestamptz and m.created_at>${now.toISOString()}::timestamptz-interval '7 days') or (${decision}='cancel' and m.status in ('invited','active') and m.ends_at>${now.toISOString()}::timestamptz)) returning m.id`,
+ ]);
+ return results[1].length>0;
+}
+
+type MissionRow={id:string;couple_id:string;issuer_id:string;assignee_id:string;title:string;description:string;metric:Metric;target:number|string;starts_at:unknown;ends_at:unknown;reward:RewardInput|null;bonus_multiplier:number|string|null;bonus_reward:RewardInput|null;failure_claim:RewardInput|null;status:PartnerMission['status'];accepted_at:unknown;created_at:unknown;progress_value:number|string;proof_ids:string[];revision:number};
+const readMissions=async(client:Client,a:PartnerMissionActor)=>await client`select m.* from partner_missions m join couples c on c.id=m.couple_id join profiles p on p.user_id=${a.userId} and p.couple_id=c.id join profiles other on other.user_id=${a.partnerId} and other.couple_id=c.id where m.couple_id=${a.coupleId} and c.unpaired_at is null and ${a.userId} in(c.male_id,c.female_id) and ${a.partnerId} in(c.male_id,c.female_id) order by m.created_at desc` as unknown as MissionRow[];
+export async function getPartnerMissionBoard(client:Client,a:PartnerMissionActor,now=new Date()):Promise<{missions:PartnerMission[];items:StorageItem[]}>{
+ if(!await partnerMissionMember(client,a))return {missions:[],items:[]};
+ let rows=await readMissions(client,a);
+ if(!rows.length)return {missions:[],items:[]};
+ // Expire the approval request, not the earned item. Either partner's visit
+ // returns stale requests to Storage so their owner can ask again later.
+ await client`update partner_storage_items i set status='ready',requested_at=null
+ from couples c,profiles p,profiles other where i.couple_id=${a.coupleId} and c.id=i.couple_id and c.unpaired_at is null
+ and p.user_id=${a.userId} and p.couple_id=c.id and other.user_id=${a.partnerId} and other.couple_id=c.id
+ and i.status='requested' and i.requested_at<=${now.toISOString()}::timestamptz-interval '7 days'`;
+
+ const sessions=rows.some(m=>m.status==='active')?await client`select id,kind,status,started_at,ended_at,duration_sec,paused_sec,tags,created_at,mission_saved_at from sessions where couple_id=${a.coupleId} and status='done' and kind='intercourse'`:[];
+ const saved=sessions.map(s=>({id:s.id,kind:s.kind,status:s.status,startedAt:iso(s.started_at),endedAt:s.ended_at?iso(s.ended_at):null,durationSec:s.duration_sec,pausedSec:s.paused_sec,tags:s.tags??[],createdAt:iso(s.mission_saved_at??s.created_at)}));
+ for(const m of rows){
+  if(m.status==='invited'&&(new Date(iso(m.ends_at))<=now||new Date(iso(m.created_at)).getTime()<=now.getTime()-7*86400000)){
+   await decideExpiredInvite(client,a,m.id,now);continue;
+  }
+  if(m.status!=='active')continue;
+  const result=progressForMission({metric:m.metric,target:Number(m.target),startsAt:iso(m.starts_at),endsAt:iso(m.ends_at),acceptedAt:m.accepted_at?iso(m.accepted_at):null},saved.filter(s=>Date.parse(s.createdAt)<=Math.min(now.getTime(),Date.parse(iso(m.ends_at)))),now);
+  if(!result.expired&&Number(m.progress_value)===result.value&&JSON.stringify(m.proof_ids)===JSON.stringify(result.sessionIds))continue;
+  const base=result.baseComplete,bonus=!!m.bonus_multiplier&&result.value>=Number(m.target)*Number(m.bonus_multiplier);
+  const evaluated=now.toISOString(),token=randomUUID();
+  const prize=base?m.reward:null,extra=bonus?m.bonus_reward:null,claim=result.expired&&!base?m.failure_claim:null;
+  await client.transaction(tx=>[
+   tx`select user_id from profiles where user_id in (${a.userId},${a.partnerId}) order by user_id for share`,
+   tx`update partner_missions m set progress_value=${result.value},proof_ids=${result.sessionIds}::uuid[],evaluated_at=${evaluated},evaluation_token=${token},status=case when ${result.expired} then 'settled' else 'active' end,revision=revision+1,updated_at=${evaluated}
+   from couples c,profiles p,profiles other where m.id=${m.id} and m.couple_id=${a.coupleId} and m.revision=${m.revision} and m.status='active' and c.id=m.couple_id and c.unpaired_at is null and p.user_id=${a.userId} and p.couple_id=c.id and other.user_id=${a.partnerId} and other.couple_id=c.id returning m.id`,
+   ...(['prize','bonus','claim'] as const).map((kind,index)=>{
+    const reward=[prize,extra,claim][index];
+    const owner=kind==='claim'?m.issuer_id:m.assignee_id,issuer=kind==='claim'?m.assignee_id:m.issuer_id;
+    return tx`insert into partner_storage_items(mission_id,couple_id,owner_id,issuer_id,kind,title,details,icon,created_at)
+      select m.id,m.couple_id,${owner},${issuer},${kind},${reward?.title??''},${reward?.details??''},${reward?.icon??'gift'},${evaluated}::timestamptz
+      from partner_missions m where m.id=${m.id} and m.couple_id=${a.coupleId} and m.revision=${m.revision+1} and m.evaluation_token=${token}::uuid and m.status in ('active','settled') and ${!!reward}
+      on conflict(mission_id,kind) do update set status='ready',requested_at=null where partner_storage_items.status='revoked'`;
+   }),
+   tx`update partner_storage_items i set status='revoked',requested_at=null from partner_missions m where i.mission_id=m.id and m.id=${m.id} and m.couple_id=${a.coupleId} and m.revision=${m.revision+1} and m.evaluation_token=${token}::uuid and i.status in ('ready','requested') and ((i.kind='prize' and ${!prize}) or(i.kind='bonus' and ${!extra}) or(i.kind='claim' and ${!claim}))`,
+  ]);
+ }
+ rows=await readMissions(client,a);
+ const missions=rows.map(m=>{
+  const value=Number(m.progress_value),baseComplete=!!m.accepted_at&&value>=Number(m.target),bonusMultiplier=m.bonus_multiplier?Number(m.bonus_multiplier):null,bonusComplete=!!bonusMultiplier&&baseComplete&&value>=Number(m.target)*bonusMultiplier,expired=new Date(iso(m.ends_at))<=now;
+  const issuer=m.issuer_id===a.userId;
+  return {id:m.id,title:m.title,description:m.description,metric:m.metric,target:Number(m.target),startsAt:iso(m.starts_at),endsAt:iso(m.ends_at),createdAt:iso(m.created_at),issuerId:m.issuer_id,assigneeId:m.assignee_id,status:m.status,acceptedAt:m.accepted_at?iso(m.accepted_at):null,value,sessionIds:m.proof_ids,baseComplete,bonusMultiplier,bonusComplete,expired,reward:issuer||baseComplete?m.reward:null,bonusReward:issuer||bonusComplete?m.bonus_reward:null,failureClaim:issuer?m.failure_claim:null};
+ });
+ const items=await client`select i.*,m.title as mission_title from partner_storage_items i join partner_missions m on m.id=i.mission_id join couples c on c.id=i.couple_id join profiles p on p.user_id=${a.userId} and p.couple_id=c.id join profiles other on other.user_id=${a.partnerId} and other.couple_id=c.id where i.couple_id=${a.coupleId} and c.unpaired_at is null and ((i.owner_id=${a.userId} and i.status in ('ready','requested','used')) or (i.issuer_id=${a.userId} and i.status='requested')) order by i.created_at desc`;
+ return {missions,items:items.map(i=>({id:i.id,missionId:i.mission_id,missionTitle:i.mission_title,title:i.title,details:i.details,icon:i.icon,kind:i.kind,ownerId:i.owner_id,issuerId:i.issuer_id,status:i.status,createdAt:iso(i.created_at),requestedAt:i.requested_at?iso(i.requested_at):null}))};
+}
+async function decideExpiredInvite(client:Client,a:PartnerMissionActor,id:string,now:Date){
+ await client`update partner_missions m set status='cancelled',revision=revision+1,updated_at=${now.toISOString()} from couples c,profiles p where m.id=${id} and m.couple_id=${a.coupleId} and m.status='invited' and (m.ends_at<=${now.toISOString()}::timestamptz or m.created_at<=${now.toISOString()}::timestamptz-interval '7 days') and c.id=m.couple_id and c.unpaired_at is null and p.user_id=${a.userId} and p.couple_id=c.id`;
+}
+export async function changeStorageItem(client:Client,a:PartnerMissionActor,id:string,action:'request'|'withdraw'|'approve'|'decline',now=new Date()){
+ if(!await partnerMissionMember(client,a))return false;
+ // Recheck earned eligibility before accepting or spending a token.
+ await getPartnerMissionBoard(client,a,now);
+ const status=action==='approve'?'used':action==='request'?'requested':'ready';
+ const rows=await client`update partner_storage_items i set status=${status},requested_at=case when ${action}='request' then ${now.toISOString()}::timestamptz else null end,used_at=case when ${action}='approve' then ${now.toISOString()}::timestamptz else used_at end
+ from couples c,profiles p,profiles other where i.id=${id} and i.couple_id=${a.coupleId} and c.id=i.couple_id and c.unpaired_at is null and p.user_id=${a.userId} and p.couple_id=c.id and other.user_id=${a.partnerId} and other.couple_id=c.id and (( ${action}='request' and i.owner_id=${a.userId} and i.status='ready') or (${action}='withdraw' and i.owner_id=${a.userId} and i.status='requested') or (${action} in ('approve','decline') and i.issuer_id=${a.userId} and i.status='requested')) returning i.id`;
+ return rows.length>0;
+}

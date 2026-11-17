@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useLayoutEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import { usePathname } from 'next/navigation';
-import { BarChart3, CalendarDays, Compass, Heart, Home, LockKeyhole, MessageSquare, Settings, Timer, Trophy } from 'lucide-react';
+import { BarChart3, CalendarDays, Compass, Heart, Home, LockKeyhole, MessageSquare, PackageOpen, Settings, Timer, Trophy } from 'lucide-react';
 import { useT } from './I18nProvider';
 import { SelectionPill } from './Motion';
 
@@ -57,7 +57,7 @@ export function TabBar({ unread, live }: { unread: number; live: boolean }) {
       })}
     </div>
     <div className="nav-secondary">
-      {[{ href: '/play', label: 'Play', Icon: Compass }, { href: '/missions', label: 'Couple quests', Icon: Trophy }, { href: '/settings', label: 'Settings', Icon: Settings }].map(({ href, label, Icon }) => <Link key={href} href={href} className="nav-item" aria-current={path.startsWith(href) ? 'page' : undefined}>{path.startsWith(href) && <SelectionPill id="secondary-navigation" />}<Icon size={19} strokeWidth={1.6} />{t(label)}</Link>)}
+      {[{ href: '/play', label: 'Play', Icon: Compass }, { href: '/missions', label: 'Couple quests', Icon: Trophy }, { href: '/storage', label: 'Storage', Icon: PackageOpen }, { href: '/settings', label: 'Settings', Icon: Settings }].map(({ href, label, Icon }) => <Link key={href} href={href} className="nav-item" aria-current={path.startsWith(href) ? 'page' : undefined}>{path.startsWith(href) && <SelectionPill id="secondary-navigation" />}<Icon size={19} strokeWidth={1.6} />{t(label)}</Link>)}
     </div>
     <span className="nav-privacy"><LockKeyhole size={12} />{t('Just the two of you')}</span>
   </nav>;

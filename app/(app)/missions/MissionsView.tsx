@@ -6,6 +6,7 @@ import {useEffect,useMemo,useState} from 'react';
 import {useRouter} from 'next/navigation';
 import {useT} from '@/components/I18nProvider';
 import {Sheet} from '@/components/Sheet';
+import {PartnerMissionEntry} from '@/components/PartnerMissionEntry';
 import {CoupleProgress} from '@/components/CoupleProgress';
 import {MISSIONS,RANKS,TOP_RANK_XP,rankThreshold,progression,type MissionRun} from '@/lib/progression';
 import type {SexSession} from '@/lib/types';
@@ -19,6 +20,7 @@ export function MissionsView({sessions}:{sessions:SexSession[];runs?:MissionRun[
   const paths=[{key:'explorer',title:t('Explorer'),icon:'🧭'},{key:'endurance',title:t('Endurance'),icon:'🔥'},{key:'rhythm',title:t('Rhythm'),icon:'🌙'},{key:'finale',title:t('Chapter finale'),icon:'👑'}];
   return <div className="space-y-5 pt-2 pb-4" data-motion>
     <header><Link href="/home" className="inline-flex min-h-11 items-center text-sm text-ink-3">← {t('Home')}</Link><h1 className="font-display text-3xl font-bold">{t('Couple quests')}</h1><p className="mt-1 text-sm text-ink-2">{t('Two players. One legendary story.')}</p></header>
+    <PartnerMissionEntry/>
     <CoupleProgress sessions={sessions} onExplore={()=>{const board=document.getElementById('quest-board');board?.focus({preventScroll:true});board?.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});}}/>
     <button className="btn-ghost w-full" onClick={()=>setRanksOpen(true)}>{t('Rank ladder & XP')}</button>
     <p className="text-xs text-ink-3">{t('Quests complete automatically from your saved intercourse records. No acceptance or skipping. Different UTC dates count as different days.')}</p>

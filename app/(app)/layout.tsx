@@ -7,6 +7,7 @@ import {RecordingLayerProvider} from '@/components/RecordingLayer';
 import { TabBar } from '@/components/TabBar';
 import { RefreshOnFocus } from '@/components/RefreshOnFocus';
 import { TzProvider } from '@/components/TzProvider';
+import {partnerMissionBoard} from '@/lib/partner-mission-data';
 import { getToday } from '@/lib/today';
 import { touchDevice } from '@/lib/devices';
 import { redirect } from 'next/navigation';
@@ -23,6 +24,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     touchDevice(ctx.me.userId, viewer?.sessionId ?? null),
     getInboxSnapshot(ctx.couple.id, ctx.me.userId),
   ]);
+  // Reconcile custom mission outcomes on either partner’s next app request.
+  // Current membership is checked again by the mission store.
+  if (!device.revoked) await partnerMissionBoard(ctx.couple.id,ctx.me.userId,ctx.partner.userId);
   // This device was signed out remotely from Settings → Devices.
   if (device.revoked) redirect('/auth/revoked');
   return (

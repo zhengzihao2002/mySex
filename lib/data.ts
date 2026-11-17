@@ -301,6 +301,14 @@ export async function getInboxSnapshot(coupleId: string, userId: string) {
       and (recipient_id = ${userId} or requested_by = ${userId})
     union all
     select id, status, true from session_edit_outcomes where couple_id = ${coupleId} and recipient_id = ${userId}
+    union all
+    select id, 'mission:' || status || ':' || updated_at::text || ':' || (ends_at<=now() or (status='invited' and created_at<=now()-interval '7 days'))::text,
+      (status='invited' and assignee_id=${userId} and ends_at>now() and created_at>now()-interval '7 days') or (status='active' and ends_at<=now())
+      from partner_missions where couple_id=${coupleId}
+    union all
+    select id, 'storage:' || status || ':' || coalesce(requested_at::text,'') || ':' || coalesce((requested_at<=now()-interval '7 days')::text,'false'),
+      status='requested' and issuer_id=${userId} and requested_at>now()-interval '7 days'
+      from partner_storage_items where couple_id=${coupleId}
   ) select count(*) filter(where unread)::int as count,
     md5(coalesce(string_agg(id::text || version, ',' order by id), '')) as version,
     (select id from sessions where couple_id = ${coupleId} and status = 'active' limit 1) as active

@@ -323,3 +323,69 @@ alter table couple_missions add constraint couple_missions_kind_check check(kind
 
 -- Explicit daily confirmation; independent of mood, flow and period records.
 alter table daily_logs add column if not exists period_not_started boolean not null default false;
+
+-- Partner-authored challenges. These do not alter automatic quests or XP.
+create table if not exists partner_missions (
+  id uuid primary key default gen_random_uuid(),
+  couple_id uuid not null references couples(id) on delete cascade,
+  issuer_id text not null references profiles(user_id) on delete cascade,
+  assignee_id text not null references profiles(user_id) on delete cascade,
+  title text not null check(length(title) between 1 and 80),
+  description text not null default '',
+  metric text not null check(metric in ('active_minutes','total_minutes','sessions','positions')),
+  target numeric not null check(target>0),
+  starts_at timestamptz not null,
+  ends_at timestamptz not null check(ends_at>starts_at),
+  reward jsonb,
+  bonus_multiplier numeric check(bonus_multiplier between 2 and 10),
+  bonus_reward jsonb,
+  failure_claim jsonb,
+  status text not null default 'invited' check(status in ('invited','active','declined','cancelled','settled')),
+  accepted_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  evaluated_at timestamptz,
+  evaluation_token uuid,
+  progress_value numeric not null default 0,
+  proof_ids uuid[] not null default '{}',
+  revision integer not null default 0,
+  check(issuer_id<>assignee_id)
+);
+create index if not exists partner_missions_couple on partner_missions(couple_id,created_at desc);
+create table if not exists partner_storage_items (
+  id uuid primary key default gen_random_uuid(),
+  mission_id uuid not null references partner_missions(id) on delete cascade,
+  couple_id uuid not null references couples(id) on delete cascade,
+  owner_id text not null references profiles(user_id) on delete cascade,
+  issuer_id text not null references profiles(user_id) on delete cascade,
+  kind text not null check(kind in ('prize','bonus','claim')),
+  title text not null,
+  details text not null default '',
+  icon text not null check(icon in ('gift','ticket','sparkles','camera','coins','heart','crown')),
+  status text not null default 'ready' check(status in ('ready','requested','used','revoked')),
+  created_at timestamptz not null default now(),
+  requested_at timestamptz,
+  used_at timestamptz,
+  unique(mission_id,kind),
+  check(owner_id<>issuer_id)
+);
+create index if not exists partner_storage_couple on partner_storage_items(couple_id,status);
+
+-- Mission deadlines use the moment a record was saved, not a backdated activity date.
+alter table sessions add column if not exists mission_saved_at timestamptz;
+create or replace function stamp_mission_saved_at() returns trigger language plpgsql as $$
+begin
+  if tg_op = 'INSERT' then
+    if new.status = 'done' then new.mission_saved_at := coalesce(new.mission_saved_at, now());
+    else new.mission_saved_at := null; end if;
+  elsif new.status = 'done' and old.status is distinct from 'done' then
+    new.mission_saved_at := now();
+  else
+    new.mission_saved_at := old.mission_saved_at;
+  end if;
+  return new;
+end;
+$$;
+drop trigger if exists sessions_mission_saved_at on sessions;
+create trigger sessions_mission_saved_at before insert or update of status on sessions
+for each row execute function stamp_mission_saved_at();

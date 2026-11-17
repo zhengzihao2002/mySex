@@ -4,6 +4,7 @@ import { useT } from '@/components/I18nProvider';
 
 import Link from 'next/link';
 import { SymbolIcon, ProfileAvatar } from '@/components/SymbolIcon';
+import {PartnerMissionEntry} from '@/components/PartnerMissionEntry';
 import {CoupleProgress} from '@/components/CoupleProgress';
 import type {MissionRun} from '@/lib/progression';
 import { useEffect, useMemo, useState } from 'react';
@@ -32,8 +33,10 @@ export function HomeView({
   logs,
   notes,
   missions=[],
+  partnerMissionSummary,
 }: {
   missions?: MissionRun[];
+  partnerMissionSummary?: {invitations:number;active:number;ready:number;approvals:number};
   ctx: CoupleContext;
   periods: Period[];
   sessions: SexSession[];
@@ -137,6 +140,8 @@ export function HomeView({
         <Stat value={streak} label={t('week streak')} />
         <Stat value={daysSince == null ? '–' : daysSince} label={t('days since')} />
       </div>
+
+      <PartnerMissionEntry {...partnerMissionSummary}/>
 
       <p className="home-section-label"><Clock3 size={13}/>{t('Your story')}</p>
       <CoupleProgress sessions={sessions} runs={missions}/>

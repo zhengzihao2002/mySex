@@ -1,6 +1,21 @@
+import {partnerMissionZh} from './partner-missions-zh.ts';
 // Simplified Chinese. Keys are the English UI text (see lib/i18n/core.ts).
 // Run `node scripts/check-i18n.mjs --missing` to find untranslated keys.
 export const zh: Record<string, string> = {
+  ...partnerMissionZh,
+  "Record {n}": "记录{n}",
+  "A challenge. A secret worth earning.": "一场挑战，一份值得解锁的惊喜。",
+  "Set the goal. Write the prize. Make it yours.": "定下目标，写下奖励，打造你们专属的任务。",
+  "{n} mission invitations from your partner": "伴侣发来了{n}个任务邀请",
+  "{n} shared challenges in motion": "{n}个专属挑战进行中",
+  "{n} item uses need your approval": "{n}个道具使用请求等待你同意",
+  "{n} earned items ready to use": "{n}件已获得的道具等待使用",
+  "Your earned prizes and claim items live here.": "获得的奖励与反向索取道具都存放在这里。",
+  "No shared-record requests": "没有共享记录请求",
+  "This mission or item changed. Refresh and try again.": "此任务或道具状态已改变，请刷新后重试。",
+  "Check the mission goal, dates and reward details.": "请检查任务目标、时间范围与奖励内容。",
+  "Invalid mission.": "无效的任务。",
+  "Invalid item.": "无效的道具。",
   "Period hasn’t started": "月经还没来",
   "Undo: period hasn’t started": "撤销“月经还没来”",
   "Recorded: period hasn’t started on this day. Predictions are estimates, not confirmed periods.": "已记录：这天月经还没来。预测日期仅供参考，不代表月经已经开始。",
