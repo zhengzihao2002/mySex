@@ -114,3 +114,11 @@ test('seven-day invitation and redemption-request expiry never expires earned St
  assert(await changeStorageItem(client,me,earned.id,'approve',eightDays));
  assert.equal((await getPartnerMissionBoard(client,partner,eightDays)).items.find(i=>i.id===earned.id)!.status,'used');
 });
+
+test('AND goals persist separate activity progress and only award after every goal qualifies',async()=>{
+ const custom={...input,goals:[{kind:'intercourse' as const,metric:'active_minutes' as const,target:10},{kind:'oral' as const,metric:'sessions' as const,target:1}]};
+ assert(await insertPartnerMission(client,me,custom,begin));const id=(await getPartnerMissionBoard(client,me,begin)).missions[0].id;
+ assert(await decidePartnerMission(client,partner,id,'accept',at('00:05')));await session();
+ let board=await getPartnerMissionBoard(client,partner,at('00:25'));assert.equal(board.items.length,0);assert.equal(board.missions[0].baseComplete,false);assert.deepEqual(board.missions[0].goalProgress?.map(g=>g.value),[10,0]);
+ await session(10,'oral');board=await getPartnerMissionBoard(client,partner,at('00:25'));assert.equal(board.items.length,1);assert(board.missions[0].baseComplete);assert.deepEqual(board.missions[0].goalProgress?.map(g=>g.value),[10,1]);
+});

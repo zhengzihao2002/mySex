@@ -1,4 +1,6 @@
 'use client';
+import {ItemDetails} from '@/components/PartnerStorage';
+import type {StorageItem} from '@/lib/partner-mission-store';
 import {PartnerMissionEntry} from '@/components/PartnerMissionEntry';
 import { SymbolIcon } from '@/components/SymbolIcon';
 
@@ -18,7 +20,8 @@ import { useRun } from '@/components/useRun';
 import { dayInTz } from '@/lib/tz';
 import type { SessionDeletionRequest, SessionEditNotice, SessionEditRequest } from '@/lib/types';
 
-export function InboxView({ requests, notices, edits, meId, partnerName, partnerMissionSummary }: {
+export function InboxView({ requests, notices, edits, meId, partnerName, partnerMissionSummary, storageRequests=[] }: {
+  storageRequests?:StorageItem[];
   partnerMissionSummary?: {invitations:number;active:number;ready:number;approvals:number};
   requests: SessionDeletionRequest[]; notices: SessionEditNotice[]; edits: SessionEditRequest[]; meId: string; partnerName: string;
 }) {
@@ -44,6 +47,7 @@ export function InboxView({ requests, notices, edits, meId, partnerName, partner
           <RefreshCw size={18} className={refreshing ? 'animate-spin' : ''} />
         </button>
       </header>
+      {storageRequests.length>0&&<section className="space-y-4"><h2 className="font-display text-xl">{t('Item use requests')}</h2>{storageRequests.map(item=><article key={item.id} className="card"><ItemDetails item={item} meId={meId} partnerName={partnerName} onDone={()=>router.refresh()}/></article>)}</section>}
       <PartnerMissionEntry {...partnerMissionSummary}/>
       <p className="text-sm text-ink-2">{t('Shared sessions are changed or deleted only when both of you agree. Declining keeps the record as it is and notifies the requester.')}</p>
       <p className="text-xs text-ink-3">{t('Inbox items are deleted from the database after 7 days. Unanswered requests are cancelled without changing the record. Handled requests and read replies are deleted sooner.')}</p>

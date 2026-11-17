@@ -1,7 +1,8 @@
-import {INTERCOURSE_POSITIONS} from './activity-details.ts';
+import {ACTIVITY_GROUPS, INTERCOURSE_POSITIONS} from './activity-details.ts';
 
 export type Metric = 'active_minutes' | 'total_minutes' | 'sessions' | 'positions';
 export type MissionRule = {
+  kind?: 'intercourse'|'oral';
   metric: Metric;
   target: number;
   startsAt: string;
@@ -25,6 +26,7 @@ export type MissionProgress = {
   expired: boolean;
 };
 
+const oralPositions = new Set<string>(ACTIVITY_GROUPS.oral.find(g=>g.key==='positions')!.tags);
 const positions = new Set<string>(INTERCOURSE_POSITIONS);
 const metrics = new Set<string>(['active_minutes', 'total_minutes', 'sessions', 'positions']);
 
@@ -45,7 +47,7 @@ export function progressForMission(rule: MissionRule, sessions: MissionSession[]
   const eligible = sessions.filter(session => {
     const start = Date.parse(session.startedAt);
     const end = session.endedAt === null ? NaN : Date.parse(session.endedAt);
-    return session.id.length > 0 && session.kind === 'intercourse' && session.status === 'done' &&
+    return session.id.length > 0 && session.kind === (rule.kind??'intercourse') && session.status === 'done' &&
       Number.isFinite(start) && Number.isFinite(end) && end >= start && start >= from && start < endsAt && end <= through &&
       session.durationSec !== null && Number.isFinite(session.durationSec) && session.durationSec >= 0 &&
       Number.isFinite(session.pausedSec) && session.pausedSec >= 0;
@@ -62,7 +64,7 @@ export function progressForMission(rule: MissionRule, sessions: MissionSession[]
     // For position goals, proof should contain only records that add a position.
     if (rule.metric === 'positions') {
       const before = usedPositions.size;
-      for (const tag of session.tags) if (positions.has(tag)) usedPositions.add(tag);
+      for (const tag of session.tags) if ((rule.kind==='oral'?oralPositions:positions).has(tag)) usedPositions.add(tag);
       if (usedPositions.size > before) sessionIds.push(session.id);
       continue;
     }
@@ -74,4 +76,11 @@ export function progressForMission(rule: MissionRule, sessions: MissionSession[]
   if (rule.metric === 'positions') value = usedPositions.size;
   else if (rule.metric === 'active_minutes' || rule.metric === 'total_minutes') value = seconds / 60;
   return {value, sessionIds, baseComplete: value >= rule.target, expired};
+}
+
+export type MissionGoal={kind:'intercourse'|'oral';metric:Metric;target:number};
+export function progressForGoals(rule:MissionRule,goals:MissionGoal[],sessions:MissionSession[],now:Date){
+ const checks=goals.map(g=>({...g,...progressForMission({...rule,...g},sessions,now)}));
+ const ratio=checks.length?Math.min(...checks.map(g=>g.value/g.target)):0;
+ return {value:ratio*rule.target,sessionIds:[...new Set(checks.flatMap(g=>g.sessionIds))],baseComplete:checks.length>0&&checks.every(g=>g.baseComplete),expired:now.getTime()>=Date.parse(rule.endsAt),checks};
 }

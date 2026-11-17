@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {progressForMission, type MissionRule, type MissionSession} from './partner-mission-rules.ts';
+import {progressForGoals, progressForMission, type MissionRule, type MissionSession} from './partner-mission-rules.ts';
 
 const now = new Date('2026-11-17T12:00:00Z');
 const rule: MissionRule = {metric:'active_minutes', target:30, startsAt:'2026-11-16T00:00:00Z', endsAt:'2026-11-18T00:00:00Z', acceptedAt:'2026-11-16T09:00:00Z'};
@@ -89,4 +89,17 @@ test('subminute sessions complete an exact minute goal without cumulative roundi
   const progress = progressForMission({...rule, target:1}, records, now);
   assert.equal(progress.value,1);
   assert.equal(progress.baseComplete,true);
+});
+
+test('AND goals require both activities; extra intercourse cannot replace missing oral',()=>{
+ const goals=[{kind:'intercourse' as const,metric:'active_minutes' as const,target:30},{kind:'oral' as const,metric:'sessions' as const,target:2}];
+ assert.equal(progressForGoals(rule,goals,[session('sex',{durationSec:7200})],now).baseComplete,false);
+ const both=[session('sex'),session('oral1',{kind:'oral'}),session('oral2',{kind:'oral'})];
+ const done=progressForGoals(rule,goals,both,now);assert(done.baseComplete);assert.deepEqual(done.checks.map(g=>g.value),[30,2]);
+ assert.equal(done.value,rule.target);
+ assert.equal(progressForGoals(rule,goals,[...both,session('more',{durationSec:1800})],now).value,rule.target,'bonus also requires oral target to double');
+});
+test('oral position goals count only recorded oral positions',()=>{
+ const result=progressForMission({...rule,kind:'oral',metric:'positions',target:2},[session('oral',{kind:'oral',tags:['69','Lying down','Missionary']})],now);
+ assert.equal(result.value,2);assert(result.baseComplete);
 });

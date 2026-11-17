@@ -1,4 +1,4 @@
-# Partner missions and Storage
+# Partner goals and Storage
 
 Partner missions are separate from the existing automatic XP quests. Either partner may send an invitation with a custom goal, timeframe, optional prize, optional multiplier bonus and optional reverse-claim item. Item titles and conditions are free text; icons change only appearance. The recipient joins or declines. Either participant may end a joined mission without a failure claim. Ending preserves already-earned items.
 
@@ -11,3 +11,9 @@ Reward details are redacted on the server until the recipient reaches the releva
 Storage: ready → requested → used (counterparty approval) or ready (decline/withdraw). Used items disappear from the active collection and remain in collapsed history. Items are agreements between partners; approval does not make payments, delete files, change contraception settings, or bypass consent in the moment. Requests expire after seven days; earned items do not expire.
 
 All reads and writes require current membership in the active couple. Mission outcomes reconcile once per server request, shared by page/layout. Inbox attention and visible-page refresh expose invitations and item approvals without OS notifications. Polling pauses with an open dialog to protect drafts.
+
+## Goal builder update
+
+New goals use a system-generated name and no custom description. Up to eight conditions can be combined with AND, each specifying intercourse or oral and a recorded metric. Every condition must pass; stretch rewards multiply every target. Oral partner goals do not change the existing intercourse-only XP quests. Existing single-condition missions remain compatible.
+
+Rewards and reverse claims offer a catalogue first, with system-selected labels and icons; only Something else opens custom naming. Every option keeps a separate restrictions field. Storage-use approvals appear directly in Inbox. Back follows app navigation history, falling back to Home on direct entry.

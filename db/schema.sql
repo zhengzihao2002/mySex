@@ -389,3 +389,6 @@ $$;
 drop trigger if exists sessions_mission_saved_at on sessions;
 create trigger sessions_mission_saved_at before insert or update of status on sessions
 for each row execute function stamp_mission_saved_at();
+
+alter table partner_missions add column if not exists goals jsonb;
+alter table partner_missions add column if not exists goal_progress jsonb;
