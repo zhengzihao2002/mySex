@@ -6,6 +6,7 @@ import {db} from '@/lib/db';
 import {safeTz} from '@/lib/tz';
 import {scheduledGoal} from '@/lib/goal-schedule';
 import {catalogReward} from '@/lib/reward-catalog';
+import {requestGoalEnd,resolveGoalEnd} from '@/lib/partner-goal-end';
 import {ACTIVITY_GROUPS, INTERCOURSE_POSITIONS} from '@/lib/activity-details';
 import type {ActionResult} from '@/lib/types';
 import {insertPartnerMission,decidePartnerMission,changeStorageItem,type PartnerMissionActor} from '@/lib/partner-mission-store';
@@ -38,3 +39,15 @@ export async function respondPartnerMission(id:string,decision:'accept'|'decline
 export async function requestStorageItem(id:string):Promise<ActionResult>{const a=await actor();if(!z.string().uuid().safeParse(id).success)return fail(/*i18n*/'Invalid item.');return finish(await changeStorageItem(db(),a,id,'request'));}
 export async function withdrawStorageItem(id:string):Promise<ActionResult>{const a=await actor();if(!z.string().uuid().safeParse(id).success)return fail(/*i18n*/'Invalid item.');return finish(await changeStorageItem(db(),a,id,'withdraw'));}
 export async function respondStorageItem(id:string,approve:boolean):Promise<ActionResult>{const a=await actor();if(!z.string().uuid().safeParse(id).success||typeof approve!=='boolean')return fail(/*i18n*/'Invalid item.');return finish(await changeStorageItem(db(),a,id,approve?'approve':'decline'));}
+
+export async function requestPartnerGoalEnd(id:string):Promise<ActionResult> {
+  const a=await actor();
+  if (!z.string().uuid().safeParse(id).success) return fail('Invalid goal.');
+  return finish(await requestGoalEnd(db(),a,id));
+}
+
+export async function resolvePartnerGoalEnd(id:string, decision:'approve'|'decline'|'withdraw'):Promise<ActionResult> {
+  const a=await actor();
+  if (!z.string().uuid().safeParse(id).success||!['approve','decline','withdraw'].includes(decision)) return fail('Invalid goal.');
+  return finish(await resolveGoalEnd(db(),a,id,decision));
+}

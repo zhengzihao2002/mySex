@@ -392,3 +392,10 @@ for each row execute function stamp_mission_saved_at();
 
 alter table partner_missions add column if not exists goals jsonb;
 alter table partner_missions add column if not exists goal_progress jsonb;
+
+create table if not exists partner_goal_end_requests (
+  id uuid primary key default gen_random_uuid(),
+  goal_id uuid not null unique references partner_missions(id) on delete cascade,
+  requested_by text not null references profiles(user_id) on delete cascade,
+  created_at timestamptz not null default now()
+);

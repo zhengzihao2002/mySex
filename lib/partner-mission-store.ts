@@ -6,7 +6,7 @@ export type PartnerMissionActor={coupleId:string;userId:string;partnerId:string}
 export type RewardIcon='gift'|'ticket'|'sparkles'|'camera'|'coins'|'heart'|'crown';
 export type RewardInput={title:string;details:string;icon:RewardIcon};
 export type MissionInput={goals?:MissionGoal[];title:string;description:string;metric:Metric;target:number;startsAt:string;endsAt:string;reward:RewardInput|null;bonusMultiplier:number|null;bonusReward:RewardInput|null;failureClaim:RewardInput|null};
-export type PartnerMission=MissionInput & {goalProgress?:Array<MissionGoal & {value:number}>;id:string;createdAt:string;issuerId:string;assigneeId:string;status:'invited'|'active'|'declined'|'cancelled'|'settled';acceptedAt:string|null;value:number;sessionIds:string[];baseComplete:boolean;bonusComplete:boolean;expired:boolean};
+export type PartnerMission=MissionInput & {endRequested?:boolean;goalProgress?:Array<MissionGoal & {value:number}>;id:string;createdAt:string;issuerId:string;assigneeId:string;status:'invited'|'active'|'declined'|'cancelled'|'settled';acceptedAt:string|null;value:number;sessionIds:string[];baseComplete:boolean;bonusComplete:boolean;expired:boolean};
 export type StorageItem={id:string;missionId:string;missionTitle:string;title:string;details:string;icon:RewardIcon;kind:'prize'|'bonus'|'claim';ownerId:string;issuerId:string;status:'ready'|'requested'|'used'|'revoked';createdAt:string;requestedAt:string|null};
 const iso=(v:unknown)=>v instanceof Date?v.toISOString():String(v);
 export async function partnerMissionMember(client:Client,a:PartnerMissionActor){
@@ -25,23 +25,26 @@ export async function insertPartnerMission(client:Client,a:PartnerMissionActor,i
 }
 export async function decidePartnerMission(client:Client,a:PartnerMissionActor,id:string,decision:'accept'|'decline'|'cancel',now=new Date()){
  if(!await partnerMissionMember(client,a))return false;
- if(decision==='cancel')await getPartnerMissionBoard(client,a,now);
  const status=decision==='accept'?'active':decision==='decline'?'declined':'cancelled';
  const results=await client.transaction(tx=>[
   tx`select user_id from profiles where user_id in (${a.userId},${a.partnerId}) order by user_id for share`,
   tx`update partner_missions m set status=${status},accepted_at=case when ${decision}='accept' then ${now.toISOString()}::timestamptz else accepted_at end,updated_at=${now.toISOString()},revision=revision+1
   from couples c,profiles p,profiles other where m.id=${id} and m.couple_id=${a.coupleId} and c.id=m.couple_id and c.unpaired_at is null and p.user_id=${a.userId} and p.couple_id=c.id and other.user_id=${a.partnerId} and other.couple_id=c.id and ${a.userId} in (c.male_id,c.female_id) and ${a.partnerId} in(c.male_id,c.female_id)
-  and (( ${decision} in ('accept','decline') and m.assignee_id=${a.userId} and m.status='invited' and m.ends_at>${now.toISOString()}::timestamptz and m.created_at>${now.toISOString()}::timestamptz-interval '7 days') or (${decision}='cancel' and m.status in ('invited','active') and m.ends_at>${now.toISOString()}::timestamptz)) returning m.id`,
+  and (( ${decision} in ('accept','decline') and m.assignee_id=${a.userId} and m.status='invited' and m.ends_at>${now.toISOString()}::timestamptz and m.created_at>${now.toISOString()}::timestamptz-interval '7 days') or (${decision}='cancel' and m.status='invited' and m.issuer_id=${a.userId} and m.ends_at>${now.toISOString()}::timestamptz)) returning m.id`,
  ]);
  return results[1].length>0;
 }
 
-type MissionRow={goals:MissionGoal[]|null;goal_progress:Array<MissionGoal & {value:number}>|null;id:string;couple_id:string;issuer_id:string;assignee_id:string;title:string;description:string;metric:Metric;target:number|string;starts_at:unknown;ends_at:unknown;reward:RewardInput|null;bonus_multiplier:number|string|null;bonus_reward:RewardInput|null;failure_claim:RewardInput|null;status:PartnerMission['status'];accepted_at:unknown;created_at:unknown;progress_value:number|string;proof_ids:string[];revision:number};
-const readMissions=async(client:Client,a:PartnerMissionActor)=>await client`select m.* from partner_missions m join couples c on c.id=m.couple_id join profiles p on p.user_id=${a.userId} and p.couple_id=c.id join profiles other on other.user_id=${a.partnerId} and other.couple_id=c.id where m.couple_id=${a.coupleId} and c.unpaired_at is null and ${a.userId} in(c.male_id,c.female_id) and ${a.partnerId} in(c.male_id,c.female_id) order by m.created_at desc` as unknown as MissionRow[];
+type MissionRow={end_requested:boolean;goals:MissionGoal[]|null;goal_progress:Array<MissionGoal & {value:number}>|null;id:string;couple_id:string;issuer_id:string;assignee_id:string;title:string;description:string;metric:Metric;target:number|string;starts_at:unknown;ends_at:unknown;reward:RewardInput|null;bonus_multiplier:number|string|null;bonus_reward:RewardInput|null;failure_claim:RewardInput|null;status:PartnerMission['status'];accepted_at:unknown;created_at:unknown;progress_value:number|string;proof_ids:string[];revision:number};
+const readMissions=async(client:Client,a:PartnerMissionActor)=>await client`select m.*, exists(select 1 from partner_goal_end_requests r where r.goal_id=m.id and r.created_at>now()-interval '7 days') as end_requested from partner_missions m join couples c on c.id=m.couple_id join profiles p on p.user_id=${a.userId} and p.couple_id=c.id join profiles other on other.user_id=${a.partnerId} and other.couple_id=c.id where m.couple_id=${a.coupleId} and c.unpaired_at is null and ${a.userId} in(c.male_id,c.female_id) and ${a.partnerId} in(c.male_id,c.female_id) order by m.created_at desc` as unknown as MissionRow[];
 export async function getPartnerMissionBoard(client:Client,a:PartnerMissionActor,now=new Date()):Promise<{missions:PartnerMission[];items:StorageItem[]}>{
  if(!await partnerMissionMember(client,a))return {missions:[],items:[]};
  let rows=await readMissions(client,a);
  if(!rows.length)return {missions:[],items:[]};
+ await client`delete from partner_goal_end_requests r using partner_missions m
+   where r.goal_id=m.id and m.couple_id=${a.coupleId}
+   and (m.status<>'active' or m.ends_at<=${now.toISOString()}::timestamptz
+     or r.created_at<=${now.toISOString()}::timestamptz-interval '7 days')`;
  // Expire the approval request, not the earned item. Either partner's visit
  // returns stale requests to Storage so their owner can ask again later.
  await client`update partner_storage_items i set status='ready',requested_at=null
@@ -80,7 +83,7 @@ export async function getPartnerMissionBoard(client:Client,a:PartnerMissionActor
  const missions=rows.map(m=>{
   const value=Number(m.progress_value),baseComplete=!!m.accepted_at&&value>=Number(m.target),bonusMultiplier=m.bonus_multiplier?Number(m.bonus_multiplier):null,bonusComplete=!!bonusMultiplier&&baseComplete&&value>=Number(m.target)*bonusMultiplier,expired=new Date(iso(m.ends_at))<=now;
   const issuer=m.issuer_id===a.userId;
-  return {goals:m.goals??undefined,goalProgress:m.goal_progress??undefined,id:m.id,title:m.title,description:m.description,metric:m.metric,target:Number(m.target),startsAt:iso(m.starts_at),endsAt:iso(m.ends_at),createdAt:iso(m.created_at),issuerId:m.issuer_id,assigneeId:m.assignee_id,status:m.status,acceptedAt:m.accepted_at?iso(m.accepted_at):null,value,sessionIds:m.proof_ids,baseComplete,bonusMultiplier,bonusComplete,expired,reward:issuer||baseComplete?m.reward:null,bonusReward:issuer||bonusComplete?m.bonus_reward:null,failureClaim:issuer?m.failure_claim:null};
+  return {endRequested:m.end_requested,goals:m.goals??undefined,goalProgress:m.goal_progress??undefined,id:m.id,title:m.title,description:m.description,metric:m.metric,target:Number(m.target),startsAt:iso(m.starts_at),endsAt:iso(m.ends_at),createdAt:iso(m.created_at),issuerId:m.issuer_id,assigneeId:m.assignee_id,status:m.status,acceptedAt:m.accepted_at?iso(m.accepted_at):null,value,sessionIds:m.proof_ids,baseComplete,bonusMultiplier,bonusComplete,expired,reward:issuer||baseComplete?m.reward:null,bonusReward:issuer||bonusComplete?m.bonus_reward:null,failureClaim:issuer?m.failure_claim:null};
  });
  const items=await client`select i.*,m.title as mission_title from partner_storage_items i join partner_missions m on m.id=i.mission_id join couples c on c.id=i.couple_id join profiles p on p.user_id=${a.userId} and p.couple_id=c.id join profiles other on other.user_id=${a.partnerId} and other.couple_id=c.id where i.couple_id=${a.coupleId} and c.unpaired_at is null and ((i.owner_id=${a.userId} and i.status in ('ready','requested','used')) or (i.issuer_id=${a.userId} and i.status='requested')) order by i.created_at desc`;
  return {missions,items:items.map(i=>({id:i.id,missionId:i.mission_id,missionTitle:i.mission_title,title:i.title,details:i.details,icon:i.icon,kind:i.kind,ownerId:i.owner_id,issuerId:i.issuer_id,status:i.status,createdAt:iso(i.created_at),requestedAt:i.requested_at?iso(i.requested_at):null}))};

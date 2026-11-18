@@ -6,7 +6,7 @@ import {useEffect,useState} from 'react';
 import {useRouter} from 'next/navigation';
 import {ArrowDownLeft,ArrowUpRight,Check,ChevronRight,Clock3,Flag,Gift,Layers3,LockKeyhole,PackageOpen,Plus,Sparkles,Target,Timer,Waypoints} from 'lucide-react';
 import {motion} from 'motion/react';
-import {createPartnerMission,respondPartnerMission} from '@/app/partner-mission-actions';
+import {createPartnerMission,respondPartnerMission,requestPartnerGoalEnd} from '@/app/partner-mission-actions';
 import {GoalNumberInput} from './GoalNumberInput';
 import {GoalDateRangePicker} from './GoalDateRangePicker';
 import {goalDays} from '@/lib/goal-schedule';
@@ -49,7 +49,7 @@ export function PartnerMissions({missions,meId,partnerName}:{missions:PartnerMis
       {([{key:'for_me',label:'For you',Icon:ArrowDownLeft},{key:'from_me',label:'From you',Icon:ArrowUpRight},{key:'archive',label:'Past goals',Icon:Flag}] as const).map(({key,label,Icon})=><button key={key} onClick={()=>setFilter(key)} aria-pressed={filter===key} className={`flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl px-2 text-xs transition ${filter===key?'bg-rose/15 text-rose-2':'text-ink-3'}`}><Icon size={14}/>{t(label)}</button>)}
     </div>
     {shown.length===0?<div className="rounded-3xl border border-dashed border-line px-5 py-10 text-center"><Sparkles size={26} className="mx-auto mb-3 text-rose-2"/><h2 className="font-display text-xl">{t('A blank page for your next challenge.')}</h2><p className="mt-2 text-sm text-ink-3">{filter==='from_me'?t('Create something only your partner could dream of earning.'):filter==='archive'?t('Finished and ended goals will live here.'):t('Your partner’s invitations will appear here.')}</p>{filter==='for_me'&&<button className="chip mt-4" onClick={()=>setFilter('from_me')}>{t('See goals you created')}</button>}</div>:<div className="space-y-4">{shown.map(m=><MissionCard key={m.id} mission={m} meId={meId} partnerName={partnerName} date={date} now={now}/>)}</div>}
-    <p className="px-1 text-xs leading-relaxed text-ink-3">{t('Only joined goals count. Either of you can end a goal.')}</p>
+    <p className="px-1 text-xs leading-relaxed text-ink-3">{t('Only joined goals count. Ending an active goal requires both partners to agree.')}</p>
     <Sheet open={create} onClose={()=>setCreate(false)} stableHeight title={t('Create a partner goal')}>{create&&<MissionCreator partnerName={partnerName} onDone={()=>{setCreate(false);setFilter('from_me');}}/>}</Sheet>
   </div>;
 }
@@ -76,9 +76,10 @@ function MissionCard({mission:m,meId,partnerName,date,now}:{mission:PartnerMissi
       {m.baseComplete&&m.sessionIds.length>0&&<details className="mt-3 rounded-2xl border border-line/60 p-3 text-xs text-ink-2"><summary className="min-h-6 cursor-pointer">{t('Saved record proof')} · {m.sessionIds.length}</summary><div className="mt-2 flex flex-wrap gap-2">{m.sessionIds.map((id,index)=><Link key={id} href={`/insights?session=${id}`} className="chip">{t('Record {n}',{n:index+1})}</Link>)}</div></details>}
       <FormError error={action.error}/>
       {invite&&!mine&&<div className="mt-4 grid grid-cols-2 gap-2"><button className="btn-ghost" disabled={action.pending} onClick={()=>action.run(()=>respondPartnerMission(m.id,'decline'))}>{t('Decline')}</button><button className="btn-primary" disabled={action.pending} onClick={()=>action.run(()=>respondPartnerMission(m.id,'accept'))}>{t('Join goal')}</button></div>}
-      {(live||invite&&mine)&&<button className="mt-3 min-h-11 w-full text-xs text-ink-3" disabled={action.pending} onClick={()=>setConfirmEnd(true)}>{invite?t('Withdraw invitation'):t('End goal')}</button>}
+      {live&&m.endRequested&&<Link href="/inbox" className="mt-3 inline-flex min-h-11 items-center text-sm text-rose-2">{t('End request pending · View Inbox')}</Link>}
+      {(!m.endRequested&&live||invite&&mine)&&<button className="mt-3 min-h-11 w-full text-xs text-ink-3" disabled={action.pending} onClick={()=>setConfirmEnd(true)}>{invite?t('Withdraw invitation'):t('Request to end goal')}</button>}
     </div>
-    <Sheet open={confirmEnd} onClose={()=>setConfirmEnd(false)} title={t('End this goal?')}><p className="mb-4 text-sm text-ink-2">{t('This stops future progress without creating a return claim. Earned items stay in Storage.')}</p><div className="grid grid-cols-2 gap-2"><button className="btn-ghost" onClick={()=>setConfirmEnd(false)}>{t('Keep goal')}</button><button className="btn-primary" disabled={action.pending} onClick={async()=>{if(await action.run(()=>respondPartnerMission(m.id,'cancel')))setConfirmEnd(false);}}>{t('End goal')}</button></div><FormError error={action.error}/></Sheet>
+    <Sheet open={confirmEnd} onClose={()=>setConfirmEnd(false)} title={invite?t('Withdraw invitation'):t('Request to end goal')}><p className="mb-4 text-sm text-ink-2">{invite?t('Withdraw this invitation before your partner joins.'):t('Your partner will get a request in Inbox. The goal continues until they agree. Earned items stay in Storage.')}</p><div className="grid grid-cols-2 gap-2"><button className="btn-ghost" onClick={()=>setConfirmEnd(false)}>{t('Keep goal')}</button><button className="btn-primary" disabled={action.pending} onClick={async()=>{if(await action.run(()=>invite?respondPartnerMission(m.id,'cancel'):requestPartnerGoalEnd(m.id))){setConfirmEnd(false);}}}>{invite?t('Withdraw invitation'):t('Send request')}</button></div><FormError error={action.error}/></Sheet>
   </article>;
 }
 function RewardLine({reward,label}:{reward:{title:string;details:string;icon:string};label:string}){const {t}=useT();return <div className="mt-3 flex items-start gap-3 rounded-2xl border border-line/70 bg-bg/20 p-3"><RewardToken small icon={reward.icon}/><div className="min-w-0"><p className="text-[10px] text-ink-3">{label}</p><p className="break-words text-sm font-semibold">{rewardLabel(reward.title,t)}</p>{reward.details&&<p className="mt-1 whitespace-pre-wrap break-words text-xs leading-relaxed text-ink-2">{reward.details}</p>}</div></div>;}

@@ -306,6 +306,11 @@ export async function getInboxSnapshot(coupleId: string, userId: string) {
       (status='invited' and assignee_id=${userId} and ends_at>now() and created_at>now()-interval '7 days') or (status='active' and ends_at<=now())
       from partner_missions where couple_id=${coupleId}
     union all
+    select r.id, 'goal-end', r.requested_by<>${userId}
+      from partner_goal_end_requests r join partner_missions m on m.id=r.goal_id
+      where m.couple_id=${coupleId} and m.status='active' and m.ends_at>now()
+        and r.created_at>now()-interval '7 days'
+    union all
     select id, 'storage:' || status || ':' || coalesce(requested_at::text,'') || ':' || coalesce((requested_at<=now()-interval '7 days')::text,'false'),
       status='requested' and issuer_id=${userId} and requested_at>now()-interval '7 days'
       from partner_storage_items where couple_id=${coupleId}

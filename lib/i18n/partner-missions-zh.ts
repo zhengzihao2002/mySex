@@ -1,5 +1,13 @@
 // Partner goals and Storage — Simplified Chinese.
 export const partnerMissionZh: Record<string, string> = {
+  "End request pending · View Inbox": "结束请求待处理 · 查看收件箱",
+  "Goal end requests": "结束目标的请求",
+  "Your partner is asking to end this goal.": "你的伴侣请求结束这个目标。",
+  "Agree to end goal": "同意结束目标",
+  "Only joined goals count. Ending an active goal requires both partners to agree.": "加入后才开始计算进度。提前结束目标需要双方同意。",
+  "Request to end goal": "请求结束目标",
+  "Withdraw this invitation before your partner joins.": "伴侣加入前可以撤回邀请。",
+  "Your partner will get a request in Inbox. The goal continues until they agree. Earned items stay in Storage.": "伴侣会在收件箱收到请求。对方同意后目标才会结束。已获得的道具会保留在仓库中。",
   "Nothing": "无",
   "Change dates": "更改日期",
   "Tap a selected date to set its minutes.": "点击所选范围内的日期，分别设置分钟数。",

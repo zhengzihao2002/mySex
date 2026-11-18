@@ -1,3 +1,4 @@
+import {listGoalEndRequests, requestGoalEnd, resolveGoalEnd} from './partner-goal-end.ts';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {before,after,beforeEach,test} from 'node:test';
@@ -67,7 +68,17 @@ test('failure after deadline creates a reverse claim for creator, visible to par
 
 test('cancellation and declined/expired invites never punish; outsiders and unpaired couples cannot read or mutate',async()=>{
  const id=await active();await session();let board=await getPartnerMissionBoard(client,partner,at('00:25'));assert.equal(board.items.length,1);
- assert(await decidePartnerMission(client,me,id,'cancel',at('00:25')));board=await getPartnerMissionBoard(client,me,end);assert.equal(board.missions[0].status,'cancelled');assert.equal(board.items.length,0);assert.equal((await getPartnerMissionBoard(client,partner,end)).items.length,1);
+ assert.equal(await decidePartnerMission(client,me,id,'cancel',at('00:25')),false);
+ assert(await requestGoalEnd(client,me,id,at('00:25')));
+ const [request]=await listGoalEndRequests(client,partner,at('00:25'));
+ assert.equal(await resolveGoalEnd(client,me,request.id,'approve',at('00:25')),false);
+ assert.equal(await requestGoalEnd(client,partner,id,at('00:25')),false);
+ assert(await resolveGoalEnd(client,partner,request.id,'decline',at('00:25')));
+ assert.equal((await getPartnerMissionBoard(client,partner,at('00:25'))).missions[0].status,'active');
+ assert(await requestGoalEnd(client,me,id,at('00:25')));
+ assert.equal(await resolveGoalEnd(client,partner,request.id,'approve',at('00:25')),false);
+ const [replacement]=await listGoalEndRequests(client,partner,at('00:25'));
+ assert(await resolveGoalEnd(client,partner,replacement.id,'approve',at('00:25')));board=await getPartnerMissionBoard(client,me,end);assert.equal(board.missions[0].status,'cancelled');assert.equal(board.items.length,0);assert.equal((await getPartnerMissionBoard(client,partner,end)).items.length,1);
  const pending=await invited();assert(await decidePartnerMission(client,partner,pending,'decline',at('00:25')));
  await invited();await getPartnerMissionBoard(client,me,end);assert.equal((await pg.query("select * from partner_storage_items where kind='claim'")).rows.length,0);
  assert.deepEqual(await getPartnerMissionBoard(client,outsider,end),{missions:[],items:[]});assert.equal(await insertPartnerMission(client,outsider,input,begin),false);
@@ -88,7 +99,7 @@ test('unchanged polls do not rewrite missions; cancellation never revokes alread
  const id=await active();await session();let board=await getPartnerMissionBoard(client,partner,at('00:25'));const item=board.items[0].id;
  const before=(await pg.query<{revision:number}>("select revision from partner_missions where id=$1",[id])).rows[0].revision;
  await getPartnerMissionBoard(client,partner,at('00:26'));assert.equal((await pg.query<{revision:number}>("select revision from partner_missions where id=$1",[id])).rows[0].revision,before);
- assert(await changeStorageItem(client,partner,item,'request',at('00:26')));assert(await changeStorageItem(client,me,item,'approve',at('00:26')));assert(await decidePartnerMission(client,partner,id,'cancel',at('00:27')));
+ assert(await changeStorageItem(client,partner,item,'request',at('00:26')));assert(await changeStorageItem(client,me,item,'approve',at('00:26')));assert(await requestGoalEnd(client,partner,id,at('00:27'))); const [request]=await listGoalEndRequests(client,me,at('00:27')); assert(await resolveGoalEnd(client,me,request.id,'approve',at('00:27')));
  board=await getPartnerMissionBoard(client,partner,end);assert.equal(board.items[0].status,'used');assert.equal(board.missions[0].status,'cancelled');assert.equal((await pg.query("select * from partner_storage_items where kind='claim'")).rows.length,0);
 });
 

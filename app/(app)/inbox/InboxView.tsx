@@ -1,4 +1,6 @@
 'use client';
+import {resolvePartnerGoalEnd} from '@/app/partner-mission-actions';
+import type {GoalEndRequest} from '@/lib/partner-goal-end';
 import {ItemDetails} from '@/components/PartnerStorage';
 import type {StorageItem} from '@/lib/partner-mission-store';
 import {PartnerMissionEntry} from '@/components/PartnerMissionEntry';
@@ -20,7 +22,8 @@ import { useRun } from '@/components/useRun';
 import { dayInTz } from '@/lib/tz';
 import type { SessionDeletionRequest, SessionEditNotice, SessionEditRequest } from '@/lib/types';
 
-export function InboxView({ requests, notices, edits, meId, partnerName, partnerMissionSummary, storageRequests=[] }: {
+export function InboxView({ requests, notices, edits, meId, partnerName, partnerMissionSummary, storageRequests=[], goalEndRequests=[] }: {
+  goalEndRequests?:GoalEndRequest[];
   storageRequests?:StorageItem[];
   partnerMissionSummary?: {invitations:number;active:number;ready:number;approvals:number};
   requests: SessionDeletionRequest[]; notices: SessionEditNotice[]; edits: SessionEditRequest[]; meId: string; partnerName: string;
@@ -48,13 +51,16 @@ export function InboxView({ requests, notices, edits, meId, partnerName, partner
         </button>
       </header>
       {storageRequests.length>0&&<section className="space-y-4"><h2 className="font-display text-xl">{t('Item use requests')}</h2>{storageRequests.map(item=><article key={item.id} className="card"><ItemDetails item={item} meId={meId} partnerName={partnerName} onDone={()=>router.refresh()}/></article>)}</section>}
+      {goalEndRequests.length>0&&<section className="space-y-3"><h2 className="font-display text-xl">{t('Goal end requests')}</h2>
+        {goalEndRequests.map(request=><GoalEndCard key={request.id} request={request} outgoing={request.requestedBy===meId}/>)}
+      </section>}
       <PartnerMissionEntry {...partnerMissionSummary}/>
       <p className="text-sm text-ink-2">{t('Shared sessions are changed or deleted only when both of you agree. Declining keeps the record as it is and notifies the requester.')}</p>
       <p className="text-xs text-ink-3">{t('Inbox items are deleted from the database after 7 days. Unanswered requests are cancelled without changing the record. Handled requests and read replies are deleted sooner.')}</p>
       {!requests.length && !notices.length && !edits.length && (
         <div className="card py-10 text-center text-ink-3">
           <Inbox className="mx-auto mb-3" size={30} />
-          <p className="font-semibold text-ink">{t(partnerMissionSummary?.invitations||partnerMissionSummary?.approvals?'No shared-record requests':'Your inbox is empty')}</p>
+          <p className="font-semibold text-ink">{t(goalEndRequests.length||partnerMissionSummary?.invitations||partnerMissionSummary?.approvals?'No shared-record requests':'Your inbox is empty')}</p>
           <p className="mt-1 text-sm">{t('Deletion requests and your partner’s replies will appear here.')}</p>
         </div>
       )}
@@ -211,4 +217,23 @@ function InboxExpiry({createdAt,now}:{createdAt:string;now:number}) {
   const urgent=inboxUrgent(createdAt,now);
   const label=remaining===0?t('Expired — cancelled'):remaining<=3600000?t('Expires in {n} min',{n:Math.ceil(remaining/60000)}):urgent?t('Expires in {n} hours',{n:Math.ceil(remaining/3600000)}):t('Expires in {n} days',{n:Math.ceil(remaining/86400000)});
   return <p className={urgent?'inline-flex rounded-full bg-menstrual/20 px-2.5 py-1 text-xs font-bold text-menstrual':'text-xs text-ink-3'}>{urgent&&<TriangleAlert size={13} className="mr-1" aria-hidden="true"/>}{label}</p>;
+}
+
+
+function GoalEndCard({request,outgoing}:{request:GoalEndRequest;outgoing:boolean}){
+  const {t,f}=useT();
+  const {tz}=useTz();
+  const {run,pending,error}=useRun();
+  return <article className="card space-y-3">
+    <h3 className="break-words font-semibold">{request.title==='Partner mission'||request.title==='Partner goal'?t('Partner goal'):request.title}</h3>
+    <p className="text-xs text-ink-3">{f.prettyRange(dayInTz(request.startsAt,tz),dayInTz(new Date(Date.parse(request.endsAt)-1).toISOString(),tz))}</p>
+    <p className="text-sm text-ink-2">{outgoing?t('Waiting for your partner'):t('Your partner is asking to end this goal.')}</p>
+    <FormError error={error}/>
+    {outgoing
+      ? <button className="btn-ghost w-full" disabled={pending} onClick={()=>run(()=>resolvePartnerGoalEnd(request.id,'withdraw'))}>{t('Withdraw request')}</button>
+      : <div className="grid grid-cols-2 gap-2">
+        <button className="btn-ghost" disabled={pending} onClick={()=>run(()=>resolvePartnerGoalEnd(request.id,'decline'))}>{t('Decline & keep')}</button>
+        <button className="btn-primary" disabled={pending} onClick={()=>run(()=>resolvePartnerGoalEnd(request.id,'approve'))}>{t('Agree to end goal')}</button>
+      </div>}
+  </article>;
 }
