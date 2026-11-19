@@ -41,6 +41,8 @@ export function PartnerStorage({items,meId,partnerName}:{items:StorageItem[];meI
 export function ItemDetails({item,meId,partnerName,onDone}:{item:StorageItem;meId:string;partnerName:string;onDone:()=>void}){
   const {t,lang}=useT(),action=useRun();const mine=item.ownerId===meId;
   const [confirmGiveUp,setConfirmGiveUp]=useState(false);
+  const [declining,setDeclining]=useState(false);
+  const [declineReason,setDeclineReason]=useState('');
   return <div className="space-y-5"><div className="rounded-3xl border border-line bg-gradient-to-br from-plum/20 to-bg/30 p-5"><RewardToken icon={item.icon}/><p className="mt-4 text-xs text-luteal">{item.kind==='bonus'?t('Stretch prize'):item.kind==='claim'?t('Return claim'):item.kind==='ask'?t('Item request'):t('Goal prize')}</p><h2 className="mt-1 break-words font-display text-3xl">{rewardLabel(item.title,t)}{(item.quantityRemaining??1)>1&&` ×${item.quantityRemaining}`}</h2>{item.details&&<p className="mt-3 whitespace-pre-wrap break-words text-sm leading-relaxed text-ink-2">{item.details}</p>}<p className="mt-4 border-t border-line/70 pt-3 text-xs text-ink-3">{item.kind==='ask'?t('Granted by {name}',{name:partnerName}):`${t('Earned from')}: ${t(item.missionTitle==='Partner mission'?'Partner goal':item.missionTitle)}`}</p><p className="mt-1 text-xs text-ink-3">{new Date(item.createdAt).toLocaleDateString(lang==='zh'?'zh-CN':'en',{year:'numeric',month:'long',day:'numeric'})}</p></div>
     <p className="rounded-2xl border border-line bg-bg/30 p-3 text-xs leading-relaxed text-ink-2">{t('A new agreement each time. Either partner can say no.')} {t('Approval uses this item once. It does not change protection settings or trigger any payment or deletion.')}</p>
     {mine&&confirmGiveUp?<div className="space-y-3 rounded-2xl border border-menstrual/30 p-4">
@@ -55,7 +57,18 @@ export function ItemDetails({item,meId,partnerName,onDone}:{item:StorageItem;meI
     {mine&&item.status==='requested'&&<div><p className="mb-3 flex items-center gap-2 text-sm text-rose-2"><Clock3 size={17}/>{t('Waiting for {name}’s agreement',{name:partnerName})}</p><button className="btn-ghost w-full" disabled={action.pending} onClick={async()=>{if(await action.run(()=>withdrawStorageItem(item.id)))onDone();}}>{t('Withdraw request')}</button></div>}
     {mine&&(item.status==='ready'||item.status==='requested')&&<button type="button" className="btn-ghost w-full text-ink-3" disabled={action.pending} onClick={()=>setConfirmGiveUp(true)}>{t('Voluntarily give up')}</button>}
     </>}
-    {!mine&&item.issuerId===meId&&item.status==='requested'&&<div><p className="mb-3 text-sm text-ink-2">{t('{name} would like to use this item. Do you agree?',{name:partnerName})}</p><div className="grid grid-cols-2 gap-2"><button className="btn-ghost" disabled={action.pending} onClick={async()=>{if(await action.run(()=>respondStorageItem(item.id,false,item.requestedAt??undefined)))onDone();}}>{t('Not this time')}</button><button className="btn-primary" disabled={action.pending} onClick={async()=>{if(await action.run(()=>respondStorageItem(item.id,true,item.requestedAt??undefined)))onDone();}}><Check size={16}/>{t('Agree & use item')}</button></div><p className="mt-3 text-xs text-ink-3">{t('If you decline, the item returns to their collection for another time.')}</p></div>}
+    {!mine&&item.issuerId===meId&&item.status==='requested'&&(declining?<form className="space-y-3" onSubmit={async e=>{
+      e.preventDefault();
+      if(await action.run(()=>respondStorageItem(item.id,false,item.requestedAt??undefined,declineReason)))onDone();
+    }}>
+      <label className="label">{t('Reason for declining (optional)')}
+        <textarea className="input mt-1 normal-case" maxLength={600} value={declineReason} onChange={e=>setDeclineReason(e.target.value)}/>
+      </label>
+      <div className="grid grid-cols-2 gap-2">
+        <button type="button" className="btn-ghost" disabled={action.pending} onClick={()=>setDeclining(false)}>{t('Cancel')}</button>
+        <button type="submit" className="btn-primary" disabled={action.pending}>{t('Confirm decline')}</button>
+      </div>
+    </form>:<div><p className="mb-3 text-sm text-ink-2">{t('{name} would like to use this item. Do you agree?',{name:partnerName})}</p><div className="grid grid-cols-2 gap-2"><button className="btn-ghost" disabled={action.pending} onClick={()=>setDeclining(true)}>{t('Not this time')}</button><button className="btn-primary" disabled={action.pending} onClick={async()=>{if(await action.run(()=>respondStorageItem(item.id,true,item.requestedAt??undefined)))onDone();}}><Check size={16}/>{t('Agree & use item')}</button></div><p className="mt-3 text-xs text-ink-3">{t('If you decline, the item returns to their collection for another time.')}</p></div>)}
     <FormError error={action.error}/>
   </div>;
 }

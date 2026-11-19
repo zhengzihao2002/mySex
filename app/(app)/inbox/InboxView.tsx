@@ -1,8 +1,9 @@
 'use client';
-import {resolvePartnerGoalEnd} from '@/app/partner-mission-actions';
+import {dismissStorageDecline, resolvePartnerGoalEnd} from '@/app/partner-mission-actions';
 import type {GoalEndRequest} from '@/lib/partner-goal-end';
 import {PartnerItemAskCard} from '@/components/PartnerItemAsk';
 import type {ItemAsk} from '@/lib/partner-item-asks';
+import {rewardLabel} from '@/lib/reward-catalog';
 import {ItemDetails} from '@/components/PartnerStorage';
 import type {StorageItem} from '@/lib/partner-mission-store';
 import {PartnerMissionEntry} from '@/components/PartnerMissionEntry';
@@ -24,7 +25,8 @@ import { useRun } from '@/components/useRun';
 import { dayInTz } from '@/lib/tz';
 import type { SessionDeletionRequest, SessionEditNotice, SessionEditRequest } from '@/lib/types';
 
-export function InboxView({ requests, notices, edits, meId, partnerName, partnerMissionSummary, storageRequests=[], goalEndRequests=[], itemAsks=[] }: {
+export function InboxView({ requests, notices, edits, meId, partnerName, partnerMissionSummary, storageRequests=[], goalEndRequests=[], itemAsks=[], storageDeclines=[] }: {
+  storageDeclines?:Array<{id:string;title:string;reason:string}>;
   itemAsks?:ItemAsk[];
   goalEndRequests?:GoalEndRequest[];
   storageRequests?:StorageItem[];
@@ -60,13 +62,16 @@ export function InboxView({ requests, notices, edits, meId, partnerName, partner
       {itemAsks.length>0&&<section className="space-y-3"><h2 className="font-display text-xl">{t('Item requests')}</h2>
         {itemAsks.map(item=><PartnerItemAskCard key={item.id} item={item} outgoing={item.requestedBy===meId}/>)}
       </section>}
+      {storageDeclines.length>0&&<section className="space-y-3"><h2 className="font-display text-xl">{t('Item use replies')}</h2>
+        {storageDeclines.map(reply=><StorageDeclineCard key={reply.id} reply={reply}/>)}
+      </section>}
       <PartnerMissionEntry {...partnerMissionSummary}/>
       <p className="text-sm text-ink-2">{t('Shared sessions are changed or deleted only when both of you agree. Declining keeps the record as it is and notifies the requester.')}</p>
       <p className="text-xs text-ink-3">{t('Inbox items are deleted from the database after 7 days. Unanswered requests are cancelled without changing the record. Handled requests and read replies are deleted sooner.')}</p>
       {!requests.length && !notices.length && !edits.length && (
         <div className="card py-10 text-center text-ink-3">
           <Inbox className="mx-auto mb-3" size={30} />
-          <p className="font-semibold text-ink">{t(itemAsks.length||goalEndRequests.length||partnerMissionSummary?.invitations||partnerMissionSummary?.approvals?'No shared-record requests':'Your inbox is empty')}</p>
+          <p className="font-semibold text-ink">{t(storageDeclines.length||itemAsks.length||goalEndRequests.length||partnerMissionSummary?.invitations||partnerMissionSummary?.approvals?'No shared-record requests':'Your inbox is empty')}</p>
           <p className="mt-1 text-sm">{t('Deletion requests and your partner’s replies will appear here.')}</p>
         </div>
       )}
@@ -241,5 +246,21 @@ function GoalEndCard({request,outgoing}:{request:GoalEndRequest;outgoing:boolean
         <button className="btn-ghost" disabled={pending} onClick={()=>run(()=>resolvePartnerGoalEnd(request.id,'decline'))}>{t('Decline & keep')}</button>
         <button className="btn-primary" disabled={pending} onClick={()=>run(()=>resolvePartnerGoalEnd(request.id,'approve'))}>{t('Agree to end goal')}</button>
       </div>}
+  </article>;
+}
+
+
+function StorageDeclineCard({reply}:{reply:{id:string;title:string;reason:string}}){
+  const {t}=useT();
+  const {run,pending,error}=useRun();
+  return <article className="card space-y-3">
+    <h3 className="break-words font-semibold">{rewardLabel(reply.title,t)}</h3>
+    <p className="text-sm text-ink-2">{t('Use request declined · Item returned to Storage')}</p>
+    {reply.reason&&<div className="rounded-xl bg-bg/40 p-3">
+      <p className="mb-1 text-xs text-ink-3">{t('Reason for declining')}</p>
+      <p className="whitespace-pre-wrap break-words text-sm text-ink-2">{reply.reason}</p>
+    </div>}
+    <FormError error={error}/>
+    <button className="btn-ghost w-full" disabled={pending} onClick={()=>run(()=>dismissStorageDecline(reply.id))}>{t('Dismiss')}</button>
   </article>;
 }

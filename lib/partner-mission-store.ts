@@ -121,15 +121,20 @@ export async function getPartnerMissionBoard(client:Client,a:PartnerMissionActor
 async function decideExpiredInvite(client:Client,a:PartnerMissionActor,id:string,now:Date){
  await client`update partner_missions m set status='cancelled',revision=revision+1,updated_at=${now.toISOString()} from couples c,profiles p where m.id=${id} and m.couple_id=${a.coupleId} and m.status='invited' and (m.ends_at<=${now.toISOString()}::timestamptz or m.created_at<=${now.toISOString()}::timestamptz-interval '7 days') and c.id=m.couple_id and c.unpaired_at is null and p.user_id=${a.userId} and p.couple_id=c.id`;
 }
-export async function changeStorageItem(client:Client,a:PartnerMissionActor,id:string,action:'request'|'withdraw'|'approve'|'decline',now=new Date(),expectedRequest?:string){
+export async function changeStorageItem(client:Client,a:PartnerMissionActor,id:string,action:'request'|'withdraw'|'approve'|'decline',now=new Date(),expectedRequest?:string,declineReason=""){
  if(!await partnerMissionMember(client,a))return false;
  // Recheck earned eligibility before accepting or spending a token.
  await getPartnerMissionBoard(client,a,now);
  const status=action==='approve'?'used':action==='request'?'requested':'ready';
- const rows=await client`update partner_storage_items i set status=case when ${action}='approve' and i.quantity_remaining>1 then 'ready' else ${status} end,
+ const rows=await client`with handled as (
+ update partner_storage_items i set status=case when ${action}='approve' and i.quantity_remaining>1 then 'ready' else ${status} end,
  quantity_remaining=i.quantity_remaining-case when ${action}='approve' then 1 else 0 end,requested_at=case when ${action}='request' then ${now.toISOString()}::timestamptz else null end,used_at=case when ${action}='approve' then ${now.toISOString()}::timestamptz else used_at end
  from couples c,profiles p,profiles other where i.id=${id} and i.quantity_remaining>0 and i.couple_id=${a.coupleId} and c.id=i.couple_id and c.unpaired_at is null and p.user_id=${a.userId} and p.couple_id=c.id and other.user_id=${a.partnerId} and other.couple_id=c.id and (( ${action}='request' and i.owner_id=${a.userId} and i.status='ready') or (${action}='withdraw' and i.owner_id=${a.userId} and i.status='requested') or (${action} in ('approve','decline') and i.issuer_id=${a.userId} and i.status='requested'
- and (${expectedRequest??null}::timestamptz is null or i.requested_at=${expectedRequest??null}::timestamptz))) returning i.id`;
+ and (${expectedRequest??null}::timestamptz is null or i.requested_at=${expectedRequest??null}::timestamptz))) returning i.id,i.couple_id,i.owner_id,i.title
+ ), reply as (
+   insert into partner_storage_declines (couple_id,recipient_id,title,reason)
+   select couple_id,owner_id,title,${declineReason} from handled where ${action}='decline'
+ ) select id from handled`;
  return rows.length>0;
 }
 

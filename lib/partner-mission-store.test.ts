@@ -44,7 +44,11 @@ test('base and bonus pay once; redeemed rewards disappear and cannot be reused',
  assert(await changeStorageItem(client,partner,item.id,'request',at('00:45')));
  assert.equal(await changeStorageItem(client,partner,item.id,'approve',at('00:45')),false);
  assert.equal((await getPartnerMissionBoard(client,me,at('00:45'))).items[0].status,'requested');
- assert(await changeStorageItem(client,me,item.id,'decline',at('00:45')));
+ assert(await changeStorageItem(client,me,item.id,'decline',at('00:45'),undefined,'Could we save it for the weekend?'));
+ assert.equal(await changeStorageItem(client,me,item.id,'decline',at('00:45')),false);
+ const {rows:replies}=await pg.query('select recipient_id,title,reason from partner_storage_declines');
+ assert.deepEqual(replies,[{recipient_id:partner.userId,title:gift.title,reason:'Could we save it for the weekend?'}]);
+ assert.equal((await getPartnerMissionBoard(client,partner,at('00:45'))).items.find(i=>i.id===item.id)?.status,'ready');
  assert(await changeStorageItem(client,partner,item.id,'request',at('00:45')));assert(await changeStorageItem(client,partner,item.id,'withdraw',at('00:45')));
  assert(await changeStorageItem(client,partner,item.id,'request',at('00:45')));assert(await changeStorageItem(client,me,item.id,'approve',at('00:45')));
  assert.equal(await changeStorageItem(client,me,item.id,'approve',at('00:45')),false);assert.equal(await changeStorageItem(client,partner,item.id,'request',at('00:45')),false);
@@ -185,7 +189,8 @@ test('an approved custom item reaches Storage with partner restrictions even wit
  assert.equal(item.kind,'ask');
  assert(await createItemAsk(client,partner,gift,'Another occasion'));
  const [decline]=await listItemAsks(client,me);
- assert(await resolveItemAsk(client,me,decline.id,'declined',''));
+ assert(await resolveItemAsk(client,me,decline.id,'declined','I would prefer another time.'));
+ assert.equal((await listItemAsks(client,partner)).find(item=>item.id===decline.id)?.declineReason,'I would prefer another time.');
  assert.equal((await getPartnerMissionBoard(client,partner)).items.length,1);
 });
 

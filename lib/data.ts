@@ -315,6 +315,9 @@ export async function getInboxSnapshot(coupleId: string, userId: string) {
       from partner_item_asks where couple_id=${coupleId} and created_at>now()-interval '7 days'
         and (requested_by=${userId} or (recipient_id=${userId} and decision is null))
     union all
+    select id, 'storage-declined', true from partner_storage_declines
+      where couple_id=${coupleId} and recipient_id=${userId} and created_at>now()-interval '7 days'
+    union all
     select id, 'storage:' || status || ':' || coalesce(requested_at::text,'') || ':' || coalesce((requested_at<=now()-interval '7 days')::text,'false'),
       status='requested' and issuer_id=${userId} and requested_at>now()-interval '7 days'
       from partner_storage_items where couple_id=${coupleId}

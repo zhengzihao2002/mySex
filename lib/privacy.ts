@@ -95,6 +95,8 @@ export async function cleanupExpiredData(client: Client) {
       delete from session_deletion_requests where created_at <= now() - interval '7 days'
     ), expired_goal_end_requests as (
       delete from partner_goal_end_requests where created_at <= now() - interval '7 days'
+    ), expired_storage_declines as (
+      delete from partner_storage_declines where created_at <= now() - interval '7 days'
     ), expired_storage_use_requests as (
       update partner_storage_items set status='ready', requested_at=null
       where status='requested' and requested_at <= now() - interval '7 days'

@@ -193,7 +193,11 @@ test('retention deletes seven-day partner requests without deleting Storage item
           ($1,'me','partner','Fresh','gift','reason',null,now()-interval '6 days',null)`,[coupleId]);
  await pg.query(`insert into partner_storage_items (couple_id,owner_id,issuer_id,kind,title,icon,status,requested_at)
    values ($1,'me','partner','ask','Keep','gift','requested',now()-interval '7 days')`,[coupleId]);
+ await pg.query(`insert into partner_storage_declines (couple_id,recipient_id,title,reason,created_at)
+   values ($1,'me','Old','reason',now()-interval '7 days'),
+          ($1,'me','Fresh','reason',now()-interval '6 days')`,[coupleId]);
  await cleanupExpiredData(client);
+ assert.deepEqual((await pg.query('select title from partner_storage_declines')).rows,[{title:'Fresh'}]);
  assert.deepEqual((await pg.query('select title from partner_item_asks')).rows,[{title:'Fresh'}]);
  assert.deepEqual((await pg.query('select * from partner_goal_end_requests')).rows,[]);
  assert.deepEqual((await pg.query('select title,status,requested_at from partner_storage_items')).rows,

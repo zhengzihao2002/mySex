@@ -39,11 +39,12 @@ export async function respondPartnerMission(id:string,decision:'accept'|'decline
 }
 export async function requestStorageItem(id:string):Promise<ActionResult>{const a=await actor();if(!z.string().uuid().safeParse(id).success)return fail(/*i18n*/'Invalid item.');return finish(await changeStorageItem(db(),a,id,'request'));}
 export async function withdrawStorageItem(id:string):Promise<ActionResult>{const a=await actor();if(!z.string().uuid().safeParse(id).success)return fail(/*i18n*/'Invalid item.');return finish(await changeStorageItem(db(),a,id,'withdraw'));}
-export async function respondStorageItem(id:string,approve:boolean,requestedAt?:string):Promise<ActionResult>{
+export async function respondStorageItem(id:string,approve:boolean,requestedAt?:string,declineReason=''):Promise<ActionResult>{
  const a=await actor();
- if(!z.string().uuid().safeParse(id).success||typeof approve!=='boolean'||
+ const reason=z.string().trim().max(600).safeParse(declineReason);
+ if(!reason.success||!z.string().uuid().safeParse(id).success||typeof approve!=='boolean'||
     (requestedAt!==undefined&&!z.string().datetime().safeParse(requestedAt).success))return fail(/*i18n*/'Invalid item.');
- return finish(await changeStorageItem(db(),a,id,approve?'approve':'decline',new Date(),requestedAt));
+ return finish(await changeStorageItem(db(),a,id,approve?'approve':'decline',new Date(),requestedAt,reason.data));
 }
 
 export async function requestPartnerGoalEnd(id:string):Promise<ActionResult> {
@@ -70,9 +71,9 @@ export async function askPartnerForItem(input:unknown):Promise<ActionResult> {
   return finish(await createItemAsk(db(),a,{...item,details:''},value.reason));
 }
 
-export async function answerPartnerItemAsk(id:string, decision:'approved'|'declined', restrictions:string):Promise<ActionResult> {
+export async function answerPartnerItemAsk(id:string, decision:'approved'|'declined', responseText:string):Promise<ActionResult> {
   const a=await actor();
-  const detail=z.string().trim().max(600).safeParse(restrictions);
+  const detail=z.string().trim().max(600).safeParse(responseText);
   if (!z.string().uuid().safeParse(id).success||!detail.success||!['approved','declined'].includes(decision)) return fail('Invalid item.');
   return finish(await resolveItemAsk(db(),a,id,decision,detail.data));
 }
@@ -87,4 +88,13 @@ export async function giveUpStorageItem(id:string):Promise<ActionResult> {
   const a=await actor();
   if (!z.string().uuid().safeParse(id).success) return fail('Invalid item.');
   return finish(await forfeitStorageItem(db(),a,id));
+}
+
+
+export async function dismissStorageDecline(id:string):Promise<ActionResult>{
+  const a=await actor();
+  if (!z.string().uuid().safeParse(id).success) return fail('Invalid item.');
+  const rows=await db()`delete from partner_storage_declines where id=${id}
+    and couple_id=${a.coupleId} and recipient_id=${a.userId} returning id`;
+  return finish(rows.length>0);
 }

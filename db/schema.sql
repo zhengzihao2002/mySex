@@ -424,3 +424,16 @@ alter table partner_storage_items add column if not exists quantity_remaining in
 alter table partner_storage_items drop constraint if exists partner_storage_items_status_check;
 alter table partner_storage_items add constraint partner_storage_items_status_check
   check (status in ('ready','requested','used','revoked','forfeited'));
+
+alter table partner_item_asks add column if not exists decline_reason text
+  check (char_length(decline_reason) <= 600);
+
+create table if not exists partner_storage_declines (
+  id uuid primary key default gen_random_uuid(),
+  couple_id uuid not null references couples(id) on delete cascade,
+  recipient_id text not null references profiles(user_id) on delete cascade,
+  title text not null,
+  reason text not null check (char_length(reason) <= 600),
+  created_at timestamptz not null default now()
+);
+create index if not exists partner_storage_declines_inbox on partner_storage_declines(couple_id,recipient_id,created_at);

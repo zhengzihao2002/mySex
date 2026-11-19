@@ -2,16 +2,16 @@ import type {NeonQueryFunction} from '@neondatabase/serverless';
 import {partnerMissionMember, type PartnerMissionActor, type RewardInput} from './partner-mission-store.ts';
 
 type Client = NeonQueryFunction<false,false>;
-export type ItemAsk = {id:string; requestedBy:string; title:string; reason:string; decision:'approved'|'declined'|null};
+export type ItemAsk = {id:string; requestedBy:string; title:string; reason:string; declineReason?:string|null; decision:'approved'|'declined'|null};
 
 export async function listItemAsks(client: Client, actor: PartnerMissionActor): Promise<ItemAsk[]> {
   if (!await partnerMissionMember(client,actor)) return [];
-  const rows = await client`select id,requested_by,title,reason,decision from partner_item_asks
+  const rows = await client`select id,requested_by,title,reason,decision,decline_reason from partner_item_asks
     where couple_id=${actor.coupleId} and (
       (requested_by=${actor.userId} and created_at>now()-interval '7 days')
       or (recipient_id=${actor.userId} and decision is null and created_at>now()-interval '7 days'))
     order by created_at desc`;
-  return rows.map(row=>({id:row.id,requestedBy:row.requested_by,title:row.title,reason:row.reason,decision:row.decision}));
+  return rows.map(row=>({id:row.id,requestedBy:row.requested_by,title:row.title,reason:row.reason,declineReason:row.decline_reason,decision:row.decision}));
 }
 
 export async function createItemAsk(client: Client, actor: PartnerMissionActor, item: RewardInput, reason: string) {
@@ -25,9 +25,10 @@ export async function createItemAsk(client: Client, actor: PartnerMissionActor, 
   return rows.length>0;
 }
 
-export async function resolveItemAsk(client: Client, actor: PartnerMissionActor, id: string, decision:'approved'|'declined', restrictions:string) {
+export async function resolveItemAsk(client: Client, actor: PartnerMissionActor, id: string, decision:'approved'|'declined', responseText:string) {
   const rows = await client`with decided as (
-    update partner_item_asks r set decision=${decision},decided_at=now()
+    update partner_item_asks r set decision=${decision},decided_at=now(),
+      decline_reason=case when ${decision}='declined' then nullif(${responseText},'') else null end
     from couples c, profiles recipient, profiles sender
     where r.id=${id} and r.couple_id=${actor.coupleId} and c.id=r.couple_id and c.unpaired_at is null
       and r.recipient_id=${actor.userId} and r.requested_by=${actor.partnerId}
@@ -37,7 +38,7 @@ export async function resolveItemAsk(client: Client, actor: PartnerMissionActor,
     returning r.*
   ), granted as (
     insert into partner_storage_items(couple_id,owner_id,issuer_id,kind,title,details,icon)
-    select couple_id,requested_by,recipient_id,'ask',title,${restrictions},icon
+    select couple_id,requested_by,recipient_id,'ask',title,${responseText},icon
     from decided where decision='approved'
   ) select id from decided`;
   return rows.length>0;

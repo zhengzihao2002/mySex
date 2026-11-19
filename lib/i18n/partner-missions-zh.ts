@@ -1,5 +1,10 @@
 // Partner goals and Storage — Simplified Chinese.
 export const partnerMissionZh: Record<string, string> = {
+  "Item use replies": "道具使用回复",
+  "Use request declined · Item returned to Storage": "使用请求已被拒绝 · 道具已退回仓库",
+  "Reason for declining": "拒绝理由",
+  "Reason for declining (optional)": "拒绝理由（选填）",
+  "Confirm decline": "确认拒绝",
   "Voluntarily give up": "自愿放弃",
   "Give up this item?": "确定放弃这个道具？",
   "This permanently removes all remaining units and cancels any pending use request.": "此操作会永久移除所有剩余数量，并取消待确认的使用请求。",
