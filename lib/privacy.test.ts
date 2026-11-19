@@ -181,3 +181,21 @@ test('GPS naming gate enforces a shared one-request-per-second limit in Postgres
     await getGpsArea(client,{latitude:1,longitude:1});assert.equal(calls,2);
   } finally {globalThis.fetch=original}
 });
+
+test('retention deletes seven-day partner requests without deleting Storage items',async()=>{
+ const [goal]=(await pg.query<{id:string}>(`insert into partner_missions
+   (couple_id,issuer_id,assignee_id,title,metric,target,starts_at,ends_at,status)
+   values ($1,'me','partner','Goal','sessions',1,now()-interval '8 days',now()+interval '1 day','active') returning id`,[coupleId])).rows;
+ await pg.query(`insert into partner_goal_end_requests (goal_id,requested_by,created_at)
+   values ($1,'me',now()-interval '7 days')`,[goal.id]);
+ await pg.query(`insert into partner_item_asks (couple_id,requested_by,recipient_id,title,icon,reason,decision,created_at,decided_at)
+   values ($1,'me','partner','Old','gift','reason','approved',now()-interval '7 days',now()),
+          ($1,'me','partner','Fresh','gift','reason',null,now()-interval '6 days',null)`,[coupleId]);
+ await pg.query(`insert into partner_storage_items (couple_id,owner_id,issuer_id,kind,title,icon,status,requested_at)
+   values ($1,'me','partner','ask','Keep','gift','requested',now()-interval '7 days')`,[coupleId]);
+ await cleanupExpiredData(client);
+ assert.deepEqual((await pg.query('select title from partner_item_asks')).rows,[{title:'Fresh'}]);
+ assert.deepEqual((await pg.query('select * from partner_goal_end_requests')).rows,[]);
+ assert.deepEqual((await pg.query('select title,status,requested_at from partner_storage_items')).rows,
+   [{title:'Keep',status:'ready',requested_at:null}]);
+});

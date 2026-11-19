@@ -420,3 +420,7 @@ alter table partner_storage_items add constraint partner_storage_items_kind_chec
   check ((kind in ('prize','bonus','claim') and mission_id is not null) or (kind='ask' and mission_id is null));
 alter table partner_storage_items add column if not exists quantity_remaining integer not null default 1
   check(quantity_remaining between 0 and 999);
+
+alter table partner_storage_items drop constraint if exists partner_storage_items_status_check;
+alter table partner_storage_items add constraint partner_storage_items_status_check
+  check (status in ('ready','requested','used','revoked','forfeited'));

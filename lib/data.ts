@@ -312,7 +312,7 @@ export async function getInboxSnapshot(coupleId: string, userId: string) {
         and r.created_at>now()-interval '7 days'
     union all
     select id, 'ask:' || coalesce(decision,'pending'), (recipient_id=${userId} and decision is null) or (requested_by=${userId} and decision is not null)
-      from partner_item_asks where couple_id=${coupleId} and coalesce(decided_at,created_at)>now()-interval '7 days'
+      from partner_item_asks where couple_id=${coupleId} and created_at>now()-interval '7 days'
         and (requested_by=${userId} or (recipient_id=${userId} and decision is null))
     union all
     select id, 'storage:' || status || ':' || coalesce(requested_at::text,'') || ':' || coalesce((requested_at<=now()-interval '7 days')::text,'false'),

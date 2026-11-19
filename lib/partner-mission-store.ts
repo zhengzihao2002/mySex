@@ -7,7 +7,7 @@ export type RewardIcon='gift'|'ticket'|'sparkles'|'camera'|'coins'|'heart'|'crow
 export type RewardInput={quantity?:number;title:string;details:string;icon:RewardIcon};
 export type MissionInput={goals?:MissionGoal[];title:string;description:string;metric:Metric;target:number;startsAt:string;endsAt:string;reward:RewardInput|null;bonusMultiplier:number|null;bonusReward:RewardInput|null;failureClaim:RewardInput|null};
 export type PartnerMission=MissionInput & {endRequested?:boolean;goalProgress?:Array<MissionGoal & {value:number}>;id:string;createdAt:string;issuerId:string;assigneeId:string;status:'invited'|'active'|'declined'|'cancelled'|'settled';acceptedAt:string|null;value:number;sessionIds:string[];baseComplete:boolean;bonusComplete:boolean;expired:boolean};
-export type StorageItem={quantityRemaining?:number;id:string;missionId:string|null;missionTitle:string;title:string;details:string;icon:RewardIcon;kind:'prize'|'bonus'|'claim'|'ask';ownerId:string;issuerId:string;status:'ready'|'requested'|'used'|'revoked';createdAt:string;requestedAt:string|null};
+export type StorageItem={quantityRemaining?:number;id:string;missionId:string|null;missionTitle:string;title:string;details:string;icon:RewardIcon;kind:'prize'|'bonus'|'claim'|'ask';ownerId:string;issuerId:string;status:'ready'|'requested'|'used'|'revoked'|'forfeited';createdAt:string;requestedAt:string|null};
 const iso=(v:unknown)=>v instanceof Date?v.toISOString():String(v);
 export async function partnerMissionMember(client:Client,a:PartnerMissionActor){
  const rows=await client`select c.id from couples c join profiles p on p.user_id=${a.userId} and p.couple_id=c.id join profiles other on other.user_id=${a.partnerId} and other.couple_id=c.id
@@ -131,4 +131,18 @@ export async function changeStorageItem(client:Client,a:PartnerMissionActor,id:s
  from couples c,profiles p,profiles other where i.id=${id} and i.quantity_remaining>0 and i.couple_id=${a.coupleId} and c.id=i.couple_id and c.unpaired_at is null and p.user_id=${a.userId} and p.couple_id=c.id and other.user_id=${a.partnerId} and other.couple_id=c.id and (( ${action}='request' and i.owner_id=${a.userId} and i.status='ready') or (${action}='withdraw' and i.owner_id=${a.userId} and i.status='requested') or (${action} in ('approve','decline') and i.issuer_id=${a.userId} and i.status='requested'
  and (${expectedRequest??null}::timestamptz is null or i.requested_at=${expectedRequest??null}::timestamptz))) returning i.id`;
  return rows.length>0;
+}
+
+export async function forfeitStorageItem(client:Client, actor:PartnerMissionActor, id:string) {
+  const rows = await client`
+    update partner_storage_items item
+    set status='forfeited', quantity_remaining=0, requested_at=null
+    from couples c, profiles owner, profiles partner
+    where item.id=${id} and item.owner_id=${actor.userId} and item.issuer_id=${actor.partnerId}
+      and item.couple_id=${actor.coupleId} and c.id=item.couple_id and c.unpaired_at is null
+      and owner.user_id=item.owner_id and owner.couple_id=c.id
+      and partner.user_id=item.issuer_id and partner.couple_id=c.id
+      and item.status in ('ready','requested') and item.quantity_remaining>0
+    returning item.id`;
+  return rows.length>0;
 }

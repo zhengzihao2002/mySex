@@ -8,7 +8,7 @@ export async function listItemAsks(client: Client, actor: PartnerMissionActor): 
   if (!await partnerMissionMember(client,actor)) return [];
   const rows = await client`select id,requested_by,title,reason,decision from partner_item_asks
     where couple_id=${actor.coupleId} and (
-      (requested_by=${actor.userId} and coalesce(decided_at,created_at)>now()-interval '7 days')
+      (requested_by=${actor.userId} and created_at>now()-interval '7 days')
       or (recipient_id=${actor.userId} and decision is null and created_at>now()-interval '7 days'))
     order by created_at desc`;
   return rows.map(row=>({id:row.id,requestedBy:row.requested_by,title:row.title,reason:row.reason,decision:row.decision}));

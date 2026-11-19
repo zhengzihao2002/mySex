@@ -5,7 +5,7 @@ import {readFile} from 'node:fs/promises';
 import {before,after,beforeEach,test} from 'node:test';
 import {PGlite} from '@electric-sql/pglite';
 import type {NeonQueryFunction} from '@neondatabase/serverless';
-import {getPartnerMissionBoard,insertPartnerMission,decidePartnerMission,changeStorageItem,type MissionInput} from './partner-mission-store.ts';
+import {getPartnerMissionBoard,insertPartnerMission,decidePartnerMission,changeStorageItem,forfeitStorageItem,type MissionInput} from './partner-mission-store.ts';
 const pg=new PGlite();
 type Statement={text:string;values:unknown[]};
 const tag=(parts:TemplateStringsArray,...values:unknown[]):Statement=>({text:parts.reduce((s,p,i)=>s+(i?`$${i}`:'')+p,''),values});
@@ -187,4 +187,19 @@ test('an approved custom item reaches Storage with partner restrictions even wit
  const [decline]=await listItemAsks(client,me);
  assert(await resolveItemAsk(client,me,decline.id,'declined',''));
  assert.equal((await getPartnerMissionBoard(client,partner)).items.length,1);
+});
+
+test('giving up a prize is owner-only, clears the pending request and cannot be reversed by reevaluation',async()=>{
+ const id=await active();
+ await session();
+ const [item]=(await getPartnerMissionBoard(client,partner,at('00:25'))).items;
+ assert.equal(await forfeitStorageItem(client,me,item.id),false);
+ assert(await changeStorageItem(client,partner,item.id,'request',at('00:26')));
+ assert(await forfeitStorageItem(client,partner,item.id));
+ assert.equal(await changeStorageItem(client,me,item.id,'approve',at('00:27')),false);
+ assert.deepEqual((await getPartnerMissionBoard(client,partner,at('00:27'))).items,[]);
+ await pg.query('update partner_missions set goal_progress=null where id=$1',[id]);
+ assert.deepEqual((await getPartnerMissionBoard(client,partner,at('00:28'))).items,[]);
+ const [stored]=(await pg.query('select status,quantity_remaining,requested_at from partner_storage_items')).rows;
+ assert.deepEqual(stored,{status:'forfeited',quantity_remaining:0,requested_at:null});
 });

@@ -1,5 +1,10 @@
 // Partner goals and Storage — Simplified Chinese.
 export const partnerMissionZh: Record<string, string> = {
+  "Voluntarily give up": "自愿放弃",
+  "Give up this item?": "确定放弃这个道具？",
+  "This permanently removes all remaining units and cancels any pending use request.": "此操作会永久移除所有剩余数量，并取消待确认的使用请求。",
+  "Keep item": "保留道具",
+  "Give up item": "确认放弃",
   "Quantity": "数量",
   "Item requests": "索要请求",
   "Ask for an item": "索要",
