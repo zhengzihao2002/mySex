@@ -6,7 +6,6 @@ import type {ItemAsk} from '@/lib/partner-item-asks';
 import {rewardLabel} from '@/lib/reward-catalog';
 import {ItemDetails} from '@/components/PartnerStorage';
 import type {StorageItem} from '@/lib/partner-mission-store';
-import {PartnerMissionEntry} from '@/components/PartnerMissionEntry';
 import { SymbolIcon } from '@/components/SymbolIcon';
 
 import Link from 'next/link';
@@ -25,12 +24,11 @@ import { useRun } from '@/components/useRun';
 import { dayInTz } from '@/lib/tz';
 import type { SessionDeletionRequest, SessionEditNotice, SessionEditRequest } from '@/lib/types';
 
-export function InboxView({ requests, notices, edits, meId, partnerName, partnerMissionSummary, storageRequests=[], goalEndRequests=[], itemAsks=[], storageDeclines=[] }: {
+export function InboxView({ requests, notices, edits, meId, partnerName, storageRequests=[], goalEndRequests=[], itemAsks=[], storageDeclines=[] }: {
   storageDeclines?:Array<{id:string;title:string;reason:string}>;
   itemAsks?:ItemAsk[];
   goalEndRequests?:GoalEndRequest[];
   storageRequests?:StorageItem[];
-  partnerMissionSummary?: {invitations:number;active:number;ready:number;approvals:number};
   requests: SessionDeletionRequest[]; notices: SessionEditNotice[]; edits: SessionEditRequest[]; meId: string; partnerName: string;
 }) {
   const { t } = useT();
@@ -46,6 +44,8 @@ export function InboxView({ requests, notices, edits, meId, partnerName, partner
     {title:t('Waiting for your partner'),items:items.filter(i=>i.type!=='notice'&&i.value.status==='pending'&&i.value.requestedBy===meId)},
     {title:t('Unread replies and updates'),items:items.filter(i=>i.type==='notice'||i.value.status!=='pending')},
   ];
+  const hasInboxItems = items.length > 0 || storageRequests.length > 0 || goalEndRequests.length > 0
+    || itemAsks.length > 0 || storageDeclines.length > 0;
   return (
     <div className="space-y-5 pt-2" data-motion>
       <header className="flex items-center gap-2">
@@ -65,14 +65,12 @@ export function InboxView({ requests, notices, edits, meId, partnerName, partner
       {storageDeclines.length>0&&<section className="space-y-3"><h2 className="font-display text-xl">{t('Item use replies')}</h2>
         {storageDeclines.map(reply=><StorageDeclineCard key={reply.id} reply={reply}/>)}
       </section>}
-      <PartnerMissionEntry {...partnerMissionSummary}/>
       <p className="text-sm text-ink-2">{t('Shared sessions are changed or deleted only when both of you agree. Declining keeps the record as it is and notifies the requester.')}</p>
       <p className="text-xs text-ink-3">{t('Inbox items are deleted from the database after 7 days. Unanswered requests are cancelled without changing the record. Handled requests and read replies are deleted sooner.')}</p>
-      {!requests.length && !notices.length && !edits.length && (
+      {!hasInboxItems && (
         <div className="card py-10 text-center text-ink-3">
           <Inbox className="mx-auto mb-3" size={30} />
-          <p className="font-semibold text-ink">{t(storageDeclines.length||itemAsks.length||goalEndRequests.length||partnerMissionSummary?.invitations||partnerMissionSummary?.approvals?'No shared-record requests':'Your inbox is empty')}</p>
-          <p className="mt-1 text-sm">{t('Deletion requests and your partner’s replies will appear here.')}</p>
+          <p className="font-semibold text-ink">{t('Your inbox is empty')}</p>
         </div>
       )}
       {groups.filter(group=>group.items.length).map(group=><section key={group.title} className="space-y-3" aria-label={group.title}>

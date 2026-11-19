@@ -15,5 +15,5 @@ export default async function InboxPage() {
     db()`select id,title,reason from partner_storage_declines where couple_id=${ctx.couple.id}
       and recipient_id=${ctx.me.userId} and created_at>now()-interval '7 days' order by created_at desc`,
   ]);
-  return <InboxView storageDeclines={storageDeclines.map(({id,title,reason})=>({id,title,reason}))} itemAsks={itemAsks} goalEndRequests={goalEndRequests} storageRequests={board.items.filter(i=>i.issuerId===ctx.me.userId&&i.status==='requested')} partnerMissionSummary={{invitations:board.missions.filter(m=>m.status==='invited'&&m.assigneeId===ctx.me.userId).length,active:board.missions.filter(m=>m.status==='active').length,ready:board.items.filter(i=>i.ownerId===ctx.me.userId&&i.status==='ready').length,approvals:board.items.filter(i=>i.issuerId===ctx.me.userId&&i.status==='requested').length}} edits={edits} notices={notices} requests={requests} meId={ctx.me.userId} partnerName={ctx.partner.name} />;
+  return <InboxView storageDeclines={storageDeclines.map(({id,title,reason})=>({id,title,reason}))} itemAsks={itemAsks} goalEndRequests={goalEndRequests} storageRequests={board.items.filter(i=>i.issuerId===ctx.me.userId&&i.status==='requested')} edits={edits} notices={notices} requests={requests} meId={ctx.me.userId} partnerName={ctx.partner.name} />;
 }
