@@ -84,3 +84,70 @@ export function progressForGoals(rule:MissionRule,goals:MissionGoal[],sessions:M
  const ratio=checks.length?Math.min(...checks.map(g=>g.value/g.target)):0;
  return {value:ratio*rule.target,sessionIds:[...new Set(checks.flatMap(g=>g.sessionIds))],baseComplete:checks.length>0&&checks.every(g=>g.baseComplete),expired:now.getTime()>=Date.parse(rule.endsAt),checks};
 }
+
+type AllocationGoal = {
+  id: string;
+  rule: MissionRule;
+  goals: MissionGoal[];
+  bonusMultiplier: number | null;
+};
+
+export function allocateGoalSessions(
+  goals: AllocationGoal[],
+  sessions: Array<MissionSession & {createdAt:string}>,
+  reservedIds: ReadonlySet<string>,
+  now: Date,
+) {
+  const orderedGoals = [...goals].sort((a,b) =>
+    Date.parse(a.rule.endsAt)-Date.parse(b.rule.endsAt) ||
+    Date.parse(a.rule.acceptedAt ?? '')-Date.parse(b.rule.acceptedAt ?? '') ||
+    a.id.localeCompare(b.id));
+  const records = [...sessions].sort((a,b) =>
+    Date.parse(a.createdAt)-Date.parse(b.createdAt) ||
+    Date.parse(a.startedAt)-Date.parse(b.startedAt) || a.id.localeCompare(b.id));
+  const allocated = new Map(goals.map(goal => [goal.id, {
+    records: [] as MissionSession[],
+    progress: progressForGoals(goal.rule,goal.goals,[],now),
+  }]));
+  const used = new Set(reservedIds);
+  for (const record of records) {
+    if (used.has(record.id)) continue;
+    const candidates = orderedGoals.flatMap(goal => {
+      if (Date.parse(record.createdAt)>Math.min(now.getTime(),Date.parse(goal.rule.endsAt))) return [];
+      const current = allocated.get(goal.id)!;
+      const multiplier = current.progress.baseComplete ? goal.bonusMultiplier : 1;
+      if (!multiplier) return [];
+      const remaining = new Map<string,number>();
+      for (const condition of current.progress.checks) {
+        const amount = condition.target*multiplier-condition.value;
+        const key = condition.kind+':'+condition.metric;
+        if (amount>0) remaining.set(key,Math.max(amount,remaining.get(key)??0));
+      }
+      if (!remaining.size || !goal.goals.some(condition =>
+        remaining.has(condition.kind+':'+condition.metric) &&
+        progressForMission({...goal.rule,...condition},[record],now).value>0)) return [];
+      const next = progressForGoals(goal.rule,goal.goals,[...current.records,record],now);
+      const advances = next.checks.some((condition,index) =>
+        current.progress.checks[index].value<condition.target*multiplier &&
+        condition.value>current.progress.checks[index].value);
+      if (!advances) return [];
+      return [{current,next,remaining,bonus:current.progress.baseComplete,
+        finishes:next.checks.every(condition=>condition.value>=condition.target*multiplier)}];
+    });
+    // Compare requirements only in their own units. Extra unfinished AND
+    // conditions make a goal longer when the common requirements are equal.
+    const baseCandidates = candidates.filter(candidate=>!candidate.bonus);
+    const pool = baseCandidates.length ? baseCandidates : candidates;
+    const shortest = pool.filter(candidate=>!pool.some(other=>
+      [...other.remaining].every(([key,value])=>value<=(candidate.remaining.get(key)??0)) &&
+      (other.remaining.size<candidate.remaining.size ||
+        [...other.remaining].some(([key,value])=>value<candidate.remaining.get(key)!))));
+    const chosen = shortest.find(candidate=>candidate.finishes) ?? shortest[0];
+    if (chosen) {
+      chosen.current.records.push(record);
+      chosen.current.progress = chosen.next;
+      used.add(record.id);
+    }
+  }
+  return new Map([...allocated].map(([id,{progress}])=>[id,progress]));
+}

@@ -399,3 +399,24 @@ create table if not exists partner_goal_end_requests (
   requested_by text not null references profiles(user_id) on delete cascade,
   created_at timestamptz not null default now()
 );
+
+create table if not exists partner_item_asks (
+  id uuid primary key default gen_random_uuid(),
+  couple_id uuid not null references couples(id) on delete cascade,
+  requested_by text not null references profiles(user_id) on delete cascade,
+  recipient_id text not null references profiles(user_id) on delete cascade,
+  title text not null,
+  icon text not null,
+  reason text not null,
+  decision text check(decision in ('approved','declined')),
+  created_at timestamptz not null default now(),
+  decided_at timestamptz,
+  check(requested_by<>recipient_id)
+);
+create index if not exists partner_item_asks_couple on partner_item_asks(couple_id);
+alter table partner_storage_items alter column mission_id drop not null;
+alter table partner_storage_items drop constraint if exists partner_storage_items_kind_check;
+alter table partner_storage_items add constraint partner_storage_items_kind_check
+  check ((kind in ('prize','bonus','claim') and mission_id is not null) or (kind='ask' and mission_id is null));
+alter table partner_storage_items add column if not exists quantity_remaining integer not null default 1
+  check(quantity_remaining between 0 and 999);

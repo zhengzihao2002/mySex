@@ -1,3 +1,4 @@
+import {createItemAsk,listItemAsks,resolveItemAsk} from "./partner-item-asks.ts";
 import {listGoalEndRequests, requestGoalEnd, resolveGoalEnd} from './partner-goal-end.ts';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
@@ -132,4 +133,58 @@ test('AND goals persist separate activity progress and only award after every go
  assert(await decidePartnerMission(client,partner,id,'accept',at('00:05')));await session();
  let board=await getPartnerMissionBoard(client,partner,at('00:25'));assert.equal(board.items.length,0);assert.equal(board.missions[0].baseComplete,false);assert.deepEqual(board.missions[0].goalProgress?.map(g=>g.value),[10,0]);
  await session(10,'oral');board=await getPartnerMissionBoard(client,partner,at('00:25'));assert.equal(board.items.length,1);assert(board.missions[0].baseComplete);assert.deepEqual(board.missions[0].goalProgress?.map(g=>g.value),[10,1]);
+});
+
+test('overlapping goals use each session once and prioritize the shorter goal before the deadline',async()=>{
+ const configs=[
+  {...input,title:'Earlier but longer',target:60,endsAt:at('04:00').toISOString(),bonusMultiplier:null,bonusReward:null},
+  {...input,title:'Shorter',target:30,endsAt:at('05:00').toISOString(),bonusMultiplier:null,bonusReward:null},
+ ];
+ for(const config of configs) assert(await insertPartnerMission(client,me,config,begin));
+ const invited=(await getPartnerMissionBoard(client,partner,begin)).missions;
+ for(const mission of invited) assert(await decidePartnerMission(client,partner,mission.id,'accept',at('00:05')));
+ const first=await session(10,'intercourse',1800);
+ let board=await getPartnerMissionBoard(client,partner,at('00:45'));
+ assert.equal(board.missions.find(m=>m.title==='Shorter')?.baseComplete,true);
+ assert.equal(board.missions.find(m=>m.title==='Earlier but longer')?.value,0);
+ const second=await session(60,'intercourse',3600);
+ board=await getPartnerMissionBoard(client,partner,at('02:01'));
+ assert.deepEqual(board.missions.find(m=>m.title==='Shorter')?.sessionIds,[first]);
+ assert.deepEqual(board.missions.find(m=>m.title==='Earlier but longer')?.sessionIds,[second]);
+});
+
+test('several prize units require one separate approval each',async()=>{
+ assert(await insertPartnerMission(client,me,{...input,reward:{...gift,quantity:2}},begin));
+ const [goal]=(await getPartnerMissionBoard(client,partner,begin)).missions;
+ assert(await decidePartnerMission(client,partner,goal.id,'accept',at('00:05')));
+ await session();
+ const [item]=(await getPartnerMissionBoard(client,partner,at('00:25'))).items;
+ assert.equal(item.quantityRemaining,2);
+ for (const remaining of [1,0]) {
+  assert(await changeStorageItem(client,partner,item.id,'request',at('00:26')));
+  assert(await changeStorageItem(client,me,item.id,'approve',at('00:27')));
+  assert.equal(await changeStorageItem(client,me,item.id,'approve',at('00:27')),false);
+  const [latest]=(await getPartnerMissionBoard(client,partner,at('00:28'))).items;
+  assert.equal(latest.quantityRemaining,remaining);
+  assert.equal(latest.status,remaining?'ready':'used');
+ }
+});
+
+test('an approved custom item reaches Storage with partner restrictions even without a goal',async()=>{
+ assert(await createItemAsk(client,partner,{...gift,title:'My custom pass'},'A special occasion'));
+ const [ask]=await listItemAsks(client,me);
+ assert.equal(ask.reason,'A special occasion');
+ assert.equal(await resolveItemAsk(client,partner,ask.id,'approved',''),false);
+ assert(await resolveItemAsk(client,me,ask.id,'approved','Weekends only'));
+ assert.equal(await resolveItemAsk(client,me,ask.id,'approved',''),false);
+ assert.deepEqual(await listItemAsks(client,me),[]);
+ assert.equal((await listItemAsks(client,partner))[0].decision,'approved');
+ const [item]=(await getPartnerMissionBoard(client,partner)).items;
+ assert.equal(item.title,'My custom pass');
+ assert.equal(item.details,'Weekends only');
+ assert.equal(item.kind,'ask');
+ assert(await createItemAsk(client,partner,gift,'Another occasion'));
+ const [decline]=await listItemAsks(client,me);
+ assert(await resolveItemAsk(client,me,decline.id,'declined',''));
+ assert.equal((await getPartnerMissionBoard(client,partner)).items.length,1);
 });

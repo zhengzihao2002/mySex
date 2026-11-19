@@ -1,13 +1,13 @@
 import {randomUUID} from 'node:crypto';
 import type {NeonQueryFunction} from '@neondatabase/serverless';
-import {progressForGoals,type MissionGoal,type Metric} from './partner-mission-rules.ts';
+import {allocateGoalSessions,type MissionGoal,type Metric} from './partner-mission-rules.ts';
 type Client=NeonQueryFunction<false,false>;
 export type PartnerMissionActor={coupleId:string;userId:string;partnerId:string};
 export type RewardIcon='gift'|'ticket'|'sparkles'|'camera'|'coins'|'heart'|'crown';
-export type RewardInput={title:string;details:string;icon:RewardIcon};
+export type RewardInput={quantity?:number;title:string;details:string;icon:RewardIcon};
 export type MissionInput={goals?:MissionGoal[];title:string;description:string;metric:Metric;target:number;startsAt:string;endsAt:string;reward:RewardInput|null;bonusMultiplier:number|null;bonusReward:RewardInput|null;failureClaim:RewardInput|null};
 export type PartnerMission=MissionInput & {endRequested?:boolean;goalProgress?:Array<MissionGoal & {value:number}>;id:string;createdAt:string;issuerId:string;assigneeId:string;status:'invited'|'active'|'declined'|'cancelled'|'settled';acceptedAt:string|null;value:number;sessionIds:string[];baseComplete:boolean;bonusComplete:boolean;expired:boolean};
-export type StorageItem={id:string;missionId:string;missionTitle:string;title:string;details:string;icon:RewardIcon;kind:'prize'|'bonus'|'claim';ownerId:string;issuerId:string;status:'ready'|'requested'|'used'|'revoked';createdAt:string;requestedAt:string|null};
+export type StorageItem={quantityRemaining?:number;id:string;missionId:string|null;missionTitle:string;title:string;details:string;icon:RewardIcon;kind:'prize'|'bonus'|'claim'|'ask';ownerId:string;issuerId:string;status:'ready'|'requested'|'used'|'revoked';createdAt:string;requestedAt:string|null};
 const iso=(v:unknown)=>v instanceof Date?v.toISOString():String(v);
 export async function partnerMissionMember(client:Client,a:PartnerMissionActor){
  const rows=await client`select c.id from couples c join profiles p on p.user_id=${a.userId} and p.couple_id=c.id join profiles other on other.user_id=${a.partnerId} and other.couple_id=c.id
@@ -40,7 +40,6 @@ const readMissions=async(client:Client,a:PartnerMissionActor)=>await client`sele
 export async function getPartnerMissionBoard(client:Client,a:PartnerMissionActor,now=new Date()):Promise<{missions:PartnerMission[];items:StorageItem[]}>{
  if(!await partnerMissionMember(client,a))return {missions:[],items:[]};
  let rows=await readMissions(client,a);
- if(!rows.length)return {missions:[],items:[]};
  await client`delete from partner_goal_end_requests r using partner_missions m
    where r.goal_id=m.id and m.couple_id=${a.coupleId}
    and (m.status<>'active' or m.ends_at<=${now.toISOString()}::timestamptz
@@ -54,29 +53,60 @@ export async function getPartnerMissionBoard(client:Client,a:PartnerMissionActor
 
  const sessions=rows.some(m=>m.status==='active')?await client`select id,kind,status,started_at,ended_at,duration_sec,paused_sec,tags,created_at,mission_saved_at from sessions where couple_id=${a.coupleId} and status='done'`:[];
  const saved=sessions.map(s=>({id:s.id,kind:s.kind,status:s.status,startedAt:iso(s.started_at),endedAt:s.ended_at?iso(s.ended_at):null,durationSec:s.duration_sec,pausedSec:s.paused_sec,tags:s.tags??[],createdAt:iso(s.mission_saved_at??s.created_at)}));
- for(const m of rows){
-  if(m.status==='invited'&&(new Date(iso(m.ends_at))<=now||new Date(iso(m.created_at)).getTime()<=now.getTime()-7*86400000)){
-   await decideExpiredInvite(client,a,m.id,now);continue;
+ const allocation=allocateGoalSessions(
+  rows.filter(m=>m.status==='active').map(m=>({
+   id:m.id,
+   rule:{metric:m.metric,target:Number(m.target),startsAt:iso(m.starts_at),endsAt:iso(m.ends_at),acceptedAt:m.accepted_at?iso(m.accepted_at):null},
+   goals:m.goals??[{kind:'intercourse',metric:m.metric,target:Number(m.target)}],
+   bonusMultiplier:m.bonus_multiplier==null?null:Number(m.bonus_multiplier),
+  })),
+  saved,
+  new Set(rows.filter(m=>m.status==='settled'||m.status==='cancelled').flatMap(m=>m.proof_ids)),
+  now,
+ );
+ for (const m of rows) {
+  if (m.status==='invited' && (new Date(iso(m.ends_at))<=now || new Date(iso(m.created_at)).getTime()<=now.getTime()-7*86400000)) {
+   await decideExpiredInvite(client,a,m.id,now);
   }
-  if(m.status!=='active')continue;
-  const result=progressForGoals({metric:m.metric,target:Number(m.target),startsAt:iso(m.starts_at),endsAt:iso(m.ends_at),acceptedAt:m.accepted_at?iso(m.accepted_at):null},m.goals??[{kind:'intercourse',metric:m.metric,target:Number(m.target)}],saved.filter(s=>Date.parse(s.createdAt)<=Math.min(now.getTime(),Date.parse(iso(m.ends_at)))),now);
-  if(!result.expired&&Number(m.progress_value)===result.value&&JSON.stringify(m.proof_ids)===JSON.stringify(result.sessionIds)&&JSON.stringify(m.goal_progress?.map(({kind,metric,target,value})=>({kind,metric,target,value})))===JSON.stringify(result.checks.map(({kind,metric,target,value})=>({kind,metric,target,value}))))continue;
-  const base=result.baseComplete,bonus=!!m.bonus_multiplier&&result.value>=Number(m.target)*Number(m.bonus_multiplier);
-  const evaluated=now.toISOString(),token=randomUUID();
-  const prize=base?m.reward:null,extra=bonus?m.bonus_reward:null,claim=result.expired&&!base?m.failure_claim:null;
+ }
+ const active = rows.filter(m=>m.status==='active');
+ const changed = active.filter(m=>{
+  const result=allocation.get(m.id)!;
+  return result.expired || Number(m.progress_value)!==result.value ||
+   JSON.stringify(m.proof_ids)!==JSON.stringify(result.sessionIds) ||
+   JSON.stringify(m.goal_progress?.map(({kind,metric,target,value})=>({kind,metric,target,value})))!==
+    JSON.stringify(result.checks.map(({kind,metric,target,value})=>({kind,metric,target,value})));
+ });
+ // Commit allocations together. A competing refresh must not write part of an
+ // allocation calculated against a different set of goal revisions.
+ if (changed.length) {
+  const snapshot=JSON.stringify(rows.filter(m=>m.accepted_at).map(m=>[m.id,m.revision]).sort((x,y)=>String(x[0]).localeCompare(String(y[0]))));
   await client.transaction(tx=>[
    tx`select user_id from profiles where user_id in (${a.userId},${a.partnerId}) order by user_id for share`,
-   tx`update partner_missions m set goal_progress=${JSON.stringify(result.checks.map(({kind,metric,target,value})=>({kind,metric,target,value})))}::jsonb,progress_value=${result.value},proof_ids=${result.sessionIds}::uuid[],evaluated_at=${evaluated},evaluation_token=${token},status=case when ${result.expired} then 'settled' else 'active' end,revision=revision+1,updated_at=${evaluated}
-   from couples c,profiles p,profiles other where m.id=${m.id} and m.couple_id=${a.coupleId} and m.revision=${m.revision} and m.status='active' and c.id=m.couple_id and c.unpaired_at is null and p.user_id=${a.userId} and p.couple_id=c.id and other.user_id=${a.partnerId} and other.couple_id=c.id returning m.id`,
-   ...(['prize','bonus','claim'] as const).map((kind,index)=>{
-    const reward=[prize,extra,claim][index];
-    const owner=kind==='claim'?m.issuer_id:m.assignee_id,issuer=kind==='claim'?m.assignee_id:m.issuer_id;
-    return tx`insert into partner_storage_items(mission_id,couple_id,owner_id,issuer_id,kind,title,details,icon,created_at)
-      select m.id,m.couple_id,${owner},${issuer},${kind},${reward?.title??''},${reward?.details??''},${reward?.icon??'gift'},${evaluated}::timestamptz
-      from partner_missions m where m.id=${m.id} and m.couple_id=${a.coupleId} and m.revision=${m.revision+1} and m.evaluation_token=${token}::uuid and m.status in ('active','settled') and ${!!reward}
-      on conflict(mission_id,kind) do update set status='ready',requested_at=null where partner_storage_items.status='revoked'`;
+   tx`select pg_advisory_xact_lock(hashtextextended(${a.coupleId},0))`,
+   tx`select id from partner_missions where couple_id=${a.coupleId} order by id for update`,
+   tx`select set_config('mysex.allocation_current',
+    (coalesce(jsonb_agg(jsonb_build_array(id,revision) order by id),'[]'::jsonb)=${snapshot}::jsonb)::text,true)
+    from partner_missions where couple_id=${a.coupleId} and accepted_at is not null`,
+   ...changed.flatMap(m=>{
+    const result=allocation.get(m.id)!;
+    const base=result.baseComplete,bonus=!!m.bonus_multiplier&&result.value>=Number(m.target)*Number(m.bonus_multiplier);
+    const evaluated=now.toISOString(),token=randomUUID();
+    const prize=base?m.reward:null,extra=bonus?m.bonus_reward:null,claim=result.expired&&!base?m.failure_claim:null;
+    return [
+     tx`update partner_missions m set goal_progress=${JSON.stringify(result.checks.map(({kind,metric,target,value})=>({kind,metric,target,value})))}::jsonb,progress_value=${result.value},proof_ids=${result.sessionIds}::uuid[],evaluated_at=${evaluated},evaluation_token=${token},status=case when ${result.expired} then 'settled' else 'active' end,revision=revision+1,updated_at=${evaluated}
+     from couples c,profiles p,profiles other where m.id=${m.id} and m.couple_id=${a.coupleId} and m.revision=${m.revision} and current_setting('mysex.allocation_current',true)='true' and m.status='active' and c.id=m.couple_id and c.unpaired_at is null and p.user_id=${a.userId} and p.couple_id=c.id and other.user_id=${a.partnerId} and other.couple_id=c.id returning m.id`,
+     ...(['prize','bonus','claim'] as const).map((kind,index)=>{
+      const reward=[prize,extra,claim][index];
+      const owner=kind==='claim'?m.issuer_id:m.assignee_id,issuer=kind==='claim'?m.assignee_id:m.issuer_id;
+      return tx`insert into partner_storage_items(mission_id,couple_id,owner_id,issuer_id,kind,title,details,icon,created_at,quantity_remaining)
+        select m.id,m.couple_id,${owner},${issuer},${kind},${reward?.title??''},${reward?.details??''},${reward?.icon??'gift'},${evaluated}::timestamptz,${reward?.quantity??1}
+        from partner_missions m where m.id=${m.id} and m.couple_id=${a.coupleId} and m.revision=${m.revision+1} and m.evaluation_token=${token}::uuid and m.status in ('active','settled') and ${!!reward}
+        on conflict(mission_id,kind) do update set status='ready',requested_at=null where partner_storage_items.status='revoked'`;
+     }),
+     tx`update partner_storage_items i set status='revoked',requested_at=null from partner_missions m where i.mission_id=m.id and m.id=${m.id} and m.couple_id=${a.coupleId} and m.revision=${m.revision+1} and m.evaluation_token=${token}::uuid and i.status in ('ready','requested') and ((i.kind='prize' and ${!prize}) or(i.kind='bonus' and ${!extra}) or(i.kind='claim' and ${!claim}))`,
+    ];
    }),
-   tx`update partner_storage_items i set status='revoked',requested_at=null from partner_missions m where i.mission_id=m.id and m.id=${m.id} and m.couple_id=${a.coupleId} and m.revision=${m.revision+1} and m.evaluation_token=${token}::uuid and i.status in ('ready','requested') and ((i.kind='prize' and ${!prize}) or(i.kind='bonus' and ${!extra}) or(i.kind='claim' and ${!claim}))`,
   ]);
  }
  rows=await readMissions(client,a);
@@ -85,18 +115,20 @@ export async function getPartnerMissionBoard(client:Client,a:PartnerMissionActor
   const issuer=m.issuer_id===a.userId;
   return {endRequested:m.end_requested,goals:m.goals??undefined,goalProgress:m.goal_progress??undefined,id:m.id,title:m.title,description:m.description,metric:m.metric,target:Number(m.target),startsAt:iso(m.starts_at),endsAt:iso(m.ends_at),createdAt:iso(m.created_at),issuerId:m.issuer_id,assigneeId:m.assignee_id,status:m.status,acceptedAt:m.accepted_at?iso(m.accepted_at):null,value,sessionIds:m.proof_ids,baseComplete,bonusMultiplier,bonusComplete,expired,reward:issuer||baseComplete?m.reward:null,bonusReward:issuer||bonusComplete?m.bonus_reward:null,failureClaim:issuer?m.failure_claim:null};
  });
- const items=await client`select i.*,m.title as mission_title from partner_storage_items i join partner_missions m on m.id=i.mission_id join couples c on c.id=i.couple_id join profiles p on p.user_id=${a.userId} and p.couple_id=c.id join profiles other on other.user_id=${a.partnerId} and other.couple_id=c.id where i.couple_id=${a.coupleId} and c.unpaired_at is null and ((i.owner_id=${a.userId} and i.status in ('ready','requested','used')) or (i.issuer_id=${a.userId} and i.status='requested')) order by i.created_at desc`;
- return {missions,items:items.map(i=>({id:i.id,missionId:i.mission_id,missionTitle:i.mission_title,title:i.title,details:i.details,icon:i.icon,kind:i.kind,ownerId:i.owner_id,issuerId:i.issuer_id,status:i.status,createdAt:iso(i.created_at),requestedAt:i.requested_at?iso(i.requested_at):null}))};
+ const items=await client`select i.*,m.title as mission_title from partner_storage_items i left join partner_missions m on m.id=i.mission_id join couples c on c.id=i.couple_id join profiles p on p.user_id=${a.userId} and p.couple_id=c.id join profiles other on other.user_id=${a.partnerId} and other.couple_id=c.id where i.couple_id=${a.coupleId} and c.unpaired_at is null and ((i.owner_id=${a.userId} and i.status in ('ready','requested','used')) or (i.issuer_id=${a.userId} and i.status='requested')) order by i.created_at desc`;
+ return {missions,items:items.map(i=>({quantityRemaining:i.quantity_remaining,id:i.id,missionId:i.mission_id,missionTitle:i.mission_title??'Item request',title:i.title,details:i.details,icon:i.icon,kind:i.kind,ownerId:i.owner_id,issuerId:i.issuer_id,status:i.status,createdAt:iso(i.created_at),requestedAt:i.requested_at?iso(i.requested_at):null}))};
 }
 async function decideExpiredInvite(client:Client,a:PartnerMissionActor,id:string,now:Date){
  await client`update partner_missions m set status='cancelled',revision=revision+1,updated_at=${now.toISOString()} from couples c,profiles p where m.id=${id} and m.couple_id=${a.coupleId} and m.status='invited' and (m.ends_at<=${now.toISOString()}::timestamptz or m.created_at<=${now.toISOString()}::timestamptz-interval '7 days') and c.id=m.couple_id and c.unpaired_at is null and p.user_id=${a.userId} and p.couple_id=c.id`;
 }
-export async function changeStorageItem(client:Client,a:PartnerMissionActor,id:string,action:'request'|'withdraw'|'approve'|'decline',now=new Date()){
+export async function changeStorageItem(client:Client,a:PartnerMissionActor,id:string,action:'request'|'withdraw'|'approve'|'decline',now=new Date(),expectedRequest?:string){
  if(!await partnerMissionMember(client,a))return false;
  // Recheck earned eligibility before accepting or spending a token.
  await getPartnerMissionBoard(client,a,now);
  const status=action==='approve'?'used':action==='request'?'requested':'ready';
- const rows=await client`update partner_storage_items i set status=${status},requested_at=case when ${action}='request' then ${now.toISOString()}::timestamptz else null end,used_at=case when ${action}='approve' then ${now.toISOString()}::timestamptz else used_at end
- from couples c,profiles p,profiles other where i.id=${id} and i.couple_id=${a.coupleId} and c.id=i.couple_id and c.unpaired_at is null and p.user_id=${a.userId} and p.couple_id=c.id and other.user_id=${a.partnerId} and other.couple_id=c.id and (( ${action}='request' and i.owner_id=${a.userId} and i.status='ready') or (${action}='withdraw' and i.owner_id=${a.userId} and i.status='requested') or (${action} in ('approve','decline') and i.issuer_id=${a.userId} and i.status='requested')) returning i.id`;
+ const rows=await client`update partner_storage_items i set status=case when ${action}='approve' and i.quantity_remaining>1 then 'ready' else ${status} end,
+ quantity_remaining=i.quantity_remaining-case when ${action}='approve' then 1 else 0 end,requested_at=case when ${action}='request' then ${now.toISOString()}::timestamptz else null end,used_at=case when ${action}='approve' then ${now.toISOString()}::timestamptz else used_at end
+ from couples c,profiles p,profiles other where i.id=${id} and i.quantity_remaining>0 and i.couple_id=${a.coupleId} and c.id=i.couple_id and c.unpaired_at is null and p.user_id=${a.userId} and p.couple_id=c.id and other.user_id=${a.partnerId} and other.couple_id=c.id and (( ${action}='request' and i.owner_id=${a.userId} and i.status='ready') or (${action}='withdraw' and i.owner_id=${a.userId} and i.status='requested') or (${action} in ('approve','decline') and i.issuer_id=${a.userId} and i.status='requested'
+ and (${expectedRequest??null}::timestamptz is null or i.requested_at=${expectedRequest??null}::timestamptz))) returning i.id`;
  return rows.length>0;
 }

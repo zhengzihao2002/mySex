@@ -1,6 +1,8 @@
 'use client';
 import {resolvePartnerGoalEnd} from '@/app/partner-mission-actions';
 import type {GoalEndRequest} from '@/lib/partner-goal-end';
+import {PartnerItemAskCard} from '@/components/PartnerItemAsk';
+import type {ItemAsk} from '@/lib/partner-item-asks';
 import {ItemDetails} from '@/components/PartnerStorage';
 import type {StorageItem} from '@/lib/partner-mission-store';
 import {PartnerMissionEntry} from '@/components/PartnerMissionEntry';
@@ -22,7 +24,8 @@ import { useRun } from '@/components/useRun';
 import { dayInTz } from '@/lib/tz';
 import type { SessionDeletionRequest, SessionEditNotice, SessionEditRequest } from '@/lib/types';
 
-export function InboxView({ requests, notices, edits, meId, partnerName, partnerMissionSummary, storageRequests=[], goalEndRequests=[] }: {
+export function InboxView({ requests, notices, edits, meId, partnerName, partnerMissionSummary, storageRequests=[], goalEndRequests=[], itemAsks=[] }: {
+  itemAsks?:ItemAsk[];
   goalEndRequests?:GoalEndRequest[];
   storageRequests?:StorageItem[];
   partnerMissionSummary?: {invitations:number;active:number;ready:number;approvals:number};
@@ -54,13 +57,16 @@ export function InboxView({ requests, notices, edits, meId, partnerName, partner
       {goalEndRequests.length>0&&<section className="space-y-3"><h2 className="font-display text-xl">{t('Goal end requests')}</h2>
         {goalEndRequests.map(request=><GoalEndCard key={request.id} request={request} outgoing={request.requestedBy===meId}/>)}
       </section>}
+      {itemAsks.length>0&&<section className="space-y-3"><h2 className="font-display text-xl">{t('Item requests')}</h2>
+        {itemAsks.map(item=><PartnerItemAskCard key={item.id} item={item} outgoing={item.requestedBy===meId}/>)}
+      </section>}
       <PartnerMissionEntry {...partnerMissionSummary}/>
       <p className="text-sm text-ink-2">{t('Shared sessions are changed or deleted only when both of you agree. Declining keeps the record as it is and notifies the requester.')}</p>
       <p className="text-xs text-ink-3">{t('Inbox items are deleted from the database after 7 days. Unanswered requests are cancelled without changing the record. Handled requests and read replies are deleted sooner.')}</p>
       {!requests.length && !notices.length && !edits.length && (
         <div className="card py-10 text-center text-ink-3">
           <Inbox className="mx-auto mb-3" size={30} />
-          <p className="font-semibold text-ink">{t(goalEndRequests.length||partnerMissionSummary?.invitations||partnerMissionSummary?.approvals?'No shared-record requests':'Your inbox is empty')}</p>
+          <p className="font-semibold text-ink">{t(itemAsks.length||goalEndRequests.length||partnerMissionSummary?.invitations||partnerMissionSummary?.approvals?'No shared-record requests':'Your inbox is empty')}</p>
           <p className="mt-1 text-sm">{t('Deletion requests and your partner’s replies will appear here.')}</p>
         </div>
       )}

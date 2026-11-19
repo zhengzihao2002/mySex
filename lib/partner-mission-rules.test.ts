@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {progressForGoals, progressForMission, type MissionRule, type MissionSession} from './partner-mission-rules.ts';
+import {allocateGoalSessions, progressForGoals, progressForMission, type MissionRule, type MissionSession} from './partner-mission-rules.ts';
 
 const now = new Date('2026-11-17T12:00:00Z');
 const rule: MissionRule = {metric:'active_minutes', target:30, startsAt:'2026-11-16T00:00:00Z', endsAt:'2026-11-18T00:00:00Z', acceptedAt:'2026-11-16T09:00:00Z'};
@@ -102,4 +102,25 @@ test('AND goals require both activities; extra intercourse cannot replace missin
 test('oral position goals count only recorded oral positions',()=>{
  const result=progressForMission({...rule,kind:'oral',metric:'positions',target:2},[session('oral',{kind:'oral',tags:['69','Lying down','Missionary']})],now);
  assert.equal(result.value,2);assert(result.baseComplete);
+});
+
+
+test('allocation weighs remaining conditions, breaks ties by deadline and defers stretch',()=>{
+ const duration={kind:'intercourse' as const,metric:'active_minutes' as const,target:30};
+ const oral={kind:'oral' as const,metric:'sessions' as const,target:1};
+ const goals=[
+  {id:'combined',rule:{...rule,endsAt:'2026-11-17T22:00:00Z'},goals:[duration,oral],bonusMultiplier:null},
+  {id:'later',rule,goals:[duration],bonusMultiplier:null},
+  {id:'sooner',rule:{...rule,endsAt:'2026-11-17T23:00:00Z'},goals:[duration],bonusMultiplier:2},
+ ];
+ const results=allocateGoalSessions(goals,[
+  {...session('first'),createdAt:'2026-11-16T10:40:00Z'},
+  {...session('second'),createdAt:'2026-11-16T11:40:00Z'},
+  {...session('oral',{kind:'oral'}),createdAt:'2026-11-16T12:40:00Z'},
+  {...session('third'),createdAt:'2026-11-16T13:40:00Z'},
+ ],new Set(),now);
+ assert.deepEqual(results.get('sooner')?.sessionIds,['first']);
+ assert.deepEqual(results.get('later')?.sessionIds,['second']);
+ assert.deepEqual(results.get('combined')?.sessionIds,['third','oral']);
+ assert.equal(results.get('combined')?.baseComplete,true);
 });
