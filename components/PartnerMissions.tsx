@@ -41,7 +41,10 @@ export function PartnerMissions({missions,meId,partnerName}:{missions:PartnerMis
   const alive=(m:PartnerMission)=>m.status==='invited'||m.status==='active';
   const invitations=missions.filter(m=>m.assigneeId===meId&&m.status==='invited'&&!m.expired).length;
   const active=missions.filter(m=>m.status==='active'&&!m.expired).length;
-  const shown=missions.filter(m=>filter==='archive'?!alive(m)||m.expired:alive(m)&&!m.expired&&(filter==='for_me'?m.assigneeId===meId:m.issuerId===meId));
+  const shown = missions.filter(m => {
+    if (filter === 'archive') return m.status !== 'cancelled' && (!alive(m) || m.expired);
+    return alive(m) && !m.expired && (filter === 'for_me' ? m.assigneeId === meId : m.issuerId === meId);
+  });
   const date=(s:string)=>new Date(s).toLocaleString(lang==='zh'?'zh-CN':'en',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
   return <div className="space-y-5 pt-2 pb-4">
     <header><MissionBack/><div className="flex items-start justify-between gap-3"><div><p className="eyebrow mb-1 text-rose-2">{t('Made for each other')}</p><h1 className="font-display text-3xl font-bold">{t('Partner goals')}</h1></div><Link href="/storage" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-line bg-surface-2 text-rose-2" aria-label={t('Storage')}><PackageOpen size={23}/></Link></div></header>
@@ -55,7 +58,7 @@ export function PartnerMissions({missions,meId,partnerName}:{missions:PartnerMis
     <div className="flex gap-1 rounded-2xl border border-line bg-bg/30 p-1" role="group" aria-label={t('Goal direction')}>
       {([{key:'for_me',label:'For you',Icon:ArrowDownLeft},{key:'from_me',label:'From you',Icon:ArrowUpRight},{key:'archive',label:'Past goals',Icon:Flag}] as const).map(({key,label,Icon})=><button key={key} onClick={()=>setFilter(key)} aria-pressed={filter===key} className={`flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl px-2 text-xs transition ${filter===key?'bg-rose/15 text-rose-2':'text-ink-3'}`}><Icon size={14}/>{t(label)}</button>)}
     </div>
-    {shown.length===0?<div className="rounded-3xl border border-dashed border-line px-5 py-10 text-center"><Sparkles size={26} className="mx-auto mb-3 text-rose-2"/><h2 className="font-display text-xl">{t('A blank page for your next challenge.')}</h2><p className="mt-2 text-sm text-ink-3">{filter==='from_me'?t('Create something only your partner could dream of earning.'):filter==='archive'?t('Finished and ended goals will live here.'):t('Your partner’s invitations will appear here.')}</p>{filter==='for_me'&&<button className="chip mt-4" onClick={()=>setFilter('from_me')}>{t('See goals you created')}</button>}</div>:<div className="space-y-4">{shown.map(m=><MissionCard key={m.id} mission={m} meId={meId} partnerName={partnerName} date={date} now={now}/>)}</div>}
+    {shown.length===0?<div className="rounded-3xl border border-dashed border-line px-5 py-10 text-center"><Sparkles size={26} className="mx-auto mb-3 text-rose-2"/><h2 className="font-display text-xl">{t('A blank page for your next challenge.')}</h2><p className="mt-2 text-sm text-ink-3">{filter==='from_me'?t('Create something only your partner could dream of earning.'):filter==='archive'?t('Past goals will appear here.'):t('Your partner’s invitations will appear here.')}</p>{filter==='for_me'&&<button className="chip mt-4" onClick={()=>setFilter('from_me')}>{t('See goals you created')}</button>}</div>:<div className="space-y-4">{shown.map(m=><MissionCard key={m.id} mission={m} meId={meId} partnerName={partnerName} date={date} now={now}/>)}</div>}
     <p className="px-1 text-xs leading-relaxed text-ink-3">{t('Only joined goals count. Ending an active goal requires both partners to agree.')}</p>
     <Sheet open={create} onClose={()=>setCreate(false)} stableHeight title={t('Create a partner goal')}>{create&&<MissionCreator partnerName={partnerName} onDone={()=>{setCreate(false);setFilter('from_me');}}/>}</Sheet>
   </div>;
@@ -68,7 +71,7 @@ function MissionCard({mission:m,meId,partnerName,date,now}:{mission:PartnerMissi
   const ratio=Math.min(1,m.value/m.target),bonusTarget=m.bonusMultiplier?m.target*m.bonusMultiplier:null;
   const live=m.status==='active'&&!m.expired,invite=m.status==='invited'&&!m.expired;
   const hours=Math.max(0,Math.ceil((Date.parse(m.endsAt)-now)/3600000));
-  const state=m.status==='cancelled'?t('Goal ended'):m.status==='declined'?t('Invitation declined'):m.expired?(m.baseComplete?t('Target reached'):t('Window closed')):invite?t('Invitation'):m.baseComplete?t('Target reached'):t('In progress');
+  const state=m.status==='declined'?t('Invitation declined'):m.expired?(m.baseComplete?t('Target reached'):t('Window closed')):invite?t('Invitation'):m.baseComplete?t('Target reached'):t('In progress');
   return <article className={`overflow-hidden rounded-[26px] border bg-surface ${m.baseComplete?'border-luteal/35':'border-line'}`}>
     <div className="p-5"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className={`mb-1 text-xs font-semibold ${m.baseComplete?'text-luteal':invite?'text-rose-2':'text-ink-3'}`}>{state}</p><h2 className="break-words font-display text-2xl">{t(m.title==='Partner mission'?'Partner goal':m.title)}</h2><p className="mt-1 text-xs text-ink-3">{mine?t('For {name}',{name:partnerName}):t('From {name}',{name:partnerName})}</p></div><span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${m.baseComplete?'bg-luteal/10 text-luteal':'bg-rose/10 text-rose-2'}`}>{m.baseComplete?<Check size={21}/>:<metric.Icon size={21}/>}</span></div>
       {m.description&&<p className="mt-3 whitespace-pre-wrap break-words text-sm leading-relaxed text-ink-2">{m.description}</p>}
