@@ -1,8 +1,11 @@
 import {ACTIVITY_GROUPS, INTERCOURSE_POSITIONS} from './activity-details.ts';
 
+export const GOAL_ACTIVITIES = ['intercourse', 'oral', 'either'] as const;
+export type GoalActivity = (typeof GOAL_ACTIVITIES)[number];
+
 export type Metric = 'active_minutes' | 'total_minutes' | 'sessions' | 'positions';
 export type MissionRule = {
-  kind?: 'intercourse'|'oral';
+  kind?: GoalActivity;
   metric: Metric;
   target: number;
   startsAt: string;
@@ -28,9 +31,19 @@ export type MissionProgress = {
 
 const oralPositions = new Set<string>(ACTIVITY_GROUPS.oral.find(g=>g.key==='positions')!.tags);
 const positions = new Set<string>(INTERCOURSE_POSITIONS);
+const positionLimits: Record<GoalActivity, number> = {
+  intercourse: positions.size,
+  oral: oralPositions.size,
+  either: new Set([...positions, ...oralPositions]).size,
+};
+
+export function goalPositionLimit(kind: GoalActivity) {
+  return positionLimits[kind];
+}
+
 const metrics = new Set<string>(['active_minutes', 'total_minutes', 'sessions', 'positions']);
 
-/** Evaluate saved intercourse inside the agreed window; never count live or pre-acceptance activity. */
+/** Evaluate eligible saved activity inside the agreed window; never count live or pre-acceptance activity. */
 export function progressForMission(rule: MissionRule, sessions: MissionSession[], now: Date): MissionProgress {
   const nowAt = now.getTime();
   const startsAt = Date.parse(rule.startsAt);
@@ -44,10 +57,14 @@ export function progressForMission(rule: MissionRule, sessions: MissionSession[]
 
   const from = Math.max(startsAt, acceptedAt);
   const through = Math.min(nowAt, endsAt);
+  const activity = rule.kind ?? 'intercourse';
   const eligible = sessions.filter(session => {
+    const matchesActivity = activity === 'either'
+      ? session.kind === 'intercourse' || session.kind === 'oral'
+      : session.kind === activity;
     const start = Date.parse(session.startedAt);
     const end = session.endedAt === null ? NaN : Date.parse(session.endedAt);
-    return session.id.length > 0 && session.kind === (rule.kind??'intercourse') && session.status === 'done' &&
+    return session.id.length > 0 && matchesActivity && session.status === 'done' &&
       Number.isFinite(start) && Number.isFinite(end) && end >= start && start >= from && start < endsAt && end <= through &&
       session.durationSec !== null && Number.isFinite(session.durationSec) && session.durationSec >= 0 &&
       Number.isFinite(session.pausedSec) && session.pausedSec >= 0;
@@ -64,7 +81,8 @@ export function progressForMission(rule: MissionRule, sessions: MissionSession[]
     // For position goals, proof should contain only records that add a position.
     if (rule.metric === 'positions') {
       const before = usedPositions.size;
-      for (const tag of session.tags) if ((rule.kind==='oral'?oralPositions:positions).has(tag)) usedPositions.add(tag);
+      const allowed = session.kind === 'oral' ? oralPositions : positions;
+      for (const tag of session.tags) if (allowed.has(tag)) usedPositions.add(tag);
       if (usedPositions.size > before) sessionIds.push(session.id);
       continue;
     }
@@ -78,7 +96,7 @@ export function progressForMission(rule: MissionRule, sessions: MissionSession[]
   return {value, sessionIds, baseComplete: value >= rule.target, expired};
 }
 
-export type MissionGoal={dateOnly?:boolean;dailyTargets?:Record<string,number>;perDay?:number;days?:number;timeZone?:string;kind:'intercourse'|'oral';metric:Metric;target:number};
+export type MissionGoal={dateOnly?:boolean;dailyTargets?:Record<string,number>;perDay?:number;days?:number;timeZone?:string;kind:GoalActivity;metric:Metric;target:number};
 export function progressForGoals(rule:MissionRule,goals:MissionGoal[],sessions:MissionSession[],now:Date){
  const checks=goals.map(g=>({...g,...progressForMission({...rule,...g},sessions,now)}));
  const ratio=checks.length?Math.min(...checks.map(g=>g.value/g.target)):0;

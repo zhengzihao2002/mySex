@@ -105,6 +105,30 @@ test('oral position goals count only recorded oral positions',()=>{
 });
 
 
+test('either activity shares one target and can complete using only one activity', () => {
+  const oral = session('oral', {kind:'oral', durationSec:1200, pausedSec:300});
+  const intercourse = session('intercourse', {durationSec:600, pausedSec:300});
+  const records = [oral, intercourse, oral, session('invalid-kind', {kind:'unknown'})];
+  const either = {...rule, kind:'either' as const};
+  assert.deepEqual(progressForMission(either, records, now), {
+    value:30, sessionIds:['intercourse','oral'], baseComplete:true, expired:false,
+  });
+  assert.equal(progressForMission({...either, metric:'total_minutes'}, records, now).value, 40);
+  assert.equal(progressForMission({...either, metric:'sessions', target:1}, [oral], now).baseComplete, true);
+  assert.equal(progressForMission({...either, metric:'sessions', target:1}, [intercourse], now).baseComplete, true);
+});
+
+test('either activity counts each distinct position once using each record’s own position choices', () => {
+  const records = [
+    session('first', {tags:['Seated','Missionary','69']}),
+    session('second', {kind:'oral',tags:['Seated','69','Doggy']}),
+    session('third', {kind:'oral',tags:['Seated']}),
+  ];
+  assert.deepEqual(progressForMission({...rule,kind:'either',metric:'positions',target:3},records,now), {
+    value:3, sessionIds:['first','second'], baseComplete:true, expired:false,
+  });
+});
+
 test('allocation weighs remaining conditions, breaks ties by deadline and defers stretch',()=>{
  const duration={kind:'intercourse' as const,metric:'active_minutes' as const,target:30};
  const oral={kind:'oral' as const,metric:'sessions' as const,target:1};

@@ -139,6 +139,23 @@ test('AND goals persist separate activity progress and only award after every go
  await session(10,'oral');board=await getPartnerMissionBoard(client,partner,at('00:25'));assert.equal(board.items.length,1);assert(board.missions[0].baseComplete);assert.deepEqual(board.missions[0].goalProgress?.map(g=>g.value),[10,1]);
 });
 
+test('a saved either-activity goal tracks one total and unlocks its prize from mixed records', async () => {
+ const goal = {kind:'either' as const, metric:'active_minutes' as const, target:20};
+ assert(await insertPartnerMission(client,me,{...input,target:goal.target,goals:[goal]},begin));
+ const [invitation] = (await getPartnerMissionBoard(client,partner,begin)).missions;
+ assert.deepEqual(invitation.goals,[goal]);
+ assert(await decidePartnerMission(client,partner,invitation.id,'accept',at('00:05')));
+ const oralId = await session(10,'oral');
+ let board = await getPartnerMissionBoard(client,partner,at('00:20'));
+ assert.equal(board.missions[0].value,10);
+ assert.equal(board.items.length,0);
+ const intercourseId = await session(20,'intercourse');
+ board = await getPartnerMissionBoard(client,partner,at('00:30'));
+ assert.deepEqual(board.missions[0].goalProgress,[{...goal,value:20}]);
+ assert.deepEqual(board.missions[0].sessionIds,[oralId,intercourseId]);
+ assert.equal(board.items.length,1);
+});
+
 test('overlapping goals use each session once and prioritize the shorter goal before the deadline',async()=>{
  const configs=[
   {...input,title:'Earlier but longer',target:60,endsAt:at('04:00').toISOString(),bonusMultiplier:null,bonusReward:null},
