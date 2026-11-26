@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {allocateGoalSessions, progressForGoals, progressForMission, type MissionRule, type MissionSession} from './partner-mission-rules.ts';
+import {allocateGoalSessions, allocateGoalSessionsByAssignee, progressForGoals, progressForMission, type MissionRule, type MissionSession} from './partner-mission-rules.ts';
 
 const now = new Date('2026-11-17T12:00:00Z');
 const rule: MissionRule = {metric:'active_minutes', target:30, startsAt:'2026-11-16T00:00:00Z', endsAt:'2026-11-18T00:00:00Z', acceptedAt:'2026-11-16T09:00:00Z'};
@@ -28,10 +28,10 @@ test('sums eligible sessions once and returns deterministic chronological proof 
   assert.deepEqual(records.map(s => s.id), ['second','first','first'], 'does not reorder caller data');
 });
 
-test('requires acceptance and excludes sessions started before the later of acceptance and window start', () => {
+test('requires acceptance, then counts the whole window including records saved before joining', () => {
   assert.deepEqual(progressForMission({...rule, acceptedAt:null}, [session('first')], now), {value:0, sessionIds:[], baseComplete:false, expired:false});
-  const records = [session('before', {startedAt:'2026-11-16T08:59:59Z'}), session('at', {startedAt:rule.acceptedAt!})];
-  assert.deepEqual(progressForMission(rule, records, now).sessionIds, ['at']);
+  const records = [session('before', {startedAt:'2026-11-16T08:59:59Z'}), session('at', {startedAt:rule.acceptedAt!}), session('early', {startedAt:'2026-11-15T23:59:59Z'})];
+  assert.deepEqual(progressForMission(rule, records, now).sessionIds, ['before','at']);
   const window = {...rule, startsAt:'2026-11-17T00:00:00Z'};
   assert.equal(progressForMission(window, records, now).value, 0);
 });
@@ -147,4 +147,22 @@ test('allocation weighs remaining conditions, breaks ties by deadline and defers
  assert.deepEqual(results.get('later')?.sessionIds,['second']);
  assert.deepEqual(results.get('combined')?.sessionIds,['third','oral']);
  assert.equal(results.get('combined')?.baseComplete,true);
+});
+
+test('one record advances goals both partners set for each other, but only one goal per partner',()=>{
+ const duration={kind:'intercourse' as const,metric:'active_minutes' as const,target:30};
+ const goals=[
+  {id:'for-her',assigneeId:'her',rule,goals:[duration],bonusMultiplier:null},
+  {id:'for-him',assigneeId:'him',rule,goals:[duration],bonusMultiplier:null},
+  {id:'for-him-later',assigneeId:'him',rule:{...rule,endsAt:'2026-11-19T00:00:00Z'},goals:[duration],bonusMultiplier:null},
+ ];
+ const results=allocateGoalSessionsByAssignee(goals,[{...session('shared'),createdAt:'2026-11-16T10:40:00Z'}],new Map(),now);
+ assert.deepEqual(results.get('for-her')?.sessionIds,['shared']);
+ assert.deepEqual(results.get('for-him')?.sessionIds,['shared']);
+ assert.equal(results.get('for-her')?.baseComplete,true);
+ assert.equal(results.get('for-him')?.baseComplete,true);
+ assert.deepEqual(results.get('for-him-later')?.sessionIds,[]);
+ const reserved=allocateGoalSessionsByAssignee(goals,[{...session('shared'),createdAt:'2026-11-16T10:40:00Z'}],new Map([['him',new Set(['shared'])]]),now);
+ assert.deepEqual(reserved.get('for-her')?.sessionIds,['shared'],'proof settled for one partner does not block the other');
+ assert.deepEqual(reserved.get('for-him')?.sessionIds,[]);
 });

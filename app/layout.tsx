@@ -21,6 +21,8 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: 'cover',
+  // The on-screen keyboard overlays the page instead of shrinking the layout.
+  interactiveWidget: 'resizes-visual',
   themeColor: '#0e070d',
 };
 

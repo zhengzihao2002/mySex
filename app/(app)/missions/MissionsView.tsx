@@ -18,7 +18,7 @@ export function MissionsView({sessions}:{sessions:SexSession[];runs?:MissionRun[
   // Keep two phones in sync without push notifications or background polling.
   useEffect(()=>{const refresh=()=>{if(document.visibilityState==='visible')router.refresh();};const timer=setInterval(refresh,15000);window.addEventListener('focus',refresh);return()=>{clearInterval(timer);window.removeEventListener('focus',refresh);};},[router]);
   const paths=[{key:'explorer',title:t('Explorer'),icon:'🧭'},{key:'endurance',title:t('Endurance'),icon:'🔥'},{key:'rhythm',title:t('Rhythm'),icon:'🌙'},{key:'finale',title:t('Chapter finale'),icon:'👑'}];
-  return <div className="space-y-5 pt-2 pb-4" data-motion>
+  return <div className="space-y-5 pt-2" data-motion>
     <header><Link href="/home" className="inline-flex min-h-11 items-center text-sm text-ink-3">← {t('Home')}</Link><h1 className="font-display text-3xl font-bold">{t('Couple quests')}</h1><p className="mt-1 text-sm text-ink-2">{t('Two players. One legendary story.')}</p></header>
     <PartnerMissionEntry/>
     <CoupleProgress sessions={sessions} onExplore={()=>{const board=document.getElementById('quest-board');board?.focus({preventScroll:true});board?.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});}}/>

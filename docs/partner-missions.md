@@ -27,3 +27,11 @@ Storage is the owner’s collection, not a second approval screen. Counterparty 
 ## Per-date calendar plan
 
 The minutes-per-day planner displays the selected local dates in a month calendar. Every date has an editable minutes amount, including zero for a partial or unavailable day. The date-only range selector uses a first tap for the start and a second tap for the inclusive end. Dates outside the selected range then become gray and disabled. A Change dates control unlocks a new selection. Only dates inside the current window are normalized and stored; their amounts sum to one cumulative goal. These are planning amounts, not independent daily completion requirements. Existing uniform per-day goals remain supported.
+
+## Shared records, visibility and the minutes plan
+
+- **Goals for each other count independently.** A record advances at most one goal per partner (goals for the same person still share records, shortest first), but your goal for your partner and their goal for you both progress from the same session. Settled/cancelled proof is reserved only within that partner's goals.
+- **The whole window counts once joined.** Joining is still required, but records inside the goal dates count even if they were saved before the invitation was accepted. Active goals recalculate on the next visit, so goals that were stuck because an invitation was accepted late catch up automatically. Settled outcomes stay final.
+- **Inbox shows goal invitations.** Incoming invitations can be joined or declined directly in Inbox; outgoing ones can be withdrawn there.
+- **Visibility.** Both partners see the reward and bonus reward as soon as the invitation is sent. Only the creator sees the punishment; the recipient sees a note that any punishment stays secret.
+- **Minutes plan.** Minute conditions are planned next to the calendar with three modes: *Whole period* (one total), *Same each day* (one amount for every selected date) and *Each day* (tap dates to set their own minutes, with a shortcut to apply one value to every day). Switching modes keeps the planned total.

@@ -23,15 +23,39 @@ async function invited(){assert(await insertPartnerMission(client,me,input,begin
 async function active(){const id=await invited();assert(await decidePartnerMission(client,partner,id,'accept',at('00:05')));return id;}
 async function session(minute=10,kind='intercourse',duration=600){const started=new Date(begin.getTime()+minute*60000),ended=new Date(started.getTime()+duration*1000);return (await pg.query<{id:string}>("insert into sessions(couple_id,created_by,kind,status,started_at,ended_at,duration_sec,paused_sec,tags,created_at,mission_saved_at) values($1,'me',$2,'done',$3,$4,$5,0,array['Missionary'],$3,$4) returning id",[coupleId,kind,started.toISOString(),ended.toISOString(),duration])).rows[0].id;}
 
-test('invites hide terms from recipient, require actual partner acceptance, and exclude pre-acceptance/oral records',async()=>{
+test('invites show reward and bonus but hide the punishment, require partner acceptance, then count the whole window',async()=>{
  const id=await invited();await session(0);await session(10,'oral');
  const incoming=await getPartnerMissionBoard(client,partner,at('00:25'));
- assert.equal(incoming.missions[0].value,0);assert.equal(incoming.missions[0].reward,null);assert.equal(incoming.missions[0].bonusReward,null);assert.equal(incoming.missions[0].failureClaim,null);assert(!JSON.stringify(incoming).includes('Secret'));
+ assert.equal(incoming.missions[0].value,0);assert.equal(incoming.missions[0].reward?.title,gift.title);assert.equal(incoming.missions[0].bonusReward?.title,bonus.title);assert.equal(incoming.missions[0].failureClaim,null);assert(!JSON.stringify(incoming).includes(claim.title));assert(!JSON.stringify(incoming).includes(claim.details));
+ assert.equal((await getPartnerMissionBoard(client,me,at('00:25'))).missions[0].failureClaim?.title,claim.title);
  assert.equal(await decidePartnerMission(client,me,id,'accept',at('00:05')),false);assert.equal(await decidePartnerMission(client,outsider,id,'accept',at('00:05')),false);
  assert(await decidePartnerMission(client,partner,id,'accept',at('00:05')));assert.equal(await decidePartnerMission(client,partner,id,'accept',at('00:05')),false);
- assert.equal((await getPartnerMissionBoard(client,partner,at('00:25'))).missions[0].value,0);
- await session();const earned=await getPartnerMissionBoard(client,partner,at('00:25'));
- assert.equal(earned.missions[0].value,10);assert.equal(earned.missions[0].reward?.title,gift.title);assert.equal(earned.missions[0].bonusReward,null);assert.equal(earned.items.length,1);
+ // The record saved inside the window before joining now counts; oral does not count toward an intercourse goal.
+ let earned=await getPartnerMissionBoard(client,partner,at('00:25'));
+ assert.equal(earned.missions[0].value,10);assert.equal(earned.missions[0].baseComplete,true);assert.equal(earned.missions[0].bonusComplete,false);assert.equal(earned.items.length,1);
+ await session(20);earned=await getPartnerMissionBoard(client,partner,at('00:35'));
+ assert.equal(earned.missions[0].value,20);assert(earned.missions[0].bonusComplete);assert.equal(earned.items.length,2);
+});
+
+test('goals both partners set for each other each progress from the same session',async()=>{
+ const forPartner={...input,title:'For partner',bonusMultiplier:null,bonusReward:null,target:30};
+ const forMe={...input,title:'For me',bonusMultiplier:null,bonusReward:null,target:30};
+ assert(await insertPartnerMission(client,me,forPartner,begin));
+ assert(await insertPartnerMission(client,partner,forMe,begin));
+ const invites=(await getPartnerMissionBoard(client,me,begin)).missions;
+ assert(await decidePartnerMission(client,partner,invites.find(m=>m.title==='For partner')!.id,'accept',at('00:05')));
+ assert(await decidePartnerMission(client,me,invites.find(m=>m.title==='For me')!.id,'accept',at('00:05')));
+ const shared=await session(10,'intercourse',1200);
+ let board=await getPartnerMissionBoard(client,me,at('00:40'));
+ assert.equal(board.missions.find(m=>m.title==='For partner')?.value,20);
+ assert.equal(board.missions.find(m=>m.title==='For me')?.value,20);
+ await session(40,'intercourse',600);
+ board=await getPartnerMissionBoard(client,partner,at('01:00'));
+ for(const title of ['For partner','For me']){
+  const goal=board.missions.find(m=>m.title===title)!;
+  assert.equal(goal.value,30);assert(goal.baseComplete);assert.equal(goal.sessionIds[0],shared);
+ }
+ assert.equal((await pg.query<{owner_id:string}>("select owner_id from partner_storage_items where kind='prize' order by owner_id")).rows.map(r=>r.owner_id).join(),'me,partner');
 });
 
 test('base and bonus pay once; redeemed rewards disappear and cannot be reused',async()=>{
@@ -65,7 +89,7 @@ test('record corrections revoke unspent rewards and restore only the same item; 
 });
 
 test('failure after deadline creates a reverse claim for creator, visible to partner only upon redemption request',async()=>{
- await active();let board=await getPartnerMissionBoard(client,partner,end);assert.equal(board.items.length,0);assert.equal(board.missions[0].reward,null);assert.equal(board.missions[0].failureClaim,null);
+ await active();let board=await getPartnerMissionBoard(client,partner,end);assert.equal(board.items.length,0);assert.equal(board.missions[0].reward?.title,gift.title);assert.equal(board.missions[0].failureClaim,null);
  board=await getPartnerMissionBoard(client,me,end);assert.equal(board.items.length,1);const item=board.items[0];assert.equal(item.kind,'claim');assert.equal(item.ownerId,'me');assert.equal(item.issuerId,'partner');assert.equal(item.title,claim.title);
  await getPartnerMissionBoard(client,me,end);assert.equal((await pg.query('select * from partner_storage_items')).rows.length,1);
  assert(await changeStorageItem(client,me,item.id,'request',end));assert.equal((await getPartnerMissionBoard(client,partner,end)).items[0].title,claim.title);assert(await changeStorageItem(client,partner,item.id,'approve',end));assert.equal((await getPartnerMissionBoard(client,me,end)).items.filter(i=>i.status!=='used').length,0);

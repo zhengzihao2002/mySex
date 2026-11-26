@@ -43,7 +43,7 @@ export function goalPositionLimit(kind: GoalActivity) {
 
 const metrics = new Set<string>(['active_minutes', 'total_minutes', 'sessions', 'positions']);
 
-/** Evaluate eligible saved activity inside the agreed window; never count live or pre-acceptance activity. */
+/** Evaluate eligible saved activity inside the agreed window once joined; never count live activity. */
 export function progressForMission(rule: MissionRule, sessions: MissionSession[], now: Date): MissionProgress {
   const nowAt = now.getTime();
   const startsAt = Date.parse(rule.startsAt);
@@ -55,7 +55,9 @@ export function progressForMission(rule: MissionRule, sessions: MissionSession[]
       !Number.isFinite(acceptedAt) || endsAt <= startsAt || acceptedAt >= endsAt ||
       !Number.isFinite(rule.target) || rule.target <= 0 || !metrics.has(rule.metric)) return empty;
 
-  const from = Math.max(startsAt, acceptedAt);
+  // Joining unlocks the whole agreed window: records saved inside the goal
+  // dates count even when the invitation was accepted later.
+  const from = startsAt;
   const through = Math.min(nowAt, endsAt);
   const activity = rule.kind ?? 'intercourse';
   const eligible = sessions.filter(session => {
@@ -103,7 +105,7 @@ export function progressForGoals(rule:MissionRule,goals:MissionGoal[],sessions:M
  return {value:ratio*rule.target,sessionIds:[...new Set(checks.flatMap(g=>g.sessionIds))],baseComplete:checks.length>0&&checks.every(g=>g.baseComplete),expired:now.getTime()>=Date.parse(rule.endsAt),checks};
 }
 
-type AllocationGoal = {
+export type AllocationGoal = {
   id: string;
   rule: MissionRule;
   goals: MissionGoal[];
@@ -168,4 +170,23 @@ export function allocateGoalSessions(
     }
   }
   return new Map([...allocated].map(([id,{progress}])=>[id,progress]));
+}
+
+/**
+ * Goals for the same partner share records: one record advances only one of
+ * them. Goals for different partners are independent, so one shared session
+ * advances both your goal for them and their goal for you.
+ */
+export function allocateGoalSessionsByAssignee(
+  goals: Array<AllocationGoal & {assigneeId:string}>,
+  sessions: Array<MissionSession & {createdAt:string}>,
+  reserved: ReadonlyMap<string, ReadonlySet<string>>,
+  now: Date,
+) {
+  const result = new Map<string, ReturnType<typeof progressForGoals>>();
+  for (const assignee of new Set(goals.map(goal=>goal.assigneeId))) {
+    const group = goals.filter(goal=>goal.assigneeId===assignee);
+    for (const [id,progress] of allocateGoalSessions(group,sessions,reserved.get(assignee)??new Set(),now)) result.set(id,progress);
+  }
+  return result;
 }

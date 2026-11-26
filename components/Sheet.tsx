@@ -45,40 +45,53 @@ function SheetPanel({onClose,title,children,viewKey,stableHeight=false}:Omit<She
     const unlock=lockPageScroll();
     const top=()=>Array.from(document.querySelectorAll('[data-app-sheet]')).at(-1)===node;
     const viewport=window.visualViewport;
-    // Session forms keep their panel height when the keyboard opens. Only the
-    // inner scroll area follows the visible space; its background stays solid
-    // behind the keyboard rather than exposing the page underneath.
-    let frame=0;
+    const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // The keyboard floats over the sheet instead of squeezing it. The panel
+    // keeps its size and screen position; a short panel slides up only as far
+    // as needed to clear the keyboard, and the focused field is then scrolled
+    // gently into view inside the panel.
+    let frame=0,settle=0,keyboardWasOpen=false;
     const keepFocusVisible=()=>{
-      if(!top()||!content.current)return;
+      const area=content.current;
+      if(!top()||!area)return;
       const active=document.activeElement;
-      if(!(active instanceof HTMLElement)||!active.matches('input,textarea,select,[contenteditable="true"]')||!content.current.contains(active))return;
-      const field=active.getBoundingClientRect(),area=content.current.getBoundingClientRect();
-      const bottom=Math.min(area.bottom,(viewport?.offsetTop??0)+(viewport?.height??window.innerHeight))-12;
-      if(field.bottom>bottom)content.current.scrollTop+=field.bottom-bottom;
-      else if(field.top<area.top+12)content.current.scrollTop+=field.top-area.top-12;
+      if(!(active instanceof HTMLElement)||!active.matches('input,textarea,select,[contenteditable="true"]')||!area.contains(active))return;
+      const field=active.getBoundingClientRect(),box=area.getBoundingClientRect();
+      // Content coordinates are unaffected by the panel's lift animation.
+      const fieldTop=field.top-box.top+area.scrollTop,fieldBottom=fieldTop+field.height;
+      const margin=24,view=area.clientHeight;
+      let target=area.scrollTop;
+      if(fieldBottom>area.scrollTop+view-margin)target=Math.min(fieldTop-margin,fieldBottom-view+margin);
+      else if(fieldTop<area.scrollTop+margin)target=fieldTop-margin;
+      target=Math.max(0,Math.min(target,area.scrollHeight-view));
+      if(Math.abs(target-area.scrollTop)>1)area.scrollTo({top:target,behavior:reducedMotion?'auto':'smooth'});
     };
     const resize=()=>{
       const active=document.activeElement;
       const typing=active instanceof HTMLElement&&panel.contains(active)&&active.matches('input,textarea,select,[contenteditable="true"]');
       const width=document.documentElement.clientWidth;
-      if(width!==layoutWidth){layoutWidth=width;layoutHeight=node.clientHeight;panelHeight=Math.round(layoutHeight*.92);}
-      const keyboardOpen=typing&&layoutHeight-(viewport?.height??window.innerHeight)>120;
-      if(stableHeight&&keyboardOpen){
-        // Hold only the panel's size during typing. Never freeze the root/body
-        // viewport: its four fixed edges must continue to cover the screen.
-        Object.assign(panel.style,{position:'absolute',top:`${(viewport?.offsetTop??0)+layoutHeight-panelHeight}px`,height:`${panelHeight}px`,maxHeight:'none',marginBottom:''});
-        if(content.current){
-          const visibleBottom=(viewport?.offsetTop??0)+(viewport?.height??window.innerHeight);
-          content.current.style.maxHeight=`${Math.max(0,visibleBottom-panel.offsetTop-panel.clientTop-content.current.offsetTop)}px`;
-        }
+      if(width!==layoutWidth){layoutWidth=width;layoutHeight=node.clientHeight;panelHeight=Math.min(panel.offsetHeight,Math.round(layoutHeight*.92));}
+      const visibleTop=viewport?.offsetTop??0,visibleHeight=viewport?.height??window.innerHeight;
+      const keyboardOpen=typing&&layoutHeight-visibleHeight>120;
+      if(keyboardOpen){
+        const resting=layoutHeight-panelHeight;
+        // Lift no higher than just below the status bar.
+        const lifted=Math.min(resting,Math.max(Math.min(resting,56),visibleHeight-panelHeight));
+        // Anchor to the visible screen (Safari may pan the page under it) and
+        // lift with the individual translate property, which Motion's drag
+        // transform leaves alone.
+        Object.assign(panel.style,{position:'absolute',top:`${visibleTop+resting}px`,height:`${panelHeight}px`,maxHeight:'none',
+          translate:`0 ${lifted-resting}px`,transition:reducedMotion?'':'translate .32s cubic-bezier(.22,1,.36,1)'});
+        if(content.current)content.current.style.maxHeight=`${Math.max(0,visibleHeight-lifted-panel.clientTop-content.current.offsetTop)}px`;
       }else{
-        Object.assign(panel.style,{position:'',top:'',height:'',maxHeight:keyboardOpen?`${(viewport?.height??window.innerHeight)*.92}px`:'',marginBottom:keyboardOpen?`${Math.max(0,node.clientHeight-(viewport?.offsetTop??0)-(viewport?.height??window.innerHeight))}px`:''});
+        Object.assign(panel.style,{position:'',top:'',height:'',maxHeight:'',translate:keyboardWasOpen?'0 0':'',transition:keyboardWasOpen&&!reducedMotion?'translate .32s cubic-bezier(.22,1,.36,1)':''});
         if(content.current)content.current.style.maxHeight='';
-        if(!keyboardOpen){layoutHeight=node.clientHeight;panelHeight=panel.offsetHeight;}
+        layoutHeight=node.clientHeight;panelHeight=panel.offsetHeight;
       }
-      cancelAnimationFrame(frame);
-      frame=requestAnimationFrame(keepFocusVisible);
+      keyboardWasOpen=keyboardOpen;
+      cancelAnimationFrame(frame);clearTimeout(settle);
+      // Wait for the keyboard to finish animating before scrolling the field.
+      if(typing)settle=window.setTimeout(()=>{frame=requestAnimationFrame(keepFocusVisible);},keyboardOpen?140:320);
     };
     resize();
     viewport?.addEventListener('resize',resize);
@@ -100,6 +113,7 @@ function SheetPanel({onClose,title,children,viewKey,stableHeight=false}:Omit<She
     return ()=>{
       unlock();
       cancelAnimationFrame(frame);
+      clearTimeout(settle);
       panel.removeEventListener('focusin',resize);
       window.removeEventListener('keydown',onKey);
       viewport?.removeEventListener('resize',resize);

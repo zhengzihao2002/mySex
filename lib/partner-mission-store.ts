@@ -1,6 +1,6 @@
 import {randomUUID} from 'node:crypto';
 import type {NeonQueryFunction} from '@neondatabase/serverless';
-import {allocateGoalSessions,type MissionGoal,type Metric} from './partner-mission-rules.ts';
+import {allocateGoalSessionsByAssignee,type MissionGoal,type Metric} from './partner-mission-rules.ts';
 type Client=NeonQueryFunction<false,false>;
 export type PartnerMissionActor={coupleId:string;userId:string;partnerId:string};
 export type RewardIcon='gift'|'ticket'|'sparkles'|'camera'|'coins'|'heart'|'crown';
@@ -53,15 +53,18 @@ export async function getPartnerMissionBoard(client:Client,a:PartnerMissionActor
 
  const sessions=rows.some(m=>m.status==='active')?await client`select id,kind,status,started_at,ended_at,duration_sec,paused_sec,tags,created_at,mission_saved_at from sessions where couple_id=${a.coupleId} and status='done'`:[];
  const saved=sessions.map(s=>({id:s.id,kind:s.kind,status:s.status,startedAt:iso(s.started_at),endedAt:s.ended_at?iso(s.ended_at):null,durationSec:s.duration_sec,pausedSec:s.paused_sec,tags:s.tags??[],createdAt:iso(s.mission_saved_at??s.created_at)}));
- const allocation=allocateGoalSessions(
+ const reserved=new Map<string,Set<string>>();
+ for(const m of rows)if(m.status==='settled'||m.status==='cancelled'){const ids=reserved.get(m.assignee_id)??new Set<string>();for(const id of m.proof_ids??[])ids.add(id);reserved.set(m.assignee_id,ids);}
+ const allocation=allocateGoalSessionsByAssignee(
   rows.filter(m=>m.status==='active').map(m=>({
    id:m.id,
+   assigneeId:m.assignee_id,
    rule:{metric:m.metric,target:Number(m.target),startsAt:iso(m.starts_at),endsAt:iso(m.ends_at),acceptedAt:m.accepted_at?iso(m.accepted_at):null},
    goals:m.goals??[{kind:'intercourse',metric:m.metric,target:Number(m.target)}],
    bonusMultiplier:m.bonus_multiplier==null?null:Number(m.bonus_multiplier),
   })),
   saved,
-  new Set(rows.filter(m=>m.status==='settled'||m.status==='cancelled').flatMap(m=>m.proof_ids)),
+  reserved,
   now,
  );
  for (const m of rows) {
@@ -112,8 +115,9 @@ export async function getPartnerMissionBoard(client:Client,a:PartnerMissionActor
  rows=await readMissions(client,a);
  const missions=rows.map(m=>{
   const value=Number(m.progress_value),baseComplete=!!m.accepted_at&&value>=Number(m.target),bonusMultiplier=m.bonus_multiplier?Number(m.bonus_multiplier):null,bonusComplete=!!bonusMultiplier&&baseComplete&&value>=Number(m.target)*bonusMultiplier,expired=new Date(iso(m.ends_at))<=now;
+  // Both partners see the reward and bonus reward; only the issuer sees the punishment.
   const issuer=m.issuer_id===a.userId;
-  return {endRequested:m.end_requested,goals:m.goals??undefined,goalProgress:m.goal_progress??undefined,id:m.id,title:m.title,description:m.description,metric:m.metric,target:Number(m.target),startsAt:iso(m.starts_at),endsAt:iso(m.ends_at),createdAt:iso(m.created_at),issuerId:m.issuer_id,assigneeId:m.assignee_id,status:m.status,acceptedAt:m.accepted_at?iso(m.accepted_at):null,value,sessionIds:m.proof_ids,baseComplete,bonusMultiplier,bonusComplete,expired,reward:issuer||baseComplete?m.reward:null,bonusReward:issuer||bonusComplete?m.bonus_reward:null,failureClaim:issuer?m.failure_claim:null};
+  return {endRequested:m.end_requested,goals:m.goals??undefined,goalProgress:m.goal_progress??undefined,id:m.id,title:m.title,description:m.description,metric:m.metric,target:Number(m.target),startsAt:iso(m.starts_at),endsAt:iso(m.ends_at),createdAt:iso(m.created_at),issuerId:m.issuer_id,assigneeId:m.assignee_id,status:m.status,acceptedAt:m.accepted_at?iso(m.accepted_at):null,value,sessionIds:m.proof_ids,baseComplete,bonusMultiplier,bonusComplete,expired,reward:m.reward,bonusReward:m.bonus_reward,failureClaim:issuer?m.failure_claim:null};
  });
  const items=await client`select i.*,m.title as mission_title from partner_storage_items i left join partner_missions m on m.id=i.mission_id join couples c on c.id=i.couple_id join profiles p on p.user_id=${a.userId} and p.couple_id=c.id join profiles other on other.user_id=${a.partnerId} and other.couple_id=c.id where i.couple_id=${a.coupleId} and c.unpaired_at is null and ((i.owner_id=${a.userId} and i.status in ('ready','requested','used')) or (i.issuer_id=${a.userId} and i.status='requested')) order by i.created_at desc`;
  return {missions,items:items.map(i=>({quantityRemaining:i.quantity_remaining,id:i.id,missionId:i.mission_id,missionTitle:i.mission_title??'Item request',title:i.title,details:i.details,icon:i.icon,kind:i.kind,ownerId:i.owner_id,issuerId:i.issuer_id,status:i.status,createdAt:iso(i.created_at),requestedAt:i.requested_at?iso(i.requested_at):null}))};

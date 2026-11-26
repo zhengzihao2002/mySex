@@ -8,8 +8,7 @@ import {ArrowDownLeft,ArrowUpRight,Check,ChevronRight,Clock3,Flag,Gift,Layers3,L
 import {motion} from 'motion/react';
 import {createPartnerMission,respondPartnerMission,requestPartnerGoalEnd} from '@/app/partner-mission-actions';
 import {GoalNumberInput} from './GoalNumberInput';
-import {GoalDateRangePicker} from './GoalDateRangePicker';
-import {goalDays} from '@/lib/goal-schedule';
+import {GoalDateRangePicker,localGoalDates,minutesPlanMode,plannedTotal} from './GoalDateRangePicker';
 import {REWARD_CATALOG,rewardLabel} from '@/lib/reward-catalog';
 import {GOAL_ACTIVITIES, goalPositionLimit, type GoalActivity, type MissionGoal} from '@/lib/partner-mission-rules';
 import type {PartnerMission} from '@/lib/partner-mission-store';
@@ -34,7 +33,7 @@ const localDate=(date:Date)=>new Date(date.getTime()-date.getTimezoneOffset()*60
 const blankReward=():Reward=>({catalogKey:'',title:'',details:'',icon:'gift'});
 
 export function PartnerMissions({missions,meId,partnerName}:{missions:PartnerMission[];meId:string;partnerName:string}){
-  const {t,lang}=useT(),router=useRouter();
+  const {t}=useT(),router=useRouter();
   const [create,setCreate]=useState(false),[filter,setFilter]=useState<'for_me'|'from_me'|'archive'>('for_me');
   const [now,setNow]=useState(()=>Date.now());
   useEffect(()=>{const refresh=()=>{if(document.visibilityState==='visible'&&!document.querySelector('[role="dialog"],dialog[open]')){setNow(Date.now());router.refresh();}};const id=setInterval(refresh,15000);window.addEventListener('focus',refresh);return()=>{clearInterval(id);window.removeEventListener('focus',refresh);};},[router]);
@@ -45,8 +44,8 @@ export function PartnerMissions({missions,meId,partnerName}:{missions:PartnerMis
     if (filter === 'archive') return m.status !== 'cancelled' && (!alive(m) || m.expired);
     return alive(m) && !m.expired && (filter === 'for_me' ? m.assigneeId === meId : m.issuerId === meId);
   });
-  const date=(s:string)=>new Date(s).toLocaleString(lang==='zh'?'zh-CN':'en',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
-  return <div className="space-y-5 pt-2 pb-4">
+  const date=useGoalDate();
+  return <div className="space-y-5 pt-2">
     <header><MissionBack/><div className="flex items-start justify-between gap-3"><div><p className="eyebrow mb-1 text-rose-2">{t('Made for each other')}</p><h1 className="font-display text-3xl font-bold">{t('Partner goals')}</h1></div><Link href="/storage" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-line bg-surface-2 text-rose-2" aria-label={t('Storage')}><PackageOpen size={23}/></Link></div></header>
     <section className="relative isolate overflow-hidden rounded-[28px] border border-rose/25 bg-gradient-to-br from-plum/30 via-surface to-surface p-5">
       <div aria-hidden="true" className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-rose/15 blur-3xl"/>
@@ -64,6 +63,18 @@ export function PartnerMissions({missions,meId,partnerName}:{missions:PartnerMis
   </div>;
 }
 
+function useGoalDate(){
+  const {lang}=useT();
+  return (s:string)=>new Date(s).toLocaleString(lang==='zh'?'zh-CN':'en',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+}
+
+/** A goal card outside the goal list (Inbox invitations). */
+export function PartnerGoalCard({mission,meId,partnerName}:{mission:PartnerMission;meId:string;partnerName:string}){
+  const date=useGoalDate();
+  const [now]=useState(()=>Date.now());
+  return <MissionCard mission={mission} meId={meId} partnerName={partnerName} date={date} now={now}/>;
+}
+
 function MissionCard({mission:m,meId,partnerName,date,now}:{mission:PartnerMission;meId:string;partnerName:string;date:(s:string)=>string;now:number}){
   const {t,lang}=useT(),action=useRun();const [confirmEnd,setConfirmEnd]=useState(false);
   const windowDate=(instant:string,end=false)=>m.goals?.some(g=>g.dateOnly)?new Intl.DateTimeFormat(lang==='zh'?'zh-CN':'en-US',{timeZone:m.goals[0].timeZone??Intl.DateTimeFormat().resolvedOptions().timeZone,year:'numeric',month:'short',day:'numeric'}).format(new Date(Date.parse(instant)-(end?1:0))):date(instant);
@@ -75,12 +86,13 @@ function MissionCard({mission:m,meId,partnerName,date,now}:{mission:PartnerMissi
   return <article className={`overflow-hidden rounded-[26px] border bg-surface ${m.baseComplete?'border-luteal/35':'border-line'}`}>
     <div className="p-5"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className={`mb-1 text-xs font-semibold ${m.baseComplete?'text-luteal':invite?'text-rose-2':'text-ink-3'}`}>{state}</p><h2 className="break-words font-display text-2xl">{t(m.title==='Partner mission'?'Partner goal':m.title)}</h2><p className="mt-1 text-xs text-ink-3">{mine?t('For {name}',{name:partnerName}):t('From {name}',{name:partnerName})}</p></div><span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${m.baseComplete?'bg-luteal/10 text-luteal':'bg-rose/10 text-rose-2'}`}>{m.baseComplete?<Check size={21}/>:<metric.Icon size={21}/>}</span></div>
       {m.description&&<p className="mt-3 whitespace-pre-wrap break-words text-sm leading-relaxed text-ink-2">{m.description}</p>}
-      {m.goals&&<div className="mt-4 space-y-2">{m.goals.map((g,i)=><div key={i} className="rounded-xl border border-line p-3 text-xs">{i>0&&<b className="mr-2 text-rose-2">{t('Also complete')}</b>}{t(GOAL_ACTIVITY_LABELS[g.kind])} {g.perDay!==undefined&&<span>· {g.dailyTargets?t('{days} days planned · {total} min',{days:g.days??1,total:g.target}):t('{minutes} min/day × {days} days',{minutes:g.perDay,days:g.days??1})}</span>} · {t(METRICS.find(x=>x.key===g.metric)!.short)}<b className="float-right">{Math.floor((m.goalProgress?.[i]?.value??0)*10)/10} / {g.target}</b>{g.dailyTargets&&<details className="clear-both pt-2 text-ink-3"><summary className="cursor-pointer py-1">{t('View daily plan')}</summary><div className="mt-2 grid grid-cols-2 gap-2">{Object.entries(g.dailyTargets).map(([day,minutes])=><span key={day}>{day} · {minutes} {t('min')}</span>)}</div></details>}</div>)}</div>}
+      {m.goals&&<div className="mt-4 space-y-2">{m.goals.map((g,i)=><div key={i} className="rounded-xl border border-line p-3 text-xs">{i>0&&<b className="mr-2 text-rose-2">{t('Also complete')}</b>}{t(GOAL_ACTIVITY_LABELS[g.kind])} {(g.perDay!==undefined||g.dailyTargets)&&<span>· {uniformDaily(g)!==null?t('{minutes} min/day × {days} days',{minutes:uniformDaily(g)!,days:g.days??1}):t('{days} days planned · {total} min',{days:g.days??1,total:g.target})}</span>} · {t(METRICS.find(x=>x.key===g.metric)!.short)}<b className="float-right">{Math.floor((m.goalProgress?.[i]?.value??0)*10)/10} / {g.target}</b>{g.dailyTargets&&uniformDaily(g)===null&&<details className="clear-both pt-2 text-ink-3"><summary className="cursor-pointer py-1">{t('View daily plan')}</summary><div className="mt-2 grid grid-cols-2 gap-2">{Object.entries(g.dailyTargets).map(([day,minutes])=><span key={day}>{day} · {minutes} {t('min')}</span>)}</div></details>}</div>)}</div>}
       <div className="mt-4 rounded-2xl bg-bg/40 p-3"><div className="mb-2 flex items-baseline justify-between gap-2"><span className="text-xs text-ink-3">{m.goals&&m.goals.length>1?t('All goals'):t(metric.label)}</span><b className="tabular-nums text-rose-2">{Math.floor(m.value*10)/10}<span className="text-xs font-normal text-ink-3"> / {m.target}</span></b></div><div className="h-2 overflow-hidden rounded-full bg-line"><motion.div initial={false} animate={{width:`${ratio*100}%`}} transition={{duration:.4}} className={`h-full rounded-full ${m.baseComplete?'bg-luteal':'bg-rose'}`}/></div>{bonusTarget!==null&&<p className="mt-2 flex items-center gap-1.5 text-xs text-ink-3"><Sparkles size={12} className={m.bonusComplete?'text-luteal':''}/>{t('Bonus target')}: {bonusTarget} {t(metric.short)} {m.bonusComplete&&<Check size={12} className="text-luteal"/>}</p>}</div>
       <div className="mt-3 flex items-start gap-2 text-xs leading-relaxed text-ink-3"><Clock3 size={13} className="mt-0.5 shrink-0"/><span>{windowDate(m.startsAt)} → {windowDate(m.endsAt,true)}{live&&hours<=24&&<b className="ml-2 text-luteal">{t('{n}h left',{n:hours})}</b>}</span></div>
-      {m.reward?<RewardLine reward={m.reward} label={m.baseComplete?t('Reward unlocked'):t('Sealed reward')}/>:!mine&&!m.baseComplete&&<div className="mt-4 flex items-center gap-3 rounded-2xl border border-line/70 bg-bg/25 p-3"><LockKeyhole size={18} className="text-ink-3"/><div><p className="text-sm font-medium">{t('The outcome stays sealed')}</p><p className="text-xs text-ink-3">{t('Any reward is revealed once it’s earned.')}</p></div></div>}
+      {m.reward&&<RewardLine reward={m.reward} label={m.baseComplete?t('Reward unlocked'):t('Reward')}/>}
       {m.bonusReward&&<RewardLine reward={m.bonusReward} label={m.bonusComplete?t('Bonus reward unlocked'):t('Bonus Reward')}/>}
-      {mine&&m.failureClaim&&<RewardLine reward={m.failureClaim} label={t('Punishment')}/>}
+      {mine&&m.failureClaim&&<RewardLine reward={m.failureClaim} label={t('Punishment · hidden from {name}',{name:partnerName})}/>}
+      {!mine&&!m.baseComplete&&m.status!=='declined'&&<div className="mt-3 flex items-center gap-3 rounded-2xl border border-line/70 bg-bg/25 p-3"><LockKeyhole size={18} className="shrink-0 text-ink-3"/><div><p className="text-sm font-medium">{t('Any punishment stays secret')}</p><p className="text-xs text-ink-3">{t('If {name} set one, only they can see it.',{name:partnerName})}</p></div></div>}
       {m.baseComplete&&(m.reward||m.bonusReward)&&<Link href="/storage" className="mt-3 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-luteal"><PackageOpen size={17}/>{t('Open Storage')}<ChevronRight size={14}/></Link>}
       {m.baseComplete&&!m.reward&&!m.bonusReward&&<p className="mt-3 text-sm text-luteal">{t('Target reached. A moment worth celebrating.')}</p>}
       {m.baseComplete&&m.sessionIds.length>0&&<details className="mt-3 rounded-2xl border border-line/60 p-3 text-xs text-ink-2"><summary className="min-h-6 cursor-pointer">{t('Saved record proof')} · {m.sessionIds.length}</summary><div className="mt-2 flex flex-wrap gap-2">{m.sessionIds.map((id,index)=><Link key={id} href={`/insights?session=${id}`} className="chip">{t('Record {n}',{n:index+1})}</Link>)}</div></details>}
@@ -92,27 +104,46 @@ function MissionCard({mission:m,meId,partnerName,date,now}:{mission:PartnerMissi
     <Sheet open={confirmEnd} onClose={()=>setConfirmEnd(false)} title={invite?t('Withdraw invitation'):t('Request to end goal')}><p className="mb-4 text-sm text-ink-2">{invite?t('Withdraw this invitation before your partner joins.'):t('Your partner will get a request in Inbox. The goal continues until they agree. Earned items stay in Storage.')}</p><div className="grid grid-cols-2 gap-2"><button className="btn-ghost" onClick={()=>setConfirmEnd(false)}>{t('Keep goal')}</button><button className="btn-primary" disabled={action.pending} onClick={async()=>{if(await action.run(()=>invite?respondPartnerMission(m.id,'cancel'):requestPartnerGoalEnd(m.id))){setConfirmEnd(false);}}}>{invite?t('Withdraw invitation'):t('Send request')}</button></div><FormError error={action.error}/></Sheet>
   </article>;
 }
+/** Daily minutes when every planned date has the same amount, else null. */
+function uniformDaily(goal:MissionGoal){
+  if(!goal.dailyTargets)return goal.perDay??null;
+  const amounts=new Set(Object.values(goal.dailyTargets));
+  return amounts.size===1?[...amounts][0]:null;
+}
 function RewardLine({reward,label}:{reward:{title:string;details:string;icon:string;quantity?:number};label:string}){const {t}=useT();return <div className="mt-3 flex items-start gap-3 rounded-2xl border border-line/70 bg-bg/20 p-3"><RewardToken small icon={reward.icon}/><div className="min-w-0"><p className="text-[10px] text-ink-3">{label}</p><p className="break-words text-sm font-semibold">{rewardLabel(reward.title,t)}{(reward.quantity??1)>1&& ` ×${reward.quantity}`}</p>{reward.details&&<p className="mt-1 whitespace-pre-wrap break-words text-xs leading-relaxed text-ink-2">{reward.details}</p>}</div></div>;}
 
 function MissionCreator({partnerName,onDone}:{partnerName:string;onDone:()=>void}){
   const {t}=useT(),action=useRun();
-  const [goals,setGoals]=useState<MissionGoal[]>([{kind:'intercourse',metric:'active_minutes',target:30}]);
+  // Minute goals start as "same each day"; the calendar's Minutes plan switches modes.
+  const [goals,setGoals]=useState<MissionGoal[]>([{kind:'intercourse',metric:'active_minutes',target:30,perDay:30}]);
   const metric=goals[0].metric,target=String(goals[0].target);
-  const changeGoal=(index:number,patch:Partial<MissionGoal>)=>setGoals(previous=>previous.map((g,i)=>i===index?{...g,...patch,...(patch.metric?{target:patch.metric==='sessions'?1:patch.metric==='positions'?3:30,perDay:undefined,dailyTargets:undefined}:{}),...(patch.kind&&g.metric==='positions'?{target:3}:{})}:g));
+  const minutes=(metric:Metric)=>metric==='active_minutes'||metric==='total_minutes';
+  const changeGoal=(index:number,patch:Partial<MissionGoal>)=>setGoals(previous=>previous.map((g,i)=>{
+    if(i!==index)return g;
+    const next={...g,...patch};
+    if(patch.metric&&patch.metric!==g.metric){
+      const keepPlan=minutes(patch.metric)&&minutes(g.metric);
+      Object.assign(next,keepPlan?{}:{target:patch.metric==='sessions'?1:patch.metric==='positions'?3:30,perDay:minutes(patch.metric)?30:undefined,dailyTargets:undefined});
+    }
+    if(patch.kind&&g.metric==='positions')next.target=3;
+    return next;
+  }));
   const [starts,setStarts]=useState(()=>localDate(new Date()).slice(0,10)+'T00:00'),[ends,setEnds]=useState(()=>localDate(new Date(Date.now()+7*86400000)).slice(0,10)+'T00:00');
+  const dates=localGoalDates(starts,ends);
+  const minutePlans=goals.map((g,i)=>({g,i})).filter(({g})=>minutes(g.metric));
   const [bonusOn,setBonusOn]=useState(false),[multiplier,setMultiplier]=useState('2');
   const [prize,setPrize]=useState<Reward>(blankReward),[bonus,setBonus]=useState<Reward>(blankReward),[claim,setClaim]=useState<Reward>(blankReward);
   return <form className="space-y-5" onSubmit={async e=>{e.preventDefault();const start=new Date(starts),end=new Date(ends);if(!Number.isFinite(start.getTime())||!Number.isFinite(end.getTime())||end<=start){action.setError(t('Choose an end time after the start.'));return;}if(await action.run(()=>createPartnerMission({dateOnly:true,timeZone:Intl.DateTimeFormat().resolvedOptions().timeZone,goals,metric,target:Number(target),startsAt:start.toISOString(),endsAt:end.toISOString(),outcomesRequired:true,reward:prize,bonusMultiplier:bonusOn&&bonus.catalogKey!=='nothing'?Number(multiplier):undefined,bonusReward:bonusOn?bonus:undefined,failureClaim:claim})))onDone();}}>
-    <div className="rounded-2xl border border-rose/20 bg-rose/5 p-4 text-sm leading-relaxed text-ink-2">{t('A personal invitation for {name}. Progress starts when they join.',{name:partnerName})}</div>
-    <GoalDateRangePicker startsAt={starts} endsAt={ends} onChange={(start,end)=>{setStarts(start);setEnds(end);}} onRangeComplete={()=>setGoals(previous=>previous.map(g=>['active_minutes','total_minutes'].includes(g.metric)?{...g,perDay:g.perDay??Math.min(g.target,1440)}:g))} plans={goals.filter(g=>g.perDay!==undefined).map(g=>({label:t(GOAL_ACTIVITY_LABELS[g.kind])+' · '+t(METRICS.find(m=>m.key===g.metric)!.short),defaultMinutes:g.perDay!,targets:g.dailyTargets??{}}))} onPlanChange={(planIndex,date,minutes)=>{const original=goals.map((g,i)=>({g,i})).filter(({g})=>g.perDay!==undefined)[planIndex];if(original)changeGoal(original.i,{dailyTargets:{...original.g.dailyTargets,[date]:minutes}});}}/>
-    <fieldset className="space-y-3"><legend className="label">{t('Meet all of these targets')}</legend>{goals.map((g,index)=><div key={index} className="rounded-2xl border border-line bg-bg/30 p-3">{index>0&&<p className="mb-2 text-xs font-bold text-rose-2">{t('Also complete')}</p>}<div className="grid grid-cols-2 gap-2"><label className="label">{t('Activity')}<select className="input mt-1" value={g.kind} onChange={e=>changeGoal(index,{kind:e.target.value as MissionGoal['kind']})}>{GOAL_ACTIVITIES.map(kind=><option key={kind} value={kind}>{t(GOAL_ACTIVITY_LABELS[kind])}</option>)}</select></label><label className="label">{t('Measure')}<select className="input mt-1" value={g.metric} onChange={e=>changeGoal(index,{metric:e.target.value as Metric})}>{METRICS.map(m=><option key={m.key} value={m.key}>{t(m.short)}</option>)}</select></label></div>{g.perDay===undefined&&<label className="label mt-2">{t('Target')}<GoalNumberInput key={g.metric+g.kind} aria-label={t('Target')} className="input mt-1" required min="1" step="1" max={g.metric==='positions'?Math.floor(goalPositionLimit(g.kind)/(bonusOn&&bonus.catalogKey!=='nothing'?Number(multiplier)||2:1)):100000} value={g.target} onValueChange={value=>changeGoal(index,{target:value,...(g.perDay!==undefined?{perDay:value}:{})})}/></label>}{['active_minutes','total_minutes'].includes(g.metric)&&<div className="mt-3 space-y-2"><label className="flex items-center gap-2 text-sm text-ink-2"><input type="checkbox" checked={g.perDay!==undefined} onChange={e=>changeGoal(index,{perDay:e.target.checked?Math.min(g.target,1440):undefined,dailyTargets:undefined})}/>{t('Set minutes per day')}</label>{g.perDay!==undefined&&<p className="text-xs text-ink-3">{t('Edit each date’s minutes in the calendar above.')}</p>}</div>}{index>0&&<button type="button" className="mt-2 text-xs text-ink-3" onClick={()=>setGoals(previous=>previous.filter((_,i)=>i!==index))}>{t('Remove condition')}</button>}</div>)}{goals.length<8&&<button type="button" className="btn-ghost w-full" onClick={()=>setGoals(previous=>[...previous,{kind:'intercourse',metric:'sessions',target:1}])}>+ {t('Add another condition')}</button>}</fieldset>
+    <div className="rounded-2xl border border-rose/20 bg-rose/5 p-4 text-sm leading-relaxed text-ink-2">{t('A personal invitation for {name}. Once they join, records saved inside the goal dates count.',{name:partnerName})}</div>
+    <GoalDateRangePicker startsAt={starts} endsAt={ends} onChange={(start,end)=>{setStarts(start);setEnds(end);}} plans={minutePlans.map(({g,i})=>({label:`${i+1}. ${t(GOAL_ACTIVITY_LABELS[g.kind])} · ${t(METRICS.find(m=>m.key===g.metric)!.short)}`,goal:g}))} onPlanChange={(planIndex,patch)=>{const original=minutePlans[planIndex];if(original)changeGoal(original.i,patch);}}/>
+    <fieldset className="space-y-3"><legend className="label">{t('Meet all of these targets')}</legend>{goals.map((g,index)=><div key={index} className="rounded-2xl border border-line bg-bg/30 p-3">{index>0&&<p className="mb-2 text-xs font-bold text-rose-2">{t('Also complete')}</p>}<div className="grid grid-cols-2 gap-2"><label className="label">{t('Activity')}<select className="input mt-1" value={g.kind} onChange={e=>changeGoal(index,{kind:e.target.value as MissionGoal['kind']})}>{GOAL_ACTIVITIES.map(kind=><option key={kind} value={kind}>{t(GOAL_ACTIVITY_LABELS[kind])}</option>)}</select></label><label className="label">{t('Measure')}<select className="input mt-1" value={g.metric} onChange={e=>changeGoal(index,{metric:e.target.value as Metric})}>{METRICS.map(m=><option key={m.key} value={m.key}>{t(m.short)}</option>)}</select></label></div>{!minutes(g.metric)&&<label className="label mt-2">{t('Target')}<GoalNumberInput key={g.metric+g.kind} aria-label={t('Target')} className="input mt-1" required min="1" step="1" max={g.metric==='positions'?Math.floor(goalPositionLimit(g.kind)/(bonusOn&&bonus.catalogKey!=='nothing'?Number(multiplier)||2:1)):100000} value={g.target} onValueChange={value=>changeGoal(index,{target:value})}/></label>}{minutes(g.metric)&&<p className="mt-3 flex items-center justify-between gap-2 rounded-xl bg-bg/40 px-3 py-2 text-xs text-ink-3"><span>{t(minutesPlanMode(g)==='total'?'Whole period':minutesPlanMode(g)==='uniform'?'Same each day':'Each day')} · {t('set in Minutes plan above')}</span><b className="shrink-0 tabular-nums text-rose-2">{plannedTotal(g,dates)} {t('min')}</b></p>}{index>0&&<button type="button" className="mt-2 text-xs text-ink-3" onClick={()=>setGoals(previous=>previous.filter((_,i)=>i!==index))}>{t('Remove condition')}</button>}</div>)}{goals.length<8&&<button type="button" className="btn-ghost w-full" onClick={()=>setGoals(previous=>[...previous,{kind:'intercourse',metric:'sessions',target:1}])}>+ {t('Add another condition')}</button>}</fieldset>
 
-    <p className="text-xs leading-relaxed text-ink-3">{t('Choose Either activity to count oral and intercourse toward the same target. Save records after joining and before the deadline. Active minutes exclude breaks.')}</p>
+    <p className="text-xs leading-relaxed text-ink-3">{t('Choose Either activity to count oral and intercourse toward the same target. Records inside the goal dates count once your partner joins; save them before the deadline. Active minutes exclude breaks.')}</p>
     <p className="text-xs leading-relaxed text-ink-3">{t('Progress adds up across eligible records. Total minutes include breaks; active minutes exclude them.')} {t('Save records before the deadline. The outcome is locked when the window ends.')}</p>
     <OutcomeEditor label={t('Reward')} subtitle={t('Earned when the target is met. You can also choose Nothing.')} enabled={true} value={prize} onChange={setPrize}/>
     <OutcomeEditor label={t('Bonus Reward')} subtitle={t('Earned when the bonus target is met.')} enabled={bonusOn} setEnabled={setBonusOn} value={bonus} onChange={setBonus}>{bonusOn&&bonus.catalogKey!=='nothing'&&<div className="mb-3"><label className="label" htmlFor="partner-mission-multiplier">{t('Target multiplier')}</label><div className="flex items-center gap-3"><input id="partner-mission-multiplier" type="number" min="2" max="10" step="1" required className="input w-24" value={multiplier} onChange={e=>setMultiplier(e.target.value)}/><span className="text-sm text-ink-2">{t('Applies to every goal')}</span></div></div>}</OutcomeEditor>
-    <OutcomeEditor label={t('Punishment')} subtitle={t('If the joined goal expires below target, this custom item goes to your Storage.')} enabled={true} value={claim} onChange={setClaim}/>
-    <p className="text-xs leading-relaxed text-ink-3">{t('Outcomes stay sealed until earned. All items need the other partner’s approval to use. No automatic payments, deletions or protection changes.')}</p>
+    <OutcomeEditor label={t('Punishment')} subtitle={t('Kept secret from {name}. If the joined goal expires below target, this item goes to your Storage.',{name:partnerName})} enabled={true} value={claim} onChange={setClaim}/>
+    <p className="text-xs leading-relaxed text-ink-3">{t('{name} sees the reward and bonus reward right away. The punishment stays secret. All items need the other partner’s approval to use. No automatic payments, deletions or protection changes.',{name:partnerName})}</p>
     <FormError error={action.error}/><button className="btn-primary w-full" disabled={action.pending}><Gift size={17}/>{action.pending?t('Sending…'):t('Seal & send invitation')}</button>
   </form>;
 }

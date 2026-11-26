@@ -69,7 +69,9 @@ h1.font-display { line-height: 1.15; font-size: clamp(2rem, 4vw, 2.6rem); }
   .chip-on { @apply border-rose/50 bg-rose/10 text-rose-2; }
 }
 
-.app-frame { --page-gutter: 22px; width: min(100%, 720px); margin: 0 auto; padding: max(env(safe-area-inset-top), 28px) 22px calc(env(safe-area-inset-bottom) + 118px); }
+/* Bottom padding clears the floating dock exactly (its 72px height, its bottom
+   offset and a 16px gap), so short pages never scroll into empty space. */
+.app-frame { --page-gutter: 22px; --dock-clearance: calc(max(12px, env(safe-area-inset-bottom)) + 88px); width: min(100%, 720px); margin: 0 auto; padding: max(env(safe-area-inset-top), 28px) 22px var(--dock-clearance); }
 .app-frame > div > h1, .app-frame > div > header { margin-bottom: 24px; }
 .app-frame > div > h1 { margin-bottom: 20px; }
 .app-frame > div > header h1 { margin-bottom: 4px; }

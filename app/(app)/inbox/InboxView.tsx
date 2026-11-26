@@ -5,7 +5,8 @@ import {PartnerItemAskCard} from '@/components/PartnerItemAsk';
 import type {ItemAsk} from '@/lib/partner-item-asks';
 import {rewardLabel} from '@/lib/reward-catalog';
 import {ItemDetails} from '@/components/PartnerStorage';
-import type {StorageItem} from '@/lib/partner-mission-store';
+import type {PartnerMission,StorageItem} from '@/lib/partner-mission-store';
+import {PartnerGoalCard} from '@/components/PartnerMissions';
 import { SymbolIcon } from '@/components/SymbolIcon';
 
 import Link from 'next/link';
@@ -24,7 +25,8 @@ import { useRun } from '@/components/useRun';
 import { dayInTz } from '@/lib/tz';
 import type { SessionDeletionRequest, SessionEditNotice, SessionEditRequest } from '@/lib/types';
 
-export function InboxView({ requests, notices, edits, meId, partnerName, storageRequests=[], goalEndRequests=[], itemAsks=[], storageDeclines=[] }: {
+export function InboxView({ requests, notices, edits, meId, partnerName, storageRequests=[], goalEndRequests=[], itemAsks=[], storageDeclines=[], goalInvites=[] }: {
+  goalInvites?:PartnerMission[];
   storageDeclines?:Array<{id:string;title:string;reason:string}>;
   itemAsks?:ItemAsk[];
   goalEndRequests?:GoalEndRequest[];
@@ -44,7 +46,7 @@ export function InboxView({ requests, notices, edits, meId, partnerName, storage
     {title:t('Waiting for your partner'),items:items.filter(i=>i.type!=='notice'&&i.value.status==='pending'&&i.value.requestedBy===meId)},
     {title:t('Unread replies and updates'),items:items.filter(i=>i.type==='notice'||i.value.status!=='pending')},
   ];
-  const hasInboxItems = items.length > 0 || storageRequests.length > 0 || goalEndRequests.length > 0
+  const hasInboxItems = items.length > 0 || storageRequests.length > 0 || goalEndRequests.length > 0 || goalInvites.length > 0
     || itemAsks.length > 0 || storageDeclines.length > 0;
   return (
     <div className="space-y-5 pt-2" data-motion>
@@ -55,6 +57,9 @@ export function InboxView({ requests, notices, edits, meId, partnerName, storage
           <RefreshCw size={18} className={refreshing ? 'animate-spin' : ''} />
         </button>
       </header>
+      {goalInvites.length>0&&<section className="space-y-3"><h2 className="font-display text-xl">{t('Goal invitations')}</h2>
+        {goalInvites.map(mission=><PartnerGoalCard key={mission.id} mission={mission} meId={meId} partnerName={partnerName}/>)}
+      </section>}
       {storageRequests.length>0&&<section className="space-y-4"><h2 className="font-display text-xl">{t('Item use requests')}</h2>{storageRequests.map(item=><article key={item.id} className="card"><ItemDetails item={item} meId={meId} partnerName={partnerName} onDone={()=>router.refresh()}/></article>)}</section>}
       {goalEndRequests.length>0&&<section className="space-y-3"><h2 className="font-display text-xl">{t('Goal end requests')}</h2>
         {goalEndRequests.map(request=><GoalEndCard key={request.id} request={request} outgoing={request.requestedBy===meId}/>)}

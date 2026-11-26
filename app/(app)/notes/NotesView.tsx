@@ -55,9 +55,13 @@ export function NotesView({ notes, meId, partnerName, partnerAvatar }: { notes: 
         layoutHeight = window.innerHeight;
       }
       const height = viewport?.height ?? window.innerHeight;
+      // Keep the newest notes in view while the keyboard opens or closes.
+      const list = thread.current;
+      const pinned = !!list && list.scrollHeight - list.scrollTop - list.clientHeight < 48;
       frame.style.setProperty('--notes-height', `${height}px`);
       frame.style.setProperty('--notes-top', `${viewport?.offsetTop ?? 0}px`);
       node.dataset.keyboardOpen = String(typing && layoutHeight - height > 120);
+      if (pinned && list) list.scrollTop = list.scrollHeight;
     };
     const schedule = () => {
       cancelAnimationFrame(animationFrame);
