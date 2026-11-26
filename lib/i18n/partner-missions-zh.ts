@@ -257,4 +257,10 @@ export const partnerMissionZh: Record<string, string> = {
   "Choose Either activity to count oral and intercourse toward the same target. Records inside the goal dates count once your partner joins; save them before the deadline. Active minutes exclude breaks.": "选择“任一活动”可将口交和性交计入同一目标。伴侣加入后，目标日期内的记录都会计入；请在截止前保存记录。有效分钟不含休息时间。",
   "Kept secret from {name}. If the joined goal expires below target, this item goes to your Storage.": "对{name}保密。如果已加入的目标到期仍未达标，该物品会放入你的仓库。",
   "{name} sees the reward and bonus reward right away. The punishment stays secret. All items need the other partner’s approval to use. No automatic payments, deletions or protection changes.": "{name}会立即看到奖励和超额完成奖励，惩罚内容保密。所有物品都需另一方同意才能使用，不会自动付款、删除内容或更改防护设置。",
+  "No reward": "无奖励",
+  "No punishment": "无惩罚",
+  "Goal replies": "目标回复",
+  "Goal invitation declined": "目标邀请已被拒绝",
+  "{name} declined your goal invitation.": "{name}拒绝了你的目标邀请。",
+  "The goal has been removed. Dismissing this reply deletes it for good.": "该目标已移除。关闭此回复后将被永久删除。",
 };

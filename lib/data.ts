@@ -303,7 +303,7 @@ export async function getInboxSnapshot(coupleId: string, userId: string) {
     select id, status, true from session_edit_outcomes where couple_id = ${coupleId} and recipient_id = ${userId}
     union all
     select id, 'mission:' || status || ':' || updated_at::text || ':' || (ends_at<=now() or (status='invited' and created_at<=now()-interval '7 days'))::text,
-      (status='invited' and assignee_id=${userId} and ends_at>now() and created_at>now()-interval '7 days') or (status='active' and ends_at<=now())
+      (status='invited' and assignee_id=${userId} and ends_at>now() and created_at>now()-interval '7 days') or (status='active' and ends_at<=now()) or (status='declined' and issuer_id=${userId})
       from partner_missions where couple_id=${coupleId}
     union all
     select r.id, 'goal-end', r.requested_by<>${userId}

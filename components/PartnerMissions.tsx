@@ -41,7 +41,8 @@ export function PartnerMissions({missions,meId,partnerName}:{missions:PartnerMis
   const invitations=missions.filter(m=>m.assigneeId===meId&&m.status==='invited'&&!m.expired).length;
   const active=missions.filter(m=>m.status==='active'&&!m.expired).length;
   const shown = missions.filter(m => {
-    if (filter === 'archive') return m.status !== 'cancelled' && (!alive(m) || m.expired);
+    // Past goals are finished goals only; declined and cancelled ones disappear.
+    if (filter === 'archive') return m.status === 'settled' || (m.status === 'active' && m.expired);
     return alive(m) && !m.expired && (filter === 'for_me' ? m.assigneeId === meId : m.issuerId === meId);
   });
   const date=useGoalDate();
@@ -89,9 +90,9 @@ function MissionCard({mission:m,meId,partnerName,date,now}:{mission:PartnerMissi
       {m.goals&&<div className="mt-4 space-y-2">{m.goals.map((g,i)=><div key={i} className="rounded-xl border border-line p-3 text-xs">{i>0&&<b className="mr-2 text-rose-2">{t('Also complete')}</b>}{t(GOAL_ACTIVITY_LABELS[g.kind])} {(g.perDay!==undefined||g.dailyTargets)&&<span>· {uniformDaily(g)!==null?t('{minutes} min/day × {days} days',{minutes:uniformDaily(g)!,days:g.days??1}):t('{days} days planned · {total} min',{days:g.days??1,total:g.target})}</span>} · {t(METRICS.find(x=>x.key===g.metric)!.short)}<b className="float-right">{Math.floor((m.goalProgress?.[i]?.value??0)*10)/10} / {g.target}</b>{g.dailyTargets&&uniformDaily(g)===null&&<details className="clear-both pt-2 text-ink-3"><summary className="cursor-pointer py-1">{t('View daily plan')}</summary><div className="mt-2 grid grid-cols-2 gap-2">{Object.entries(g.dailyTargets).map(([day,minutes])=><span key={day}>{day} · {minutes} {t('min')}</span>)}</div></details>}</div>)}</div>}
       <div className="mt-4 rounded-2xl bg-bg/40 p-3"><div className="mb-2 flex items-baseline justify-between gap-2"><span className="text-xs text-ink-3">{m.goals&&m.goals.length>1?t('All goals'):t(metric.label)}</span><b className="tabular-nums text-rose-2">{Math.floor(m.value*10)/10}<span className="text-xs font-normal text-ink-3"> / {m.target}</span></b></div><div className="h-2 overflow-hidden rounded-full bg-line"><motion.div initial={false} animate={{width:`${ratio*100}%`}} transition={{duration:.4}} className={`h-full rounded-full ${m.baseComplete?'bg-luteal':'bg-rose'}`}/></div>{bonusTarget!==null&&<p className="mt-2 flex items-center gap-1.5 text-xs text-ink-3"><Sparkles size={12} className={m.bonusComplete?'text-luteal':''}/>{t('Bonus target')}: {bonusTarget} {t(metric.short)} {m.bonusComplete&&<Check size={12} className="text-luteal"/>}</p>}</div>
       <div className="mt-3 flex items-start gap-2 text-xs leading-relaxed text-ink-3"><Clock3 size={13} className="mt-0.5 shrink-0"/><span>{windowDate(m.startsAt)} → {windowDate(m.endsAt,true)}{live&&hours<=24&&<b className="ml-2 text-luteal">{t('{n}h left',{n:hours})}</b>}</span></div>
-      {m.reward&&<RewardLine reward={m.reward} label={m.baseComplete?t('Reward unlocked'):t('Reward')}/>}
+      {m.reward?<RewardLine reward={m.reward} label={m.baseComplete?t('Reward unlocked'):t('Reward')}/>:<EmptyOutcome label={t('Reward')} text={t('No reward')}/>}
       {m.bonusReward&&<RewardLine reward={m.bonusReward} label={m.bonusComplete?t('Bonus reward unlocked'):t('Bonus Reward')}/>}
-      {mine&&m.failureClaim&&<RewardLine reward={m.failureClaim} label={t('Punishment · hidden from {name}',{name:partnerName})}/>}
+      {mine&&(m.failureClaim?<RewardLine reward={m.failureClaim} label={t('Punishment · hidden from {name}',{name:partnerName})}/>:<EmptyOutcome label={t('Punishment')} text={t('No punishment')}/>)}
       {!mine&&!m.baseComplete&&m.status!=='declined'&&<div className="mt-3 flex items-center gap-3 rounded-2xl border border-line/70 bg-bg/25 p-3"><LockKeyhole size={18} className="shrink-0 text-ink-3"/><div><p className="text-sm font-medium">{t('Any punishment stays secret')}</p><p className="text-xs text-ink-3">{t('If {name} set one, only they can see it.',{name:partnerName})}</p></div></div>}
       {m.baseComplete&&(m.reward||m.bonusReward)&&<Link href="/storage" className="mt-3 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-luteal"><PackageOpen size={17}/>{t('Open Storage')}<ChevronRight size={14}/></Link>}
       {m.baseComplete&&!m.reward&&!m.bonusReward&&<p className="mt-3 text-sm text-luteal">{t('Target reached. A moment worth celebrating.')}</p>}
@@ -110,6 +111,7 @@ function uniformDaily(goal:MissionGoal){
   const amounts=new Set(Object.values(goal.dailyTargets));
   return amounts.size===1?[...amounts][0]:null;
 }
+function EmptyOutcome({label,text}:{label:string;text:string}){return <div className="mt-3 flex items-center gap-3 rounded-2xl border border-dashed border-line/70 p-3"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface-2 text-ink-3"><Gift size={16}/></span><div><p className="text-[10px] text-ink-3">{label}</p><p className="text-sm text-ink-2">{text}</p></div></div>;}
 function RewardLine({reward,label}:{reward:{title:string;details:string;icon:string;quantity?:number};label:string}){const {t}=useT();return <div className="mt-3 flex items-start gap-3 rounded-2xl border border-line/70 bg-bg/20 p-3"><RewardToken small icon={reward.icon}/><div className="min-w-0"><p className="text-[10px] text-ink-3">{label}</p><p className="break-words text-sm font-semibold">{rewardLabel(reward.title,t)}{(reward.quantity??1)>1&& ` ×${reward.quantity}`}</p>{reward.details&&<p className="mt-1 whitespace-pre-wrap break-words text-xs leading-relaxed text-ink-2">{reward.details}</p>}</div></div>;}
 
 function MissionCreator({partnerName,onDone}:{partnerName:string;onDone:()=>void}){

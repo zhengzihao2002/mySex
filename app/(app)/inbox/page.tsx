@@ -18,5 +18,6 @@ export default async function InboxPage() {
   const goalInvites=board.missions
     .filter(m=>m.status==='invited'&&!m.expired)
     .sort((a,b)=>Number(b.assigneeId===ctx.me.userId)-Number(a.assigneeId===ctx.me.userId)||a.createdAt.localeCompare(b.createdAt));
-  return <InboxView goalInvites={goalInvites} storageDeclines={storageDeclines.map(({id,title,reason})=>({id,title,reason}))} itemAsks={itemAsks} goalEndRequests={goalEndRequests} storageRequests={board.items.filter(i=>i.issuerId===ctx.me.userId&&i.status==='requested')} edits={edits} notices={notices} requests={requests} meId={ctx.me.userId} partnerName={ctx.partner.name} />;
+  const declinedGoals=board.missions.filter(m=>m.status==='declined'&&m.issuerId===ctx.me.userId);
+  return <InboxView declinedGoals={declinedGoals} goalInvites={goalInvites} storageDeclines={storageDeclines.map(({id,title,reason})=>({id,title,reason}))} itemAsks={itemAsks} goalEndRequests={goalEndRequests} storageRequests={board.items.filter(i=>i.issuerId===ctx.me.userId&&i.status==='requested')} edits={edits} notices={notices} requests={requests} meId={ctx.me.userId} partnerName={ctx.partner.name} />;
 }

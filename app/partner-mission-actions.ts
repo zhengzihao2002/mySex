@@ -10,7 +10,7 @@ import {REWARD_CATALOG,catalogReward} from '@/lib/reward-catalog';
 import {requestGoalEnd,resolveGoalEnd} from '@/lib/partner-goal-end';
 import {GOAL_ACTIVITIES, goalPositionLimit} from '@/lib/partner-mission-rules';
 import type {ActionResult} from '@/lib/types';
-import {insertPartnerMission,decidePartnerMission,changeStorageItem,forfeitStorageItem,type PartnerMissionActor} from '@/lib/partner-mission-store';
+import {insertPartnerMission,decidePartnerMission,changeStorageItem,forfeitStorageItem,dismissDeclinedMission,type PartnerMissionActor} from '@/lib/partner-mission-store';
 const reward=z.object({quantity:z.number().int().min(1).max(999).default(1),amount:z.number().finite().min(0.01).multipleOf(0.01).max(1000000).optional(),currency:z.enum(['USD','CNY','EUR','GBP']).optional(),catalogKey:z.string().max(40).optional(),title:z.string().trim().max(100).default(''),details:z.string().trim().max(600).default(''),icon:z.string().optional()});
 const goal=z.object({dailyTargets:z.record(z.string().regex(/^\d{4}-\d{2}-\d{2}$/),z.number().finite().min(0).max(1440)).optional(),perDay:z.number().finite().positive().max(1440).optional(),kind:z.enum(GOAL_ACTIVITIES),metric:z.enum(['active_minutes','total_minutes','sessions','positions']),target:z.number().finite().positive().max(1000000)});
 const schema=z.object({outcomesRequired:z.boolean().default(false),dateOnly:z.boolean().default(false),timeZone:z.string().max(80).default('UTC'),goals:z.array(goal).min(1).max(8).optional(),metric:z.enum(['active_minutes','total_minutes','sessions','positions']),target:z.number().finite().positive().max(1000000),startsAt:z.string().datetime(),endsAt:z.string().datetime(),reward:reward.nullable().default(null),bonusMultiplier:z.number().finite().min(2).max(10).nullable().default(null),bonusReward:reward.nullable().default(null),failureClaim:reward.nullable().default(null)}).superRefine((v,ctx)=>{
@@ -97,4 +97,10 @@ export async function dismissStorageDecline(id:string):Promise<ActionResult>{
   const rows=await db()`delete from partner_storage_declines where id=${id}
     and couple_id=${a.coupleId} and recipient_id=${a.userId} returning id`;
   return finish(rows.length>0);
+}
+
+export async function dismissDeclinedPartnerGoal(id:string):Promise<ActionResult>{
+  const a=await actor();
+  if (!z.string().uuid().safeParse(id).success) return fail('Invalid goal.');
+  return finish(await dismissDeclinedMission(db(),a,id));
 }

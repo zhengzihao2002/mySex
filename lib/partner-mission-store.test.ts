@@ -5,7 +5,7 @@ import {readFile} from 'node:fs/promises';
 import {before,after,beforeEach,test} from 'node:test';
 import {PGlite} from '@electric-sql/pglite';
 import type {NeonQueryFunction} from '@neondatabase/serverless';
-import {getPartnerMissionBoard,insertPartnerMission,decidePartnerMission,changeStorageItem,forfeitStorageItem,type MissionInput} from './partner-mission-store.ts';
+import {getPartnerMissionBoard,insertPartnerMission,decidePartnerMission,changeStorageItem,forfeitStorageItem,dismissDeclinedMission,type MissionInput} from './partner-mission-store.ts';
 const pg=new PGlite();
 type Statement={text:string;values:unknown[]};
 const tag=(parts:TemplateStringsArray,...values:unknown[]):Statement=>({text:parts.reduce((s,p,i)=>s+(i?`$${i}`:'')+p,''),values});
@@ -248,4 +248,16 @@ test('giving up a prize is owner-only, clears the pending request and cannot be 
  assert.deepEqual((await getPartnerMissionBoard(client,partner,at('00:28'))).items,[]);
  const [stored]=(await pg.query('select status,quantity_remaining,requested_at from partner_storage_items')).rows;
  assert.deepEqual(stored,{status:'forfeited',quantity_remaining:0,requested_at:null});
+});
+
+test('a declined invitation stays only until the sender dismisses it or seven days pass',async()=>{
+ const id=await invited();
+ assert(await decidePartnerMission(client,partner,id,'decline',at('00:05')));
+ assert.equal((await getPartnerMissionBoard(client,me,at('00:06'))).missions[0].status,'declined');
+ assert.equal(await dismissDeclinedMission(client,partner,id),false,'only the sender can dismiss');
+ assert(await dismissDeclinedMission(client,me,id));
+ assert.equal((await getPartnerMissionBoard(client,me,at('00:07'))).missions.length,0);
+ const stale=await invited();
+ assert(await decidePartnerMission(client,partner,stale,'decline',at('00:05')));
+ assert.equal((await getPartnerMissionBoard(client,me,new Date('2026-01-09T00:00:00Z'))).missions.length,0);
 });

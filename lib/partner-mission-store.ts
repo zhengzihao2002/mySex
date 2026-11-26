@@ -39,6 +39,9 @@ type MissionRow={end_requested:boolean;goals:MissionGoal[]|null;goal_progress:Ar
 const readMissions=async(client:Client,a:PartnerMissionActor)=>await client`select m.*, exists(select 1 from partner_goal_end_requests r where r.goal_id=m.id and r.created_at>now()-interval '7 days') as end_requested from partner_missions m join couples c on c.id=m.couple_id join profiles p on p.user_id=${a.userId} and p.couple_id=c.id join profiles other on other.user_id=${a.partnerId} and other.couple_id=c.id where m.couple_id=${a.coupleId} and c.unpaired_at is null and ${a.userId} in(c.male_id,c.female_id) and ${a.partnerId} in(c.male_id,c.female_id) order by m.created_at desc` as unknown as MissionRow[];
 export async function getPartnerMissionBoard(client:Client,a:PartnerMissionActor,now=new Date()):Promise<{missions:PartnerMission[];items:StorageItem[]}>{
  if(!await partnerMissionMember(client,a))return {missions:[],items:[]};
+ // A declined invitation only lives on as the sender's Inbox notice, for at most seven days.
+ await client`delete from partner_missions where couple_id=${a.coupleId} and status='declined'
+   and updated_at<=${now.toISOString()}::timestamptz-interval '7 days'`;
  let rows=await readMissions(client,a);
  await client`delete from partner_goal_end_requests r using partner_missions m
    where r.goal_id=m.id and m.couple_id=${a.coupleId}
@@ -154,4 +157,12 @@ export async function forfeitStorageItem(client:Client, actor:PartnerMissionActo
       and item.status in ('ready','requested') and item.quantity_remaining>0
     returning item.id`;
   return rows.length>0;
+}
+
+/** The sender dismisses the notice of a declined invitation; the goal is then deleted. */
+export async function dismissDeclinedMission(client:Client,a:PartnerMissionActor,id:string){
+ if(!await partnerMissionMember(client,a))return false;
+ const rows=await client`delete from partner_missions where id=${id} and couple_id=${a.coupleId}
+   and issuer_id=${a.userId} and status='declined' returning id`;
+ return rows.length>0;
 }
