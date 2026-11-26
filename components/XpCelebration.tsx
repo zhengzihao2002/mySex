@@ -10,10 +10,17 @@ import {useT} from './I18nProvider';
 import {ScoreReveal} from './ScoreBadge';
 
 export function SavedSessionReveal({celebration,onClose}:{celebration:SaveCelebration;onClose:()=>void}) {
-  const [watching,setWatching]=useState(!!celebration.reward);
+  const reward=celebration.reward;
+  // The celebration is for a new level or a completed quest. Plain XP gains
+  // appear as a small card on the score screen instead.
+  const before=reward?coupleRank(reward.beforeXp):null,after=reward?coupleRank(reward.afterXp):null;
+  const levelUp=!!before&&!!after&&after.level>before.level;
+  const celebrate=!!reward&&(levelUp||reward.completedMissions.length>0);
+  const [watching,setWatching]=useState(celebrate);
   const s=celebration.session;
   return <>
-    <ScoreReveal score={celebration.score} times={{startedAt:s.startedAt,activeSec:s.durationSec??0,breakSec:s.pausedSec,breaks:s.breaks}} onClose={onClose}/>
+    <ScoreReveal score={celebration.score} times={{startedAt:s.startedAt,activeSec:s.durationSec??0,breakSec:s.pausedSec,breaks:s.breaks}}
+      reward={reward&&after?{xp:Math.max(0,reward.afterXp-reward.beforeXp),level:after.level,title:after.title,levelUp,missions:reward.completedMissions.length}:undefined} onClose={onClose}/>
     {watching&&celebration.reward&&<XpCelebration reward={celebration.reward} onContinue={()=>setWatching(false)}/>}
   </>;
 }
@@ -70,7 +77,7 @@ export function XpCelebration({reward,onContinue}:{reward:XpReward;onContinue:()
     <div className="pointer-events-none absolute inset-x-8 top-0 h-32 rounded-full bg-rose/20 blur-3xl"/>
     <div className="relative space-y-5 text-center">
       <p className="text-xs font-semibold tracking-[0.2em] text-rose-2">✦ {t('Intercourse saved')}</p>
-      <h2 id="xp-reward-title" className="font-display text-2xl font-bold">{t('Your story levels up')}</h2>
+      <h2 id="xp-reward-title" className="font-display text-2xl font-bold">{final.level>initial.level?t('Your story levels up'):t('Quest complete')}</h2>
       <p className="text-xs text-ink-3">{t('Started at level {level} · {xp} XP',{level:initial.level,xp:reward.beforeXp.toLocaleString()})}</p>
       <div key={frame.level} className={`relative mx-auto flex h-24 w-24 items-center justify-center rounded-full border-2 bg-gradient-to-br from-plum/40 to-rose/20 shadow-lg ${upgraded?'border-amber-300/80 shadow-amber-300/15':'border-rose/60 shadow-rose/20'} motion-safe:animate-fade`}>
         <span className="text-4xl font-bold tabular-nums">{frame.level}</span>

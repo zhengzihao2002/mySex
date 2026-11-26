@@ -5,6 +5,7 @@ import { getLang } from '@/lib/i18n/server';
 import './globals.css';
 import { WaterBackground } from '@/components/WaterBackground';
 import { MotionProvider } from '@/components/Motion';
+import { KeyboardFloat } from '@/components/KeyboardFloat';
 
 export const metadata: Metadata = {
   title: 'mySex',
@@ -32,6 +33,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang={lang === 'zh' ? 'zh-CN' : 'en'} data-font-en={fonts.en} data-font-zh={fonts.zh}>
       <body className="antialiased water-scene">
         <WaterBackground />
+        <KeyboardFloat />
         <I18nProvider lang={lang}><MotionProvider>{children}</MotionProvider></I18nProvider>
       </body>
     </html>

@@ -178,6 +178,7 @@ export const zh: Record<string, string> = {
   "All quests completed": "全部任务已完成",
   "Intercourse saved": "性交记录已保存",
   "Your story levels up": "我们的故事，升级了",
+  "Quest complete": "任务完成",
   "Started at level {level} · {xp} XP": "原等级 {level} · {xp} 点经验",
   "Total XP": "总经验",
   "Level progress": "等级进度",

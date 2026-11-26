@@ -7,12 +7,7 @@ import {X} from 'lucide-react';
 import {OVERLAY_TRANSITION} from '@/lib/overlay-motion';
 import {useT} from './I18nProvider';
 import {lockPageScroll} from '@/lib/page-scroll-lock';
-
-// Fields that open the on-screen keyboard.
-const TEXT_ENTRY='input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=hidden]):not([type=button]):not([type=submit]):not([type=reset]):not([type=file]):not([type=color]),textarea,[contenteditable="true"]';
-// The last measured keyboard height, so the next sheet can make room for it
-// before the keyboard finishes rising.
-let knownKeyboard=0;
+import {KEYBOARD_EVENT,TEXT_ENTRY,keyboardHeight} from './KeyboardFloat';
 
 type SheetProps={open:boolean;onClose:()=>void;title?:React.ReactNode;children:React.ReactNode;viewKey?:string;stableHeight?:boolean};
 
@@ -56,21 +51,18 @@ function SheetPanel({onClose,title,children,viewKey,stableHeight=false}:Omit<She
     const node=root.current;
     const panel=dialog.current;
     const trigger=document.activeElement instanceof HTMLElement?document.activeElement:null;
-    let layoutWidth=document.documentElement.clientWidth;
-    let layoutHeight=node.clientHeight;
     const unlock=lockPageScroll();
     const top=()=>Array.from(document.querySelectorAll('[data-app-sheet]')).at(-1)===node;
-    const viewport=window.visualViewport;
     const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const touch=window.matchMedia('(pointer: coarse)').matches;
-    // The keyboard floats over the sheet like a native overlay. The panel never
+    // The keyboard floats over the sheet (see KeyboardFloat). The panel never
     // moves or resizes: it only gains scroll room underneath, and the focused
     // field glides into view as the keyboard rises. Content stays painted
     // behind the translucent keyboard instead of being clipped.
-    let keyboard=0,room=0,detected=false,release=0,fallback=0;
+    let room=0,release=0;
     const field=()=>{const active=document.activeElement;return active instanceof HTMLElement&&panel.contains(active)&&active.matches(TEXT_ENTRY)?active:null;};
     const setRoom=(height:number)=>{
       const area=content.current;if(!area)return;
+      clearTimeout(release);
       if(!panel.style.height)panel.style.height=`${panel.offsetHeight}px`;
       room=height;
       area.style.paddingBottom=`calc(env(safe-area-inset-bottom) + 24px + ${height}px)`;
@@ -78,52 +70,30 @@ function SheetPanel({onClose,title,children,viewKey,stableHeight=false}:Omit<She
     const reveal=(height:number)=>{
       const area=content.current,target=field();
       if(!area||!target||!top())return;
-      const pan=viewport?.offsetTop??0;
       const box=area.getBoundingClientRect(),rect=target.getBoundingClientRect();
-      const keyboardTop=layoutHeight-height,margin=20;
-      const visibleBottom=Math.min(box.bottom-pan,keyboardTop)-margin;
+      const visibleBottom=Math.min(box.bottom,node.clientHeight-height)-20;
       let delta=0;
-      if(rect.bottom-pan>visibleBottom)delta=Math.min(rect.bottom-pan-visibleBottom,rect.top-box.top-margin);
-      else if(rect.top<box.top+margin)delta=rect.top-box.top-margin;
+      if(rect.bottom>visibleBottom)delta=Math.min(rect.bottom-visibleBottom,rect.top-box.top-20);
+      else if(rect.top<box.top+20)delta=rect.top-box.top-20;
       if(Math.abs(delta)>1)area.scrollTo({top:area.scrollTop+delta,behavior:reducedMotion?'auto':'smooth'});
     };
     const finish=()=>{
       // Glide back out of the extra room first, then remove it, so nothing jumps.
       const area=content.current;
-      clearTimeout(fallback);detected=false;keyboard=0;
-      if(!area||!area.style.paddingBottom)return;
+      if(!area||!room)return;
       const limit=Math.max(0,area.scrollHeight-area.clientHeight-room);
       if(area.scrollTop>limit)area.scrollTo({top:limit,behavior:reducedMotion?'auto':'smooth'});
       clearTimeout(release);
-      release=window.setTimeout(()=>{if(field()&&detected)return;area.style.paddingBottom='';room=0;panel.style.height='';panel.style.translate='';},reducedMotion?0:380);
+      release=window.setTimeout(()=>{if(keyboardHeight()>0)return;area.style.paddingBottom='';room=0;panel.style.height='';},reducedMotion?0:420);
     };
-    const onFocus=()=>{
-      if(!field()||!touch)return;
-      clearTimeout(release);
-      const height=detected?keyboard:(knownKeyboard||Math.round(layoutHeight*.42));
-      setRoom(height);reveal(height);
-      // A hardware keyboard never opens one on screen; drop the spare room.
-      clearTimeout(fallback);
-      if(!detected)fallback=window.setTimeout(()=>{if(!detected)finish();},900);
+    const onKeyboard=()=>{
+      const height=keyboardHeight();
+      if(height>0&&field()){setRoom(height);reveal(height);}
+      else if(height===0)finish();
     };
-    const onViewport=()=>{
-      const width=document.documentElement.clientWidth;
-      if(width!==layoutWidth){layoutWidth=width;layoutHeight=node.clientHeight;}
-      const visibleHeight=viewport?.height??window.innerHeight,pan=viewport?.offsetTop??0;
-      const open=!!field()&&layoutHeight-visibleHeight>120;
-      // If Safari pans the page anyway, cancel it out so the panel stays put.
-      panel.style.translate=open&&pan>0?`0 ${pan}px`:'';
-      if(open){
-        const height=layoutHeight-visibleHeight;
-        const changed=Math.abs(height-keyboard)>8;
-        detected=true;keyboard=height;knownKeyboard=height;
-        clearTimeout(release);clearTimeout(fallback);
-        if(changed){setRoom(height);reveal(height);}
-      }else if(detected||(!field()&&content.current?.style.paddingBottom))finish();
-    };
-    viewport?.addEventListener('resize',onViewport);
-    viewport?.addEventListener('scroll',onViewport);
-    window.addEventListener('resize',onViewport);
+    // Moving between fields with the keyboard already up.
+    const onFocus=()=>{if(keyboardHeight()>0&&field())onKeyboard();};
+    window.addEventListener(KEYBOARD_EVENT,onKeyboard);
     panel.addEventListener('focusin',onFocus);
     panel.focus({preventScroll:true});
     const onKey=(e:KeyboardEvent)=>{
@@ -139,12 +109,10 @@ function SheetPanel({onClose,title,children,viewKey,stableHeight=false}:Omit<She
     window.addEventListener('keydown',onKey);
     return ()=>{
       unlock();
-      clearTimeout(release);clearTimeout(fallback);
+      clearTimeout(release);
+      window.removeEventListener(KEYBOARD_EVENT,onKeyboard);
       panel.removeEventListener('focusin',onFocus);
       window.removeEventListener('keydown',onKey);
-      viewport?.removeEventListener('resize',onViewport);
-      viewport?.removeEventListener('scroll',onViewport);
-      window.removeEventListener('resize',onViewport);
       if(trigger?.isConnected)trigger.focus({preventScroll:true});
     };
   },[]);

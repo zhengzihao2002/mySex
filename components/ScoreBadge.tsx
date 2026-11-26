@@ -47,6 +47,7 @@ export type RewardReveal={xp:number;level:number;title:string;levelUp:boolean;mi
 export function ScoreReveal({ score, times, reward, onClose }: { score: Score; times?: RevealTimes; reward?:RewardReveal; onClose: () => void }) {
   useLayoutEffect(()=>lockPageScroll(),[]);
   const { t } = useT();
+  useEffect(()=>{const onKey=(e:KeyboardEvent)=>{if(e.key==='Escape')onClose();};window.addEventListener('keydown',onKey);return()=>window.removeEventListener('keydown',onKey);},[onClose]);
   const [shown, setShown] = useState(0);
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { setShown(score.total); return; }
@@ -64,8 +65,9 @@ export function ScoreReveal({ score, times, reward, onClose }: { score: Score; t
   const R = 92;
   const C = 2 * Math.PI * R;
   return (
-    <div className="fixed inset-0 z-[60] flex animate-fade flex-col items-center overflow-y-auto overscroll-contain bg-bg/95 px-6 py-8 backdrop-blur-2xl" onClick={onClose}>
-      <button type="button" className="btn-ghost mb-3 shrink-0" onClick={onClose}>{t('Close')}</button>
+    <div role="dialog" aria-modal="true" aria-label={t('mySex Score')} className="fixed inset-0 z-[60] flex animate-fade flex-col items-center overflow-y-auto overscroll-contain bg-bg/95 px-6 pt-[max(env(safe-area-inset-top),32px)] pb-[max(env(safe-area-inset-bottom),32px)] backdrop-blur-2xl" onClick={onClose}>
+      {/* The whole screen closes on tap; this button only serves screen readers. */}
+      <button type="button" className="sr-only" onClick={onClose}>{t('Close')}</button>
       <p className="text-sm font-semibold tracking-[0.3em] text-ink-3 uppercase">{t('mySex Score')}</p>
       <div className="relative my-4 h-48 w-48 shrink-0">
         <svg viewBox="0 0 220 220" className="h-full w-full -rotate-90">

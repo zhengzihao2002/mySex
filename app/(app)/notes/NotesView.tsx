@@ -12,6 +12,7 @@ import { useTz } from '@/components/TzProvider';
 import { useRun } from '@/components/useRun';
 import { NOTE_KINDS } from '@/lib/content';
 import { lockPageScroll } from '@/lib/page-scroll-lock';
+import { KEYBOARD_EVENT } from '@/components/KeyboardFloat';
 import type { LoveNote } from '@/lib/types';
 
 // i18n:begin
@@ -38,52 +39,21 @@ export function NotesView({ notes, meId, partnerName, partnerAvatar }: { notes: 
   const scrolled = useRef(false);
   const unread = notes.some((n) => n.fromUser !== meId && !n.readAt);
 
-  useLayoutEffect(() => {
-    const node = page.current;
-    const frame = node?.closest<HTMLElement>('.app-frame');
-    if (!node || !frame) return;
-    const unlock = lockPageScroll();
-    const viewport = window.visualViewport;
-    let layoutHeight = window.innerHeight;
-    let layoutWidth = window.innerWidth;
-    let animationFrame = 0;
-    const resize = () => {
-      const active = document.activeElement;
-      const typing = active instanceof HTMLElement && node.contains(active) && active.matches('input,textarea,[contenteditable="true"]');
-      if (layoutWidth !== window.innerWidth || !typing) {
-        layoutWidth = window.innerWidth;
-        layoutHeight = window.innerHeight;
-      }
-      const height = viewport?.height ?? window.innerHeight;
-      // Keep the newest notes in view while the keyboard opens or closes.
-      const list = thread.current;
-      const pinned = !!list && list.scrollHeight - list.scrollTop - list.clientHeight < 48;
-      frame.style.setProperty('--notes-height', `${height}px`);
-      frame.style.setProperty('--notes-top', `${viewport?.offsetTop ?? 0}px`);
-      node.dataset.keyboardOpen = String(typing && layoutHeight - height > 120);
-      if (pinned && list) list.scrollTop = list.scrollHeight;
+  // The page keeps its full height while typing; the keyboard floats over it
+  // and only the composer rises with it (see KeyboardFloat and globals.css).
+  useLayoutEffect(() => lockPageScroll(), []);
+  useEffect(() => {
+    let pinned = true;
+    const list = thread.current;
+    const track = () => { if (list) pinned = list.scrollHeight - list.scrollTop - list.clientHeight < 48; };
+    list?.addEventListener('scroll', track, { passive: true });
+    const onKeyboard = () => {
+      if (!list || !pinned) return;
+      // Wait one frame for the extra scroll room, then keep the newest notes in view.
+      requestAnimationFrame(() => list.scrollTo({ top: list.scrollHeight, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }));
     };
-    const schedule = () => {
-      cancelAnimationFrame(animationFrame);
-      animationFrame = requestAnimationFrame(resize);
-    };
-    resize();
-    viewport?.addEventListener('resize', schedule);
-    viewport?.addEventListener('scroll', schedule);
-    window.addEventListener('resize', schedule);
-    node.addEventListener('focusin', schedule);
-    node.addEventListener('focusout', schedule);
-    return () => {
-      cancelAnimationFrame(animationFrame);
-      viewport?.removeEventListener('resize', schedule);
-      viewport?.removeEventListener('scroll', schedule);
-      window.removeEventListener('resize', schedule);
-      node.removeEventListener('focusin', schedule);
-      node.removeEventListener('focusout', schedule);
-      frame.style.removeProperty('--notes-height');
-      frame.style.removeProperty('--notes-top');
-      unlock();
-    };
+    window.addEventListener(KEYBOARD_EVENT, onKeyboard);
+    return () => { list?.removeEventListener('scroll', track); window.removeEventListener(KEYBOARD_EVENT, onKeyboard); };
   }, []);
 
   useEffect(() => {
