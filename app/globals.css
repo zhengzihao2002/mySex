@@ -138,7 +138,10 @@ html[data-keyboard='open'] .notes-composer { background: #0e070de6; -webkit-back
 .nav-dock { transition: opacity .2s; }
 html[data-keyboard='open'] .nav-dock { opacity: 0; pointer-events: none; }
 /* Scroll room so fields near the bottom of a page can rise above the keyboard. */
-body { padding-bottom: var(--keyboard-room, 0px); }
+body:not([style*='overflow: hidden']) { padding-bottom: var(--keyboard-room, 0px); }
+/* Fixed screens keep their full height and stay glued to the visible area while the keyboard floats over them. */
+[data-app-sheet], .app-frame:has(.notes-page) { translate: 0 var(--vv-top, 0px); }
+html[data-keyboard='open'] [data-app-sheet], html[data-keyboard='open'] .app-frame:has(.notes-page) { height: var(--app-height); }
 .notes-bubble-own { background: linear-gradient(135deg, #b82669, #7c2566); }
 .timer-start { border: 1px solid #ff3d7f40; border-radius: 50%; background: radial-gradient(circle, #ff3d7f10, transparent 70%); }
 .timer-start > span:nth-child(3) { background: linear-gradient(135deg, #cf205e, #9b2c6f 55%, #7c3aed); box-shadow: 0 0 60px #ff3d7f55, 0 0 0 12px #ff3d7f12, 0 0 0 30px #ff3d7f06; }

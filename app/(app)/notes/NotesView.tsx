@@ -49,8 +49,8 @@ export function NotesView({ notes, meId, partnerName, partnerAvatar }: { notes: 
     list?.addEventListener('scroll', track, { passive: true });
     const onKeyboard = () => {
       if (!list || !pinned) return;
-      // Wait one frame for the extra scroll room, then keep the newest notes in view.
-      requestAnimationFrame(() => list.scrollTo({ top: list.scrollHeight, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }));
+      // Stay on the newest note instantly: no sliding list while the keyboard moves.
+      list.scrollTop = list.scrollHeight;
     };
     window.addEventListener(KEYBOARD_EVENT, onKeyboard);
     return () => { list?.removeEventListener('scroll', track); window.removeEventListener(KEYBOARD_EVENT, onKeyboard); };
