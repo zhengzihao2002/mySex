@@ -97,9 +97,16 @@ export function KeyboardFloat(){
     // 2. Track the keyboard. Start moving with the predicted height so the app
     //    rises together with the keyboard, then settle on the measured one.
     const onFocusIn=()=>{
-      if(!field())return;
+      const target=field();
+      if(!target)return;
       clearTimeout(blurTimer);
       if(locked())hold={x:window.scrollX,y:window.scrollY};
+      // Notes lays out its composer from the live visual viewport.
+      if(target.closest('.notes-composer')){
+        measured=false;
+        if(height>0)publish(0);
+        return;
+      }
       // Only predict from a height measured earlier; never guess, so the screen moves once.
       if(height===0){measured=false;const known=remembered();if(known)publish(known);}
     };
@@ -111,7 +118,8 @@ export function KeyboardFloat(){
     const onViewport=()=>{
       const visible=viewport?.height??window.innerHeight;
       const gap=layoutHeight()-visible;
-      const open=!!field()&&gap>120;
+      const target=field();
+      const open=!!target&&!target.closest('.notes-composer')&&gap>120;
       // 3. Whatever Safari pans, keep fixed screens glued to the visible area.
       //    (Scrolling the window mid-animation made the screen jump.)
       root.style.setProperty('--vv-top',`${open||height>0?Math.max(0,viewport?.offsetTop??0):0}px`);
