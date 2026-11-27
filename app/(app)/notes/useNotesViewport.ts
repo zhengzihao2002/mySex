@@ -66,6 +66,8 @@ export function useNotesViewport(page: RefObject<HTMLDivElement | null>, thread:
     const readHeight = () => viewport?.height ?? window.innerHeight;
     let restingHeight = readHeight();
     let restingWidth = document.documentElement.clientWidth;
+    let previousHeight = restingHeight;
+    let lastHeightChange = -Infinity;
     let keyboardOpen = false;
     let pinned = true;
     let listHeight = list.clientHeight;
@@ -75,7 +77,8 @@ export function useNotesViewport(page: RefObject<HTMLDivElement | null>, thread:
       if (height <= 0) return;
       const width = document.documentElement.clientWidth;
       const focused = document.activeElement === composer;
-      if (width !== restingWidth) {
+      const widthChanged = width !== restingWidth;
+      if (widthChanged) {
         restingWidth = width;
         restingHeight = focused || keyboardOpen ? Math.max(height, window.innerHeight) : height;
       }
@@ -92,8 +95,16 @@ export function useNotesViewport(page: RefObject<HTMLDivElement | null>, thread:
         keyboardCoverage = 0;
       }
 
-      // Each viewport update moves the bottom edge immediately. offsetTop is
-      // deliberately excluded: it can report a stale native focus scroll on iOS.
+      // Follow live keyboard frames without adding lag. Some versions of
+      // Safari send one large resize instead of streaming the movement.
+      if (height !== previousHeight || widthChanged) {
+        const now = performance.now();
+        const isolatedJump = Math.abs(height - previousHeight) >= 72 && now - lastHeightChange > 80;
+        notes.dataset.keyboardGlide = String(touchDevice.matches && !widthChanged && (keyboardOpen || wasOpen) && isolatedJump);
+        previousHeight = height;
+        lastHeightChange = now;
+      }
+      // Ignore offsetTop, which can report a stale native focus scroll on iOS.
       frame.style.setProperty('--notes-visible-height', `${height}px`);
       frame.style.setProperty('--notes-keyboard-coverage', `${keyboardCoverage}px`);
       body.style.setProperty('--notes-resting-height', `${restingHeight}px`);
@@ -149,6 +160,7 @@ export function useNotesViewport(page: RefObject<HTMLDivElement | null>, thread:
       frame.style.removeProperty('--notes-keyboard-coverage');
       body.style.removeProperty('--notes-resting-height');
       delete notes.dataset.keyboardOpen;
+      delete notes.dataset.keyboardGlide;
       stopFocusOnTap();
       unlock();
     };

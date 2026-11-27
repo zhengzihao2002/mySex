@@ -130,11 +130,15 @@ h1.font-display { line-height: 1.15; font-size: clamp(2rem, 4vw, 2.6rem); }
   --notes-dock: calc(max(12px, env(safe-area-inset-bottom)) + 84px);
   position: fixed;
   inset: 0 0 auto;
-  height: var(--notes-visible-height, 100dvh);
+  --notes-bottom-space: max(8px, calc(var(--notes-dock) - var(--notes-keyboard-coverage, 0px)));
+  height: calc(var(--notes-visible-height, 100dvh) - var(--notes-bottom-space));
   display: flex;
   flex-direction: column;
   overflow: clip;
-  padding-bottom: max(8px, calc(var(--notes-dock) - var(--notes-keyboard-coverage, 0px)));
+  padding-bottom: 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .app-frame:has(.notes-page[data-keyboard-glide='true']) { transition: height .24s cubic-bezier(.25, .1, .25, 1); }
 }
 .notes-page { margin-inline: calc(-1 * var(--page-gutter)); padding-inline: var(--page-gutter); display: flex; flex: 1; flex-direction: column; min-height: 0; min-width: 0; overflow: clip; }
 .notes-page > .notes-header { flex-shrink: 0; margin-bottom: 0; padding-bottom: 20px; }
