@@ -3,7 +3,7 @@ import { SelectionPill } from '@/components/Motion';
 import { SymbolIcon } from '@/components/SymbolIcon';
 import { useT } from '@/components/I18nProvider';
 
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Send } from 'lucide-react';
 import { clearNotes, deleteNote, editNote, markNotesRead, sendNote } from '@/app/actions';
 import { Sheet } from '@/components/Sheet';
@@ -11,7 +11,6 @@ import { FormError } from '@/components/FormError';
 import { useTz } from '@/components/TzProvider';
 import { useRun } from '@/components/useRun';
 import { NOTE_KINDS } from '@/lib/content';
-import { lockPageScroll } from '@/lib/page-scroll-lock';
 import { useNotesViewport } from './useNotesViewport';
 import type { LoveNote } from '@/lib/types';
 
@@ -39,7 +38,6 @@ export function NotesView({ notes, meId, partnerName, partnerAvatar }: { notes: 
   const scrolled = useRef(false);
   const unread = notes.some((n) => n.fromUser !== meId && !n.readAt);
 
-  useLayoutEffect(() => lockPageScroll(), []);
   useNotesViewport(page, thread);
 
   useEffect(() => {

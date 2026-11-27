@@ -77,6 +77,7 @@ export function KeyboardFloat(){
       const label=element?.closest('label');
       const target=(element?.closest(TEXT_ENTRY)??(label?.control?.matches(TEXT_ENTRY)?label.control:null)) as HTMLElement|null;
       if(!target||target===document.activeElement||(target as HTMLInputElement).disabled||(target as HTMLInputElement).readOnly)return;
+      if(target.closest('.notes-composer'))return;
       const previous=target.style.opacity;
       target.style.opacity='0';
       let restored=false;
@@ -100,17 +101,19 @@ export function KeyboardFloat(){
       const target=field();
       if(!target)return;
       clearTimeout(blurTimer);
-      if(locked())hold={x:window.scrollX,y:window.scrollY};
       // Notes lays out its composer from the live visual viewport.
       if(target.closest('.notes-composer')){
         measured=false;
+        hold=null;
         if(height>0)publish(0);
         return;
       }
+      if(locked())hold={x:window.scrollX,y:window.scrollY};
       // Only predict from a height measured earlier; never guess, so the screen moves once.
       if(height===0){measured=false;const known=remembered();if(known)publish(known);}
     };
-    const onFocusOut=()=>{
+    const onFocusOut=(event:FocusEvent)=>{
+      if(event.target instanceof Element&&event.target.closest('.notes-composer'))return;
       clearTimeout(blurTimer);
       // Focus may be moving to another field; only close when none follows.
       blurTimer=window.setTimeout(()=>{if(!field()){measured=false;publish(0);root.style.setProperty('--vv-top','0px');settleAfterClose();}},60);

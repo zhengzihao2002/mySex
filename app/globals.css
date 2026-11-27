@@ -124,20 +124,34 @@ h1.font-display { line-height: 1.15; font-size: clamp(2rem, 4vw, 2.6rem); }
 [data-sheet-scroll] form > div:not(.grid) + div:not(.grid) { margin-top: 22px; }
 [data-sheet-scroll] legend .symbol-icon { margin-right: 4px; }
 [data-sheet-scroll] .label { line-height: 1.5; }
-/* Notes has no document scroll. The fixed frame provides a stable reference
-   while the composer and thread share the changing space inside it. */
-body:has(.notes-page) { min-height: 0; }
-.app-frame:has(.notes-page) { --notes-dock: calc(max(12px, env(safe-area-inset-bottom)) + 84px); position: fixed; inset: 0; min-height: 0; display: flex; flex-direction: column; overflow: clip; padding-bottom: var(--notes-dock); transition: padding-bottom .18s var(--ease-ui); }
-.app-frame:has(.notes-page[data-keyboard-open='true']) { padding-bottom: calc(var(--notes-keyboard-inset, 0px) + 8px); }
-.notes-page { margin-top: var(--notes-pan, 0px); margin-inline: calc(-1 * var(--page-gutter)); padding-inline: var(--page-gutter); display: flex; flex: 1; flex-direction: column; min-height: 0; min-width: 0; overflow: clip; }
+/* The keyboard consumes the space below the composer first. After that,
+   the composer follows the keyboard and the thread gives up its height. */
+.app-frame:has(.notes-page) {
+  --notes-dock: calc(max(12px, env(safe-area-inset-bottom)) + 84px);
+  position: fixed;
+  inset: 0 0 auto;
+  height: var(--notes-visible-height, 100dvh);
+  display: flex;
+  flex-direction: column;
+  overflow: clip;
+  padding-bottom: max(8px, calc(var(--notes-dock) - var(--notes-keyboard-coverage, 0px)));
+}
+.notes-page { margin-inline: calc(-1 * var(--page-gutter)); padding-inline: var(--page-gutter); display: flex; flex: 1; flex-direction: column; min-height: 0; min-width: 0; overflow: clip; }
 .notes-page > .notes-header { flex-shrink: 0; margin-bottom: 0; padding-bottom: 20px; }
 .notes-thread { flex: 1; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior-y: contain; padding: 4px 12px 20px 2px; scrollbar-gutter: stable; scrollbar-width: thin; scrollbar-color: var(--color-line) transparent; }
-.notes-options { margin-inline: calc(-1 * var(--page-gutter)); padding-inline: var(--page-gutter); scroll-padding-inline: var(--page-gutter); }
+.notes-options { margin-inline: calc(-1 * var(--page-gutter)); padding-inline: var(--page-gutter); scroll-padding-inline: var(--page-gutter); overscroll-behavior: contain; }
 .notes-composer { flex-shrink: 0; min-width: 0; border-top: 1px solid var(--color-line); padding-top: 12px; }
 
 /* The dock sits behind the keyboard while typing; fade it so it never shows through. */
 .nav-dock { transition: opacity .2s; }
 html[data-keyboard='open'] .nav-dock, body:has(.notes-page[data-keyboard-open='true']) .nav-dock { opacity: 0; pointer-events: none; }
+@media (width < 1000px) {
+  body:has(.notes-page) .nav-dock {
+    top: calc(var(--notes-resting-height, 100dvh) - max(12px, env(safe-area-inset-bottom)));
+    bottom: auto;
+    translate: 0 -100%;
+  }
+}
 /* Scroll room so fields near the bottom of a page can rise above the keyboard. */
 body:not(:has(.notes-page)):not([style*='overflow: hidden']) { padding-bottom: var(--keyboard-room, 0px); }
 /* Fixed screens keep their full height and stay glued to the visible area while the keyboard floats over them. */
@@ -286,6 +300,7 @@ html[data-font-zh='brush']:lang(zh-CN) :is(.font-display, h1, h2, .sheet-panel h
 /* A full-viewport fluid field: no translated image edges, masks or corner vignette. */
 .water-scene { isolation: isolate; background-image: none; }
 .water-background { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; contain: strict; background: #110910; }
+body:has(.notes-page) > .water-background { min-height: max(100lvh, var(--notes-resting-height, 100dvh)); }
 body:has(> .recording-layer) > .water-background { top: var(--recording-top, 0px); left: var(--recording-left, 0px); height: var(--recording-height, 100%); width: var(--recording-width, 100%); bottom: auto; right: auto; }
 .water-background--contained { position: absolute; z-index: 0; }
 .water-scene .timer-screen { background: transparent; }
