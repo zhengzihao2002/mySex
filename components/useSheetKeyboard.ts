@@ -18,14 +18,16 @@ export function useSheetKeyboard(
     let restingHeight = viewport.height;
     let restingWidth = document.documentElement.clientWidth;
     let previousHeight = restingHeight;
+    let reportedHeight = 0;
     let lastHeightChange = -Infinity;
     let keyboardOpen = false;
+    let closing = false;
     let settleTimer = 0;
     const activeField = () => sheet === Array.from(document.querySelectorAll('[data-app-sheet]')).at(-1)
       && !sheet.inert ? findKeyboardField(document.activeElement, area) : null;
 
     const revealField = () => {
-      const field = previousHeight < restingHeight ? activeField() : null;
+      const field = !closing && previousHeight < restingHeight ? activeField() : null;
       if (!field) return;
       const box = area.getBoundingClientRect();
       const rect = field.getBoundingClientRect();
@@ -41,29 +43,57 @@ export function useSheetKeyboard(
     };
 
     const measure = () => {
-      const height = viewport.height;
-      if (height <= 0) return;
+      const rawHeight = viewport.height;
+      if (rawHeight <= 0) return;
+      const heightChanged = rawHeight !== reportedHeight;
+      reportedHeight = rawHeight;
       const width = document.documentElement.clientWidth;
       const field = activeField();
       const rotated = width !== restingWidth;
+      // Focus and scroll events can repeat the last stale toolbar sample.
+      if (!heightChanged && !rotated && !field && !keyboardOpen) return;
       if (rotated) {
+        closing = false;
+        clearTimeout(settleTimer);
+        settleTimer = 0;
         restingWidth = width;
-        restingHeight = field || keyboardOpen ? Math.max(height, window.innerHeight) : height;
+        restingHeight = field || keyboardOpen ? Math.max(rawHeight, window.innerHeight) : rawHeight;
       }
-      if (!field && !keyboardOpen) restingHeight = height;
-      else restingHeight = Math.max(restingHeight, height);
 
       const wasOpen = keyboardOpen;
+      if (!rotated && wasOpen && (!field || (rawHeight > previousHeight && restingHeight - rawHeight <= 112))) {
+        closing = true;
+      }
+      // Safari can report full height, then briefly subtract its keyboard
+      // toolbar again. While dismissing, allow the form to expand only down.
+      const height = closing ? Math.min(restingHeight, Math.max(previousHeight, rawHeight)) : rawHeight;
+      if (!closing) {
+        restingHeight = !field && !wasOpen ? height : Math.max(restingHeight, height);
+      }
       const coverage = field || wasOpen ? restingHeight - height : 0;
-      keyboardOpen = coverage > (wasOpen ? 0 : 60);
-      clearTimeout(settleTimer);
-      if (wasOpen && coverage > 0 && coverage <= 32) {
-        // A late closing frame should not move the shell. Rebase only if the
-        // browser has finished with a slightly different resting viewport.
+      keyboardOpen = closing || coverage > (wasOpen ? 0 : 60);
+      if (closing && (coverage <= 32 || field) && (heightChanged || !settleTimer)) {
+        clearTimeout(settleTimer);
         settleTimer = window.setTimeout(() => {
-          restingHeight = viewport.height;
-          measure();
-        }, 120);
+          settleTimer = 0;
+          if (coverage > 32) {
+            // A shorter keyboard can look like the start of dismissal.
+            if (activeField()) {
+              closing = false;
+              measure();
+            }
+            return;
+          }
+          // Finish at the lowest form edge already reached, even if the last
+          // native notification was a stale, smaller viewport.
+          if (previousHeight < restingHeight) sheet.dataset.sheetKeyboardGlide = 'false';
+          restingHeight = previousHeight;
+          closing = false;
+          keyboardOpen = false;
+          sheet.style.setProperty('--sheet-resting-height', `${restingHeight}px`);
+          sheet.style.setProperty('--sheet-bottom-reserve', '0px');
+          activeField()?.blur();
+        }, 160);
       }
 
       if (height !== previousHeight || rotated) {
@@ -77,8 +107,16 @@ export function useSheetKeyboard(
       // visual viewport height; Safari can briefly report a stale offsetTop.
       sheet.style.setProperty('--sheet-resting-height', `${restingHeight}px`);
       sheet.style.setProperty('--sheet-bottom-reserve', `${coverage > 0 ? coverage + 8 : 0}px`);
-      if (wasOpen && !keyboardOpen) field?.blur();
       revealField();
+    };
+
+    const onFocus = () => {
+      if (closing && activeField()) {
+        closing = false;
+        clearTimeout(settleTimer);
+        settleTimer = 0;
+      }
+      measure();
     };
 
     const observer = new ResizeObserver(revealField);
@@ -86,7 +124,7 @@ export function useSheetKeyboard(
     viewport.addEventListener('resize', measure);
     viewport.addEventListener('scroll', measure);
     window.addEventListener('resize', measure);
-    area.addEventListener('focusin', measure);
+    area.addEventListener('focusin', onFocus);
     area.addEventListener('focusout', measure);
     measure();
 
@@ -97,7 +135,7 @@ export function useSheetKeyboard(
       viewport.removeEventListener('resize', measure);
       viewport.removeEventListener('scroll', measure);
       window.removeEventListener('resize', measure);
-      area.removeEventListener('focusin', measure);
+      area.removeEventListener('focusin', onFocus);
       area.removeEventListener('focusout', measure);
       sheet.style.removeProperty('--sheet-resting-height');
       sheet.style.removeProperty('--sheet-bottom-reserve');
