@@ -2,51 +2,12 @@
 
 import { useLayoutEffect, type RefObject } from 'react';
 import { lockPageScroll } from '@/lib/page-scroll-lock';
+import { installKeyboardTapFocus, isIsolatedKeyboardStep } from '@/lib/keyboard-viewport';
 
 function resetDocumentScroll() {
   if (window.scrollX || window.scrollY) {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   }
-}
-
-/** iOS's default tap can pan the native viewport even when the document is locked. */
-function focusOnTap(composer: HTMLTextAreaElement) {
-  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent)
-    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  if (!isIOS) return () => {};
-
-  let tap: { id: number; x: number; y: number; time: number } | null = null;
-  const cancel = () => { tap = null; };
-  const start = (event: TouchEvent) => {
-    const touch = event.touches[0];
-    tap = event.touches.length === 1
-      ? { id: touch.identifier, x: touch.clientX, y: touch.clientY, time: event.timeStamp }
-      : null;
-  };
-  const moved = (touch: Touch) => !tap || touch.identifier !== tap.id
-    || Math.hypot(touch.clientX - tap.x, touch.clientY - tap.y) > 10;
-  const move = (event: TouchEvent) => {
-    if (event.touches.length !== 1 || moved(event.touches[0])) cancel();
-  };
-  const end = (event: TouchEvent) => {
-    const quickTap = tap && event.timeStamp - tap.time < 450
-      && event.touches.length === 0 && event.changedTouches.length === 1 && !moved(event.changedTouches[0]);
-    cancel();
-    if (!quickTap || !event.cancelable || event.defaultPrevented || document.activeElement === composer) return;
-    // Keep focus in the user gesture so iOS still opens the keyboard.
-    event.preventDefault();
-    composer.focus({ preventScroll: true });
-  };
-  composer.addEventListener('touchstart', start, { passive: true });
-  composer.addEventListener('touchmove', move, { passive: true });
-  composer.addEventListener('touchcancel', cancel);
-  composer.addEventListener('touchend', end, { passive: false });
-  return () => {
-    composer.removeEventListener('touchstart', start);
-    composer.removeEventListener('touchmove', move);
-    composer.removeEventListener('touchcancel', cancel);
-    composer.removeEventListener('touchend', end);
-  };
 }
 
 export function useNotesViewport(page: RefObject<HTMLDivElement | null>, thread: RefObject<HTMLDivElement | null>) {
@@ -59,7 +20,7 @@ export function useNotesViewport(page: RefObject<HTMLDivElement | null>, thread:
 
     resetDocumentScroll();
     const unlock = lockPageScroll();
-    const stopFocusOnTap = focusOnTap(composer);
+    const stopFocusOnTap = installKeyboardTapFocus(composer);
     const viewport = window.visualViewport;
     const touchDevice = window.matchMedia('(pointer: coarse)');
     const body = document.body;
@@ -99,7 +60,7 @@ export function useNotesViewport(page: RefObject<HTMLDivElement | null>, thread:
       // Safari send one large resize instead of streaming the movement.
       if (height !== previousHeight || widthChanged) {
         const now = performance.now();
-        const isolatedJump = Math.abs(height - previousHeight) >= 72 && now - lastHeightChange > 80;
+        const isolatedJump = isIsolatedKeyboardStep(height - previousHeight, now - lastHeightChange);
         notes.dataset.keyboardGlide = String(touchDevice.matches && !widthChanged && (keyboardOpen || wasOpen) && isolatedJump);
         previousHeight = height;
         lastHeightChange = now;

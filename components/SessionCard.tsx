@@ -87,7 +87,7 @@ export function SessionCard({
         </div>
       </button>
 
-      <Sheet open={open} onClose={close} stableHeight viewKey={editing?'edit':'details'} title={editing?t('Edit session'):t('Session details')}>
+      <Sheet open={open} onClose={close} stableHeight resizeForKeyboard={editing} viewKey={editing?'edit':'details'} title={editing?t('Edit session'):t('Session details')}>
         {open&&<>
         {score&&<SessionScore score={score} session={s}/>}
         <SessionPersonality tags={s.tags} />

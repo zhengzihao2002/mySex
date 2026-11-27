@@ -20,6 +20,7 @@ import {useEffect} from 'react';
 export const TEXT_ENTRY='input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=hidden]):not([type=button]):not([type=submit]):not([type=reset]):not([type=file]):not([type=color]),textarea,[contenteditable="true"]';
 export const KEYBOARD_EVENT='mysex:keyboard';
 const STORE='mysex-keyboard-height';
+const MANAGED_FIELD='.notes-composer,[data-sheet-keyboard]';
 
 let height=0;
 export const keyboardHeight=()=>height;
@@ -77,7 +78,7 @@ export function KeyboardFloat(){
       const label=element?.closest('label');
       const target=(element?.closest(TEXT_ENTRY)??(label?.control?.matches(TEXT_ENTRY)?label.control:null)) as HTMLElement|null;
       if(!target||target===document.activeElement||(target as HTMLInputElement).disabled||(target as HTMLInputElement).readOnly)return;
-      if(target.closest('.notes-composer'))return;
+      if(target.closest(MANAGED_FIELD))return;
       const previous=target.style.opacity;
       target.style.opacity='0';
       let restored=false;
@@ -101,8 +102,8 @@ export function KeyboardFloat(){
       const target=field();
       if(!target)return;
       clearTimeout(blurTimer);
-      // Notes lays out its composer from the live visual viewport.
-      if(target.closest('.notes-composer')){
+      // Notes and the session editor measure the live viewport themselves.
+      if(target.closest(MANAGED_FIELD)){
         measured=false;
         hold=null;
         if(height>0)publish(0);
@@ -113,7 +114,7 @@ export function KeyboardFloat(){
       if(height===0){measured=false;const known=remembered();if(known)publish(known);}
     };
     const onFocusOut=(event:FocusEvent)=>{
-      if(event.target instanceof Element&&event.target.closest('.notes-composer'))return;
+      if(event.target instanceof Element&&event.target.closest(MANAGED_FIELD))return;
       clearTimeout(blurTimer);
       // Focus may be moving to another field; only close when none follows.
       blurTimer=window.setTimeout(()=>{if(!field()){measured=false;publish(0);root.style.setProperty('--vv-top','0px');settleAfterClose();}},60);
@@ -122,7 +123,7 @@ export function KeyboardFloat(){
       const visible=viewport?.height??window.innerHeight;
       const gap=layoutHeight()-visible;
       const target=field();
-      const open=!!target&&!target.closest('.notes-composer')&&gap>120;
+      const open=!!target&&!target.closest(MANAGED_FIELD)&&gap>120;
       // 3. Whatever Safari pans, keep fixed screens glued to the visible area.
       //    (Scrolling the window mid-animation made the screen jump.)
       root.style.setProperty('--vv-top',`${open||height>0?Math.max(0,viewport?.offsetTop??0):0}px`);

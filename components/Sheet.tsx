@@ -8,15 +8,16 @@ import {OVERLAY_TRANSITION} from '@/lib/overlay-motion';
 import {useT} from './I18nProvider';
 import {lockPageScroll} from '@/lib/page-scroll-lock';
 import {KEYBOARD_EVENT,TEXT_ENTRY,keyboardHeight} from './KeyboardFloat';
+import {useSheetKeyboard} from './useSheetKeyboard';
 
-type SheetProps={open:boolean;onClose:()=>void;title?:React.ReactNode;children:React.ReactNode;viewKey?:string;stableHeight?:boolean};
+type SheetProps={open:boolean;onClose:()=>void;title?:React.ReactNode;children:React.ReactNode;viewKey?:string;stableHeight?:boolean;resizeForKeyboard?:boolean};
 
 export function Sheet(props:SheetProps) {
   if(typeof document==='undefined')return null;
   return createPortal(<MotionConfig reducedMotion="never"><AnimatePresence>{props.open&&<SheetPanel {...props}/>}</AnimatePresence></MotionConfig>,document.body);
 }
 
-function SheetPanel({onClose,title,children,viewKey,stableHeight=false}:Omit<SheetProps,'open'>) {
+function SheetPanel({onClose,title,children,viewKey,stableHeight=false,resizeForKeyboard=false}:Omit<SheetProps,'open'>) {
   const present=useIsPresent();
   const dragControls=useDragControls();
   const {t}=useT();
@@ -36,7 +37,12 @@ function SheetPanel({onClose,title,children,viewKey,stableHeight=false}:Omit<She
     observer.observe(area,{childList:true,subtree:true});
     return()=>observer.disconnect();
   },[]);
-  const tall=stableHeight||typingSheet;
+  const tall=stableHeight||typingSheet||resizeForKeyboard;
+  useSheetKeyboard(resizeForKeyboard,root,content);
+  useLayoutEffect(()=>{
+    const active=document.activeElement;
+    if(!present&&resizeForKeyboard&&active instanceof HTMLElement&&content.current?.contains(active))active.blur();
+  },[present,resizeForKeyboard]);
   useLayoutEffect(()=>{
     if(content.current){
       content.current.scrollTop=0;
@@ -87,6 +93,7 @@ function SheetPanel({onClose,title,children,viewKey,stableHeight=false}:Omit<She
       release=window.setTimeout(()=>{if(keyboardHeight()>0)return;area.style.paddingBottom='';room=0;panel.style.height='';},reducedMotion?0:420);
     };
     const onKeyboard=()=>{
+      if(node.hasAttribute('data-sheet-keyboard'))return;
       const height=keyboardHeight();
       if(height>0&&field()){setRoom(height);reveal(height);}
       else if(height===0)finish();
@@ -116,7 +123,7 @@ function SheetPanel({onClose,title,children,viewKey,stableHeight=false}:Omit<She
       if(trigger?.isConnected)trigger.focus({preventScroll:true});
     };
   },[]);
-  return <motion.div ref={root} data-app-sheet inert={!present} initial="closed" animate="open" exit="closed" className="fixed inset-0 z-50 flex items-end justify-center" transition={OVERLAY_TRANSITION}>
+  return <motion.div ref={root} data-app-sheet data-sheet-keyboard={resizeForKeyboard?'':undefined} inert={!present} initial="closed" animate="open" exit="closed" className="fixed inset-0 z-50 flex items-end justify-center" transition={OVERLAY_TRANSITION}>
     <motion.div variants={{closed:{opacity:0},open:{opacity:1}}} transition={OVERLAY_TRANSITION} className="absolute inset-0 touch-none bg-black/65 backdrop-blur-sm" onClick={onClose}/>
     <motion.div variants={{closed:{y:"100%",transition:OVERLAY_TRANSITION},open:{y:0,transition:OVERLAY_TRANSITION}}} drag="y" dragControls={dragControls} dragListener={false} dragConstraints={{top:0,bottom:0}} dragElastic={{top:0,bottom:1}} dragTransition={{bounceStiffness:380,bounceDamping:34}} onDragEnd={(_,info)=>{if(info.offset.y>=(dialog.current?.offsetHeight??Infinity)*.25)onClose();}} ref={dialog} role="dialog" aria-modal="true" aria-labelledby={title?titleId:undefined} aria-label={title?undefined:t('Details')} tabIndex={-1}
       className={`sheet-panel relative flex max-h-[92%] w-full max-w-lg flex-col rounded-t-[28px] outline-none ${tall?'h-[92%]':''}`}>
