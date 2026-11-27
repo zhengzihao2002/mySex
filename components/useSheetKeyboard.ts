@@ -84,21 +84,19 @@ export function useSheetKeyboard(
             }
             return;
           }
-          // Finish at the lowest form edge already reached, even if the last
-          // native notification was a stale, smaller viewport.
-          if (previousHeight < restingHeight) sheet.dataset.sheetKeyboardGlide = 'false';
-          restingHeight = previousHeight;
+          // Wait to release focus, but leave the form exactly where the
+          // viewport handler put it. This timer must not move the sheet.
           closing = false;
           keyboardOpen = false;
-          sheet.style.setProperty('--sheet-resting-height', `${restingHeight}px`);
-          sheet.style.setProperty('--sheet-bottom-reserve', '0px');
           activeField()?.blur();
         }, 160);
       }
 
       if (height !== previousHeight || rotated) {
         const now = performance.now();
-        sheet.dataset.sheetKeyboardGlide = String(!rotated && (wasOpen || keyboardOpen)
+        // Safari can report the closing height after the keyboard is already
+        // gone. A fallback glide here would make the form move after it.
+        sheet.dataset.sheetKeyboardGlide = String(!rotated && !closing && height < previousHeight && keyboardOpen
           && isIsolatedKeyboardStep(height - previousHeight, now - lastHeightChange));
         previousHeight = height;
         lastHeightChange = now;
@@ -106,7 +104,8 @@ export function useSheetKeyboard(
       // Keep the backdrop and header at their resting position. Use only the
       // visual viewport height; Safari can briefly report a stale offsetTop.
       sheet.style.setProperty('--sheet-resting-height', `${restingHeight}px`);
-      sheet.style.setProperty('--sheet-bottom-reserve', `${coverage > 0 ? coverage + 8 : 0}px`);
+      const reserve = coverage > 0 ? coverage + (closing && coverage <= 32 ? 0 : 8) : 0;
+      sheet.style.setProperty('--sheet-bottom-reserve', `${reserve}px`);
       revealField();
     };
 
